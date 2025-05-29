@@ -9,7 +9,7 @@
 - How it works at a high level]
 
 # User Experience  
-[Describe the user journey and experience. Include:
+[Describe the user  journey and experience. Include:
 - User personas
 - Key user flows
 - UI/UX considerations]
