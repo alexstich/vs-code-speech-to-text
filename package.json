@@ -1,9 +1,9 @@
 {
-  "name": "voice-scribe",
-  "displayName": "VoiceScribe - Speech to Text",
+  "name": "speech-to-text-whisper",
+  "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
   "version": "0.1.0",
-  "publisher": "voicescribe",
+  "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e1e1e",
@@ -11,12 +11,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/voice-scribe-extension"
+    "url": "https://github.com/alexstich/vs-code-speech-to-text"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/voice-scribe-extension/issues"
+    "url": "https://github.com/alexstich/vs-code-speech-to-text/issues"
   },
-  "homepage": "https://github.com/yourusername/voice-scribe-extension#readme",
+  "homepage": "https://github.com/alexstich/vs-code-speech-to-text#readme",
   "license": "MIT",
   "engines": {
     "vscode": "^1.74.0"
@@ -39,260 +39,260 @@
     "accessibility"
   ],
   "activationEvents": [
-    "onCommand:voiceScribe.startRecording",
-    "onCommand:voiceScribe.toggleRecording",
-    "onCommand:voiceScribe.sendToChat"
+    "onCommand:speechToTextWhisper.startRecording",
+    "onCommand:speechToTextWhisper.toggleRecording",
+    "onCommand:speechToTextWhisper.sendToChat"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "voiceScribe.startRecording",
+        "command": "speechToTextWhisper.startRecording",
         "title": "Start Voice Recording",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(record)"
       },
       {
-        "command": "voiceScribe.stopRecording",
+        "command": "speechToTextWhisper.stopRecording",
         "title": "Stop Voice Recording",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(record)"
       },
       {
-        "command": "voiceScribe.toggleRecording",
+        "command": "speechToTextWhisper.toggleRecording",
         "title": "Toggle Voice Recording",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(mic)"
       },
       {
-        "command": "voiceScribe.startHoldToRecord",
+        "command": "speechToTextWhisper.startHoldToRecord",
         "title": "Start Hold-to-Record",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(mic)"
       },
       {
-        "command": "voiceScribe.stopHoldToRecord",
+        "command": "speechToTextWhisper.stopHoldToRecord",
         "title": "Stop Hold-to-Record",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(mic-filled)"
       },
       {
-        "command": "voiceScribe.insertAtCursor",
+        "command": "speechToTextWhisper.insertAtCursor",
         "title": "Insert Last Transcription at Cursor",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(edit)"
       },
       {
-        "command": "voiceScribe.insertAsComment",
+        "command": "speechToTextWhisper.insertAsComment",
         "title": "Insert Last Transcription as Comment",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(comment)"
       },
       {
-        "command": "voiceScribe.replaceSelection",
+        "command": "speechToTextWhisper.replaceSelection",
         "title": "Replace Selection with Last Transcription",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(replace)"
       },
       {
-        "command": "voiceScribe.copyToClipboard",
+        "command": "speechToTextWhisper.copyToClipboard",
         "title": "Copy Last Transcription to Clipboard",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(clippy)"
       },
       {
-        "command": "voiceScribe.sendToChat",
+        "command": "speechToTextWhisper.sendToChat",
         "title": "Record and Send to AI Chat",
-        "category": "VoiceScribe",
+
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "voiceScribe.openSettings",
-        "title": "Open VoiceScribe Settings",
-        "category": "VoiceScribe",
+        "command": "speechToTextWhisper.openSettings",
+        "title": "Open Speech to Text with Whisper Settings",
+        "category": "Speech to Text with Whisper",
         "icon": "$(settings-gear)"
       },
       {
-        "command": "voiceScribe.showHelp",
-        "title": "Show VoiceScribe Help",
-        "category": "VoiceScribe",
+        "command": "speechToTextWhisper.showHelp",
+        "title": "Show Speech to Text with Whisper Help",
+        "category": "Speech to Text with Whisper",
         "icon": "$(question)"
       },
       {
-        "command": "voiceScribe.showStatus",
-        "title": "Show VoiceScribe Status",
-        "category": "VoiceScribe",
+        "command": "speechToTextWhisper.showStatus",
+        "title": "Show Speech to Text with Whisper Status",
+        "category": "Speech to Text with Whisper",
         "icon": "$(info)"
       },
       {
-        "command": "voiceScribe.checkMicrophone",
+        "command": "speechToTextWhisper.checkMicrophone",
         "title": "Check Microphone",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(device-microphone)"
       },
       {
-        "command": "voiceScribe.testApiKey",
+        "command": "speechToTextWhisper.testApiKey",
         "title": "Test OpenAI API Key",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(key)"
       },
       {
-        "command": "voiceScribe.showContext",
+        "command": "speechToTextWhisper.showContext",
         "title": "Show Context Information",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(info)"
       },
       {
-        "command": "voiceScribe.refreshContext",
+        "command": "speechToTextWhisper.refreshContext",
         "title": "Refresh Context",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(refresh)"
       },
       {
-        "command": "voiceScribe.sendToChat",
+        "command": "speechToTextWhisper.sendToChat",
         "title": "Send Last Transcription to Cursor Chat",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "voiceScribe.recordAndSendToChat",
+          "command": "speechToTextWhisper.recordAndSendToChat",
         "title": "Record and Send to Cursor Chat",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(microphone)"
       },
       {
-        "command": "voiceScribe.resetConfiguration",
+        "command": "speechToTextWhisper.resetConfiguration",
         "title": "Reset Configuration",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(refresh)"
       },
       {
-        "command": "voiceScribe.toggleStatusBar",
+        "command": "speechToTextWhisper.toggleStatusBar",
         "title": "Toggle Status Bar",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(eye)"
       },
       {
-        "command": "voiceScribe.showQualitySettings",
+        "command": "speechToTextWhisper.showQualitySettings",
         "title": "Show Audio Quality Settings",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(settings)"
       },
       {
-        "command": "voiceScribe.applyQualityPreset",
+        "command": "speechToTextWhisper.applyQualityPreset",
         "title": "Apply Audio Quality Preset",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(star)"
       },
       {
-        "command": "voiceScribe.optimizeForContext",
+        "command": "speechToTextWhisper.optimizeForContext",
         "title": "Optimize Audio for Context",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(target)"
       },
       {
-        "command": "voiceScribe.exportQualitySettings",
+        "command": "speechToTextWhisper.exportQualitySettings",
         "title": "Export Audio Quality Settings",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(export)"
       },
       {
-        "command": "voiceScribe.importQualitySettings",
+        "command": "speechToTextWhisper.importQualitySettings",
         "title": "Import Audio Quality Settings",
-        "category": "VoiceScribe",
+        "category": "Speech to Text with Whisper",
         "icon": "$(import)"
       }
     ],
     "keybindings": [
       {
-        "command": "voiceScribe.startHoldToRecord",
+        "command": "speechToTextWhisper.startHoldToRecord",
         "key": "F9",
-        "when": "!voiceScribe.holdToRecordActive && voiceScribe.recordingMode == 'hold'"
+        "when": "!speechToTextWhisper.holdToRecordActive && speechToTextWhisper.recordingMode == 'hold'"
       },
       {
-        "command": "voiceScribe.stopHoldToRecord",
+        "command": "speechToTextWhisper.stopHoldToRecord",
         "key": "F9",
-        "when": "voiceScribe.holdToRecordActive && voiceScribe.recordingMode == 'hold'"
+        "when": "speechToTextWhisper.holdToRecordActive && speechToTextWhisper.recordingMode == 'hold'"
       },
       {
-        "command": "voiceScribe.toggleRecording",
+        "command": "speechToTextWhisper.toggleRecording",
         "key": "F9",
-        "when": "voiceScribe.recordingMode == 'toggle'"
+        "when": "speechToTextWhisper.recordingMode == 'toggle'"
       },
       {
-        "command": "voiceScribe.toggleRecording",
+        "command": "speechToTextWhisper.toggleRecording",
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
         "when": "editorTextFocus"
       },
       {
-        "command": "voiceScribe.sendToChat",
+        "command": "speechToTextWhisper.sendToChat",
         "key": "ctrl+shift+alt+v",
         "mac": "cmd+shift+alt+v",
         "when": "true"
       },
       {
-        "command": "voiceScribe.insertAsComment",
+        "command": "speechToTextWhisper.insertAsComment",
         "key": "ctrl+shift+c",
         "mac": "cmd+shift+c",
         "when": "editorTextFocus"
       },
       {
-        "command": "voiceScribe.showHelp",
+        "command": "speechToTextWhisper.showHelp",
         "key": "F1",
-        "when": "voiceScribe.active"
+        "when": "speechToTextWhisper.active"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "voiceScribe.toggleRecording",
-          "group": "voiceScribe",
+          "command": "speechToTextWhisper.toggleRecording",
+          "group": "speechToTextWhisper",
           "when": "editorTextFocus"
         },
         {
-          "command": "voiceScribe.insertAsComment",
-          "group": "voiceScribe",
+          "command": "speechToTextWhisper.insertAsComment",
+          "group": "speechToTextWhisper",
           "when": "editorTextFocus"
         }
       ],
       "commandPalette": [
         {
-          "command": "voiceScribe.startRecording",
+          "command": "speechToTextWhisper.startRecording",
           "when": "true"
         },
         {
-          "command": "voiceScribe.stopRecording",
-          "when": "voiceScribe.isRecording"
+          "command": "speechToTextWhisper.stopRecording",
+          "when": "speechToTextWhisper.isRecording"
         },
         {
-          "command": "voiceScribe.toggleRecording",
+          "command": "speechToTextWhisper.toggleRecording",
           "when": "true"
         },
         {
-          "command": "voiceScribe.sendToChat",
+          "command": "speechToTextWhisper.sendToChat",
           "when": "true"
         },
         {
-          "command": "voiceScribe.insertAsComment",
+          "command": "speechToTextWhisper.insertAsComment",
           "when": "editorTextFocus"
         },
         {
-          "command": "voiceScribe.openSettings",
+          "command": "speechToTextWhisper.openSettings",
           "when": "true"
         }
       ]
     },
     "configuration": {
-      "title": "VoiceScribe",
+      "title": "Speech to Text with Whisper",
       "properties": {
-        "voiceScribe.apiKey": {
+        "speechToTextWhisper.apiKey": {
           "type": "string",
           "description": "OpenAI API Key for Whisper transcription",
           "scope": "application",
           "order": 1
         },
-        "voiceScribe.language": {
+        "speechToTextWhisper.language": {
           "type": "string",
           "default": "auto",
           "description": "Language for transcription (auto-detect if 'auto')",
@@ -386,7 +386,7 @@
           ],
           "order": 2
         },
-        "voiceScribe.whisperModel": {
+        "speechToTextWhisper.whisperModel": {
           "type": "string",
           "enum": [
             "whisper-1"
@@ -395,7 +395,7 @@
           "description": "OpenAI Whisper model to use for transcription",
           "order": 2.1
         },
-        "voiceScribe.languageDetectionConfidence": {
+        "speechToTextWhisper.languageDetectionConfidence": {
           "type": "number",
           "default": 0.8,
           "minimum": 0.1,
@@ -403,7 +403,7 @@
           "description": "Minimum confidence threshold for auto language detection",
           "order": 2.2
         },
-        "voiceScribe.recordingMode": {
+        "speechToTextWhisper.recordingMode": {
           "type": "string",
           "enum": [
             "hold",
@@ -413,7 +413,7 @@
           "description": "Recording mode: hold button or toggle on/off",
           "order": 3
         },
-        "voiceScribe.insertMode": {
+        "speechToTextWhisper.insertMode": {
           "type": "string",
           "enum": [
             "cursor",
@@ -429,7 +429,7 @@
           ],
           "order": 4
         },
-        "voiceScribe.audioQuality": {
+        "speechToTextWhisper.audioQuality": {
           "type": "string",
           "enum": [
             "standard",
@@ -445,7 +445,7 @@
           ],
           "order": 5
         },
-        "voiceScribe.audioFormat": {
+        "speechToTextWhisper.audioFormat": {
           "type": "string",
           "enum": [
             "wav",
@@ -461,25 +461,25 @@
           ],
           "order": 5.1
         },
-        "voiceScribe.noiseReduction": {
+        "speechToTextWhisper.noiseReduction": {
           "type": "boolean",
           "default": true,
           "description": "Apply noise reduction to audio before transcription",
           "order": 5.2
         },
-        "voiceScribe.autoGain": {
+        "speechToTextWhisper.autoGain": {
           "type": "boolean",
           "default": true,
           "description": "Automatically adjust microphone gain for optimal levels",
           "order": 5.3
         },
-        "voiceScribe.enableCursorIntegration": {
+        "speechToTextWhisper.enableCursorIntegration": {
           "type": "boolean",
           "default": true,
           "description": "Enable integration with Cursor AI chat",
           "order": 6
         },
-        "voiceScribe.cursorStrategy": {
+        "speechToTextWhisper.cursorStrategy": {
           "type": "string",
           "enum": [
             "clipboard",
@@ -497,43 +497,43 @@
           ],
           "order": 7
         },
-        "voiceScribe.autoSendToChat": {
+        "speechToTextWhisper.autoSendToChat": {
           "type": "boolean",
           "default": false,
           "description": "Automatically send transcription to Cursor chat when chat context is detected",
           "order": 8
         },
-        "voiceScribe.cursorPrefixText": {
+        "speechToTextWhisper.cursorPrefixText": {
           "type": "string",
           "default": "",
           "description": "Text to add before transcription when sending to Cursor chat",
           "order": 9
         },
-        "voiceScribe.cursorSuffixText": {
+        "speechToTextWhisper.cursorSuffixText": {
           "type": "string",
           "default": "",
           "description": "Text to add after transcription when sending to Cursor chat",
           "order": 10
         },
-        "voiceScribe.cursorUseMarkdown": {
+        "speechToTextWhisper.cursorUseMarkdown": {
           "type": "boolean",
           "default": true,
           "description": "Format text with markdown when sending to Cursor chat",
           "order": 21.5
         },
-        "voiceScribe.showStatusBar": {
+        "speechToTextWhisper.showStatusBar": {
           "type": "boolean",
           "default": true,
           "description": "Show recording status in status bar",
           "order": 12
         },
-        "voiceScribe.autoDetectContext": {
+        "speechToTextWhisper.autoDetectContext": {
           "type": "boolean",
           "default": true,
           "description": "Automatically detect IDE context (editor, chat, terminal)",
           "order": 13
         },
-        "voiceScribe.maxRecordingDuration": {
+        "speechToTextWhisper.maxRecordingDuration": {
           "type": "number",
           "default": 60,
           "minimum": 5,
@@ -541,13 +541,13 @@
           "description": "Maximum recording duration in seconds",
           "order": 14
         },
-        "voiceScribe.prompt": {
+        "speechToTextWhisper.prompt": {
           "type": "string",
           "default": "",
           "description": "Optional context prompt to improve transcription accuracy",
           "order": 15
         },
-        "voiceScribe.responseFormat": {
+        "speechToTextWhisper.responseFormat": {
           "type": "string",
           "enum": [
             "text",
@@ -563,19 +563,19 @@
           ],
           "order": 15.1
         },
-        "voiceScribe.enableTimestamps": {
+        "speechToTextWhisper.enableTimestamps": {
           "type": "boolean",
           "default": false,
           "description": "Include timestamps in transcription (requires JSON format)",
           "order": 15.2
         },
-        "voiceScribe.silenceDetection": {
+        "speechToTextWhisper.silenceDetection": {
           "type": "boolean",
           "default": true,
           "description": "Automatically detect silence and stop recording",
           "order": 15.3
         },
-        "voiceScribe.silenceThreshold": {
+        "speechToTextWhisper.silenceThreshold": {
           "type": "number",
           "default": 2,
           "minimum": 0.5,
@@ -583,7 +583,7 @@
           "description": "Silence duration in seconds before auto-stop",
           "order": 15.4
         },
-        "voiceScribe.temperature": {
+        "speechToTextWhisper.temperature": {
           "type": "number",
           "default": 0.1,
           "minimum": 0,
@@ -591,7 +591,7 @@
           "description": "OpenAI temperature (0 = deterministic, 1 = creative)",
           "order": 16
         },
-        "voiceScribe.timeout": {
+        "speechToTextWhisper.timeout": {
           "type": "number",
           "default": 30000,
           "minimum": 5000,
@@ -599,7 +599,7 @@
           "description": "API request timeout in milliseconds",
           "order": 17
         },
-        "voiceScribe.maxRetries": {
+        "speechToTextWhisper.maxRetries": {
           "type": "number",
           "default": 3,
           "minimum": 0,
@@ -607,7 +607,7 @@
           "description": "Maximum number of retry attempts for failed API requests",
           "order": 18
         },
-        "voiceScribe.retryDelay": {
+        "speechToTextWhisper.retryDelay": {
           "type": "number",
           "default": 1000,
           "minimum": 100,
@@ -615,25 +615,25 @@
           "description": "Delay between retry attempts in milliseconds",
           "order": 19
         },
-        "voiceScribe.formatText": {
+        "speechToTextWhisper.formatText": {
           "type": "boolean",
           "default": true,
           "description": "Format transcribed text (capitalize, trim whitespace)",
           "order": 20
         },
-        "voiceScribe.addNewLine": {
+        "speechToTextWhisper.addNewLine": {
           "type": "boolean",
           "default": true,
           "description": "Add new line after inserted text",
           "order": 21
         },
-        "voiceScribe.indentToSelection": {
+        "speechToTextWhisper.indentToSelection": {
           "type": "boolean",
           "default": false,
           "description": "Indent inserted text to match selection",
           "order": 22
         },
-        "voiceScribe.statusBarPosition": {
+        "speechToTextWhisper.statusBarPosition": {
           "type": "string",
           "enum": [
             "left",
@@ -643,25 +643,25 @@
           "description": "Position of status bar indicator",
           "order": 23
         },
-        "voiceScribe.showTooltips": {
+        "speechToTextWhisper.showTooltips": {
           "type": "boolean",
           "default": true,
           "description": "Show helpful tooltips in status bar",
           "order": 24
         },
-        "voiceScribe.enableAnimations": {
+        "speechToTextWhisper.enableAnimations": {
           "type": "boolean",
           "default": true,
           "description": "Enable status bar animations",
           "order": 25
         },
-        "voiceScribe.autoHideSuccess": {
+        "speechToTextWhisper.autoHideSuccess": {
           "type": "boolean",
           "default": true,
           "description": "Automatically hide success messages",
           "order": 26
         },
-        "voiceScribe.successDuration": {
+        "speechToTextWhisper.successDuration": {
           "type": "number",
           "default": 2000,
           "minimum": 500,
@@ -669,7 +669,7 @@
           "description": "Duration to show success messages (ms)",
           "order": 27
         },
-        "voiceScribe.errorDuration": {
+        "speechToTextWhisper.errorDuration": {
           "type": "number",
           "default": 3000,
           "minimum": 1000,
@@ -677,7 +677,7 @@
           "description": "Duration to show error messages (ms)",
           "order": 28
         },
-        "voiceScribe.baseURL": {
+        "speechToTextWhisper.baseURL": {
           "type": "string",
           "default": "",
           "description": "Custom OpenAI API base URL (leave empty for default)",

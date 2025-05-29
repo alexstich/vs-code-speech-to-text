@@ -37,6 +37,7 @@ tasks/
 .taskmasterconfig
 scripts
 .cursor
+.cursorignore
 
 # Some docs
 docs/prd
