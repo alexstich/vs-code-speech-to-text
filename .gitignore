@@ -32,6 +32,11 @@ Thumbs.db
 # Task files
 tasks.json
 tasks/
+.taskmasterconfig
+
+# Some docs
+docs/prd
+docs/system-description
 
 # Build outputs
 out/
