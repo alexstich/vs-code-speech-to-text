@@ -305,22 +305,11 @@ function registerCommands(context: vscode.ExtensionContext): void {
 function setupKeyBindings(context: vscode.ExtensionContext): void {
 	console.log('⌨️ Setting up key bindings...');
 	
-	// F9 hold-to-record: нажал = начал запись, отпустил = остановил
-	const keyDownCommand = vscode.commands.registerCommand('speechToTextWhisper.keyDown', () => {
-		if (!isHoldToRecordActive) {
-			startHoldToRecord();
-		}
-	});
+	// Команды startHoldToRecord и stopHoldToRecord уже зарегистрированы в registerCommands
+	// и используются напрямую через keybindings в package.json
+	// Дополнительная регистрация keyDown/keyUp команд не нужна
 	
-	const keyUpCommand = vscode.commands.registerCommand('speechToTextWhisper.keyUp', () => {
-		if (isHoldToRecordActive) {
-			stopHoldToRecord();
-		}
-	});
-	
-	context.subscriptions.push(keyDownCommand, keyUpCommand);
-	
-	console.log('✅ Key bindings configured');
+	console.log('✅ Key bindings configured (using package.json keybindings)');
 }
 
 /**
