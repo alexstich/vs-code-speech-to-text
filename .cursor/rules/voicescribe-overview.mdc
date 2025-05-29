@@ -1,0 +1,57 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# VoiceScribe - Speech to Text Extension Overview
+
+**VoiceScribe** — расширение VS Code для преобразования речи в текст с использованием OpenAI Whisper API и специальной интеграцией с Cursor IDE.
+
+## 🏗️ Структура проекта
+
+- **** — основная папка расширения
+- **[src/](mdc:voice-scribe-extension/speech-to-text-whisper/src)** — исходный код TypeScript
+  - **[core/](mdc:voice-scribe-extension/speech-to-text-whisper/src/core)** — основные модули (AudioRecorder, WhisperClient, TextInserter)
+  - **[ui/](mdc:voice-scribe-extension/speech-to-text-whisper/src/ui)** — UI компоненты (StatusBarManager)
+  - **[integrations/](mdc:voice-scribe-extension/speech-to-text-whisper/src/integrations)** — интеграции (CursorIntegration, ContextManager)
+  - **[utils/](mdc:voice-scribe-extension/speech-to-text-whisper/src/utils)** — утилиты и общие функции
+- **[test/](mdc:voice-scribe-extension/speech-to-text-whisper/src/test)** — тесты (unit, integration, mocks)
+- **[tasks/](mdc:tasks)** — управление задачами через Task Master AI
+
+## 📋 Ключевые файлы
+
+- **[package.json](mdc:voice-scribe-extension/speech-to-text-whisper/package.json)** — манифест расширения с командами и настройками
+- **[extension.ts](mdc:voice-scribe-extension/speech-to-text-whisper/src/extension.ts)** — главный файл расширения
+- **[tasks.json](mdc:tasks/tasks.json)** — план разработки и текущие задачи
+- **[README.md](mdc:voice-scribe-extension/speech-to-text-whisper/README.md)** — документация пользователя
+
+## 🎯 Основная функциональность
+
+- **Запись аудио** через Web Audio API (F9 hold-to-record)
+- **Транскрибация** через OpenAI Whisper API
+- **Вставка текста** в редактор (cursor/comment/replace/preview)
+- **Интеграция с Cursor IDE** для AI-чата
+- **Мультиязычность** (auto-detect + 11 языков)
+
+## ⚙️ Команды расширения
+
+- `voiceScribe.startRecording` — начать запись
+- `voiceScribe.toggleRecording` — переключить запись (F9)
+- `voiceScribe.sendToChat` — отправить в AI-чат (Ctrl+Shift+Alt+V)
+- `voiceScribe.insertAsComment` — вставить как комментарий
+
+## 🔧 Технологии
+
+- **TypeScript** — основной язык
+- **VS Code Extension API** — интеграция с редактором
+- **Web Audio API (MediaRecorder)** — запись аудио
+- **OpenAI Whisper API** — транскрибация речи
+- **ESBuild** — сборка проекта
+- **Mocha/Nyc** — тестирование и покрытие кода
+
+## 📊 Статус разработки
+
+Используется **Task Master AI** для управления задачами. Текущий прогресс в [tasks.json](mdc:tasks/tasks.json).
+
+**Завершенные задачи:** Настройка проекта, тестовая среда, package.json манифест
+**В работе:** AudioRecorder модуль → WhisperClient → TextInserter → интеграция
