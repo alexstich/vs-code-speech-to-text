@@ -1,164 +1,164 @@
-# 🧪 Инструкция по тестированию SpeechToTextWhisper
+# 🧪 SpeechToTextWhisper Testing Instructions
 
-## 📦 Подготовка к тестированию
+## 📦 Test Preparation
 
-### 1. Сборка расширения
+### 1. Build Extension
 ```bash
-# Установка зависимостей
+# Install dependencies
 npm install
 
-# Сборка проекта
+# Build project
 npm run compile
 
-# Создание VSIX пакета
+# Create VSIX package
 npx vsce package
 ```
 
-### 2. Установка в VS Code
+### 2. Install in VS Code
 ```bash
-# Установка через командную строку
+# Install via command line
 code --install-extension speech-to-text-whisper-0.1.0.vsix
 
-# Или через VS Code: Extensions > ... > Install from VSIX
+# Or via VS Code: Extensions > ... > Install from VSIX
 ```
 
-## ⚙️ Первоначальная настройка
+## ⚙️ Initial Setup
 
-### 1. Настройка API ключа
-1. Откройте `Settings` (`Ctrl+,` / `Cmd+,`)
-2. Найдите `Speech to Text with Whisper`
-3. Введите ваш OpenAI API ключ в поле `API Key`
+### 1. Configure API Key
+1. Open `Settings` (`Ctrl+,` / `Cmd+,`)
+2. Search for `Speech to Text with Whisper`
+3. Enter your OpenAI API key in the `API Key` field
 
-### 2. Базовые настройки
-- **Language**: `auto` (автоопределение) или выберите конкретный язык
-- **Recording Mode**: `hold` (по умолчанию) или `toggle`
-- **Insert Mode**: `cursor` (в позицию курсора)
+### 2. Basic Settings
+- **Language**: `auto` (auto-detection) or select a specific language
+- **Recording Mode**: `hold` (default) or `toggle`
+- **Insert Mode**: `cursor` (at cursor position)
 
-## 🔧 Основные тесты
+## 🔧 Main Tests
 
-### ✅ Тест 1: Проверка активации расширения
-1. Откройте Command Palette (`Ctrl+Shift+P`)
-2. Найдите команды `Speech to Text with Whisper`
-3. **Ожидается**: Список команд расширения должен появиться
+### ✅ Test 1: Extension Activation Check
+1. Open Command Palette (`Ctrl+Shift+P`)
+2. Search for `Speech to Text with Whisper` commands
+3. **Expected**: Extension command list should appear
 
-### ✅ Тест 2: Диагностика системы
-1. Выполните команду `Speech to Text with Whisper: Run Diagnostics`
-2. **Ожидается**: Отчет с состоянием:
+### ✅ Test 2: System Diagnostics
+1. Execute command `Speech to Text with Whisper: Run Diagnostics`
+2. **Expected**: Report with status:
    - ✅ Extension activated
-   - ✅ API key configured (если настроен)
+   - ✅ API key configured (if set up)
    - ✅ Browser compatibility OK
    - ✅ Microphone permission granted
 
-### ✅ Тест 3: Status Bar
-1. После активации расширения найдите иконку микрофона в status bar (внизу справа)
-2. **Ожидается**: Иконка микрофона с tooltip "SpeechToTextWhisper"
-3. Нажмите на иконку
-4. **Ожидается**: Контекстное меню с опциями
+### ✅ Test 3: Status Bar
+1. After extension activation, find microphone icon in status bar (bottom right)
+2. **Expected**: Microphone icon with tooltip "SpeechToTextWhisper"
+3. Click on the icon
+4. **Expected**: Context menu with options
 
-### ✅ Тест 4: Проверка микрофона
-1. Выполните команду `Speech to Text with Whisper: Check Microphone`
-2. **Ожидается**: 
-   - Запрос разрешения на микрофон (если не дан)
-   - Сообщение "✅ Microphone is working correctly"
+### ✅ Test 4: Microphone Check
+1. Execute command `Speech to Text with Whisper: Check Microphone`
+2. **Expected**: 
+   - Microphone permission request (if not granted)
+   - Message "✅ Microphone is working correctly"
 
-### ✅ Тест 5: Тест API ключа
-1. Выполните команду `Speech to Text with Whisper: Test OpenAI API Key`
-2. **Ожидается**: Сообщение "✅ OpenAI API key is working correctly"
+### ✅ Test 5: API Key Test
+1. Execute command `Speech to Text with Whisper: Test OpenAI API Key`
+2. **Expected**: Message "✅ OpenAI API key is working correctly"
 
-## 🎤 Тесты записи
+## 🎤 Recording Tests
 
-### ✅ Тест 6: F9 Hold-to-Record
-1. Убедитесь что `Recording Mode` = `hold`
-2. Нажмите и **держите** клавишу `F9`
-3. **Ожидается**: 
-   - Status bar показывает состояние записи
-   - Уведомление "🎤 Recording started..."
-4. Говорите несколько секунд
-5. Отпустите `F9`
-6. **Ожидается**:
-   - Уведомление "🔄 Transcribing audio..."
-   - После транскрибации: "✅ Transcribed and inserted: [текст]"
-   - Текст появляется в редакторе
+### ✅ Test 6: F9 Hold-to-Record
+1. Ensure `Recording Mode` = `hold`
+2. Press and **hold** the `F9` key
+3. **Expected**: 
+   - Status bar shows recording state
+   - Notification "🎤 Recording started..."
+4. Speak for a few seconds
+5. Release `F9`
+6. **Expected**:
+   - Notification "🔄 Transcribing audio..."
+   - After transcription: "✅ Transcribed and inserted: [text]"
+   - Text appears in editor
 
-### ✅ Тест 7: Toggle Recording Mode
-1. Измените `Recording Mode` на `toggle`
-2. Нажмите `F9` один раз
-3. **Ожидается**: Запись начинается
-4. Говорите несколько секунд
-5. Нажмите `F9` еще раз
-6. **Ожидается**: Запись останавливается и начинается транскрибация
+### ✅ Test 7: Toggle Recording Mode
+1. Change `Recording Mode` to `toggle`
+2. Press `F9` once
+3. **Expected**: Recording starts
+4. Speak for a few seconds
+5. Press `F9` again
+6. **Expected**: Recording stops and transcription begins
 
-### ✅ Тест 8: Keyboard Shortcuts
-- `Ctrl+Shift+V` (`Cmd+Shift+V` на Mac): Toggle recording
+### ✅ Test 8: Keyboard Shortcuts
+- `Ctrl+Shift+V` (`Cmd+Shift+V` on Mac): Toggle recording
 - `Ctrl+Shift+Alt+V`: Record and send to AI chat
 - `Ctrl+Shift+C`: Insert as comment
 
-## 📝 Тесты вставки текста
+## 📝 Text Insertion Tests
 
-### ✅ Тест 9: Различные режимы вставки
-1. Запишите аудио
-2. Используйте команды:
+### ✅ Test 9: Different Insertion Modes
+1. Record audio
+2. Use commands:
    - `Insert Last Transcription at Cursor`
    - `Insert Last Transcription as Comment`
    - `Replace Selection with Last Transcription`
    - `Copy Last Transcription to Clipboard`
 
-### ✅ Тест 10: Контекстное меню
-1. Щелкните правой кнопкой в редакторе
-2. **Ожидается**: Пункты меню SpeechToTextWhisper
+### ✅ Test 10: Context Menu
+1. Right-click in editor
+2. **Expected**: SpeechToTextWhisper menu items
 
-## 🔍 Отладка и логи
+## 🔍 Debugging and Logs
 
-### Просмотр логов
-1. Откройте `Developer Tools` (`Help > Toggle Developer Tools`)
-2. Перейдите на вкладку `Console`
-3. Отфильтруйте по "SpeechToTextWhisper" или "🎤"
+### Viewing Logs
+1. Open `Developer Tools` (`Help > Toggle Developer Tools`)
+2. Go to `Console` tab
+3. Filter by "SpeechToTextWhisper" or "🎤"
 
-### Полезные команды для отладки
+### Useful Debugging Commands
 - `Speech to Text with Whisper: Show Status`
 - `Speech to Text with Whisper: Show Context Information`
 - `Speech to Text with Whisper: Run Diagnostics`
 
-## ❗ Типичные проблемы
+## ❗ Common Issues
 
-### F9 не работает
-- Проверьте что расширение активировано
-- Убедитесь что `Recording Mode` настроен правильно
-- Проверьте permissions микрофона
+### F9 Not Working
+- Check that extension is activated
+- Ensure `Recording Mode` is configured correctly
+- Check microphone permissions
 
-### Нет Status Bar
-- Выполните `Speech to Text with Whisper: Toggle Status Bar`
-- Перезагрузите VS Code
+### No Status Bar
+- Execute `Speech to Text with Whisper: Toggle Status Bar`
+- Reload VS Code
 
-### API ошибки
-- Проверьте API ключ
-- Убедитесь что у вас есть доступ к Whisper API
-- Проверьте интернет соединение
+### API Errors
+- Check API key
+- Ensure you have access to Whisper API
+- Check internet connection
 
-### Нет уведомлений
-- В hold-to-record режиме уведомления минимальные (это нормально)
-- В toggle режиме должны быть полные уведомления
+### No Notifications
+- In hold-to-record mode notifications are minimal (this is normal)
+- In toggle mode there should be full notifications
 
-## 🎯 Продвинутые тесты
+## 🎯 Advanced Tests
 
-### Тест в разных контекстах
-- Тестируйте в разных типах файлов (.js, .py, .md)
-- Проверьте как работают комментарии в разных языках
-- Тестируйте в терминале VS Code
+### Test in Different Contexts
+- Test in different file types (.js, .py, .md)
+- Check how comments work in different languages
+- Test in VS Code terminal
 
-### Тест производительности
-- Записывайте длинные фрагменты (до 25 секунд)
-- Тестируйте с плохим интернетом
-- Проверьте retry механизм
+### Performance Testing
+- Record long fragments (up to 25 seconds)
+- Test with poor internet connection
+- Check retry mechanism
 
-### Интеграция с Cursor
-- Если используете Cursor IDE, тестируйте отправку в AI chat
-- Команда `Record and Send to AI Chat`
+### Cursor Integration
+- If using Cursor IDE, test sending to AI chat
+- Command `Record and Send to AI Chat`
 
 ---
 
-**Если что-то не работает:**
-1. Проверьте Developer Console на ошибки
-2. Выполните диагностику (`Run Diagnostics`)
-3. Перезагрузите VS Code
-4. Переустановите расширение 
+**If something doesn't work:**
+1. Check Developer Console for errors
+2. Run diagnostics (`Run Diagnostics`)
+3. Reload VS Code
+4. Reinstall extension 

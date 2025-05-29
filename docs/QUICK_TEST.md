@@ -1,52 +1,52 @@
-# 🚀 Быстрый тест SpeechToTextWhisper
+# 🚀 Quick Test SpeechToTextWhisper
 
-## ⚡ Установка и первый запуск
+## ⚡ Installation and First Run
 
-### 1. Установите пакет
+### 1. Install the Package
 ```bash
 code --install-extension speech-to-text-whisper-0.1.0.vsix
 ```
 
-### 2. Настройте API ключ
-1. `Ctrl+,` → Найдите "Speech to Text with Whisper"
-2. Введите ваш OpenAI API ключ
+### 2. Configure API Key
+1. `Ctrl+,` → Search for "Speech to Text with Whisper"
+2. Enter your OpenAI API key
 
-### 3. Быстрый тест
-1. Нажмите `Ctrl+Shift+P`
-2. Выполните `Speech to Text with Whisper: Run Diagnostics`
-3. **Ожидается**: ✅ для всех проверок
+### 3. Quick Test
+1. Press `Ctrl+Shift+P`
+2. Execute `Speech to Text with Whisper: Run Diagnostics`
+3. **Expected**: ✅ for all checks
 
-## 🎤 Основные функции для тестирования
+## 🎤 Main Functions for Testing
 
-### F9 - Hold to Record (главная функция)
-1. **Держите F9** и говорите
-2. **Отпустите F9** 
-3. ✅ Текст должен появиться в редакторе
+### F9 - Hold to Record (main function)
+1. **Hold F9** and speak
+2. **Release F9** 
+3. ✅ Text should appear in the editor
 
-### Альтернативные команды
+### Alternative Commands
 - `Ctrl+Shift+V` - Toggle recording
 - `Ctrl+Shift+P` → "Start Recording" / "Stop Recording"
 
-## 🔧 Отладка
+## 🔧 Troubleshooting
 
-### Если F9 не работает:
-1. Проверьте status bar внизу справа - должна быть иконка 🎤
+### If F9 doesn't work:
+1. Check status bar at the bottom right - should show 🎤 icon
 2. `Ctrl+Shift+P` → "Run Diagnostics"
-3. Откройте Developer Tools (`Help > Toggle Developer Tools`) для логов
+3. Open Developer Tools (`Help > Toggle Developer Tools`) for logs
 
-### Если нет status bar:
+### If no status bar:
 - `Ctrl+Shift+P` → "Toggle Status Bar"
 
-### Если проблемы с API:
+### If API issues:
 - `Ctrl+Shift+P` → "Test OpenAI API Key"
 
 ---
 
-**Основные проблемы исправлены:**
-✅ F9 теперь работает (исправлены имена команд)  
-✅ Context variables настроены правильно  
-✅ Status bar отображается  
-✅ Уведомления работают  
-✅ Диагностика доступна  
+**Main issues fixed:**
+✅ F9 now works (command names fixed)  
+✅ Context variables configured correctly  
+✅ Status bar displays  
+✅ Notifications work  
+✅ Diagnostics available  
 
-**Готово к тестированию!** 🎉 
+**Ready for testing!** 🎉 
