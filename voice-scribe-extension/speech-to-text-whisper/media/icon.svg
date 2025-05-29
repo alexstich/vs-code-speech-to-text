@@ -1,0 +1,41 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="micGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7C3AED;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#A855F7;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="#1E1E1E" stroke="#333" stroke-width="2"/>
+  
+  <!-- Microphone body -->
+  <rect x="54" y="35" width="20" height="35" rx="10" ry="10" fill="url(#micGradient)"/>
+  
+  <!-- Microphone stand -->
+  <rect x="62" y="70" width="4" height="25" fill="url(#micGradient)"/>
+  
+  <!-- Microphone base -->
+  <ellipse cx="64" cy="95" rx="12" ry="3" fill="url(#micGradient)"/>
+  
+  <!-- Sound waves -->
+  <path d="M 35 45 Q 30 52.5 35 60" stroke="url(#waveGradient)" stroke-width="3" fill="none" opacity="0.7"/>
+  <path d="M 93 45 Q 98 52.5 93 60" stroke="url(#waveGradient)" stroke-width="3" fill="none" opacity="0.7"/>
+  
+  <path d="M 25 40 Q 18 52.5 25 65" stroke="url(#waveGradient)" stroke-width="2.5" fill="none" opacity="0.5"/>
+  <path d="M 103 40 Q 110 52.5 103 65" stroke="url(#waveGradient)" stroke-width="2.5" fill="none" opacity="0.5"/>
+  
+  <!-- Microphone details -->
+  <circle cx="58" cy="45" r="1.5" fill="#E8F4FD"/>
+  <circle cx="64" cy="45" r="1.5" fill="#E8F4FD"/>
+  <circle cx="70" cy="45" r="1.5" fill="#E8F4FD"/>
+  
+  <!-- Recording indicator dot -->
+  <circle cx="84" cy="35" r="4" fill="#EF4444" opacity="0.9">
+    <animate attributeName="opacity" values="0.9;0.3;0.9" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg> 
