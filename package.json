@@ -36,7 +36,10 @@
     "ai",
     "cursor",
     "dictation",
-    "accessibility"
+    "accessibility",
+    "ffmpeg",
+    "cross-platform",
+    "recording"
   ],
   "activationEvents": [
     "onCommand:speechToTextWhisper.startRecording",
@@ -45,6 +48,34 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "speechToTextWhisper",
+          "title": "Speech to Text",
+          "icon": "$(device-microphone)"
+        }
+      ]
+    },
+    "views": {
+      "speechToTextWhisper": [
+        {
+          "id": "speechToTextWhisper.audioSettings",
+          "name": "Audio Settings",
+          "when": "true"
+        },
+        {
+          "id": "speechToTextWhisper.deviceManager",
+          "name": "Device Manager",
+          "when": "true"
+        },
+        {
+          "id": "speechToTextWhisper.diagnostics",
+          "name": "Diagnostics",
+          "when": "true"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "speechToTextWhisper.startRecording",
@@ -103,7 +134,6 @@
       {
         "command": "speechToTextWhisper.sendToChat",
         "title": "Record and Send to AI Chat",
-
         "icon": "$(comment-discussion)"
       },
       {
@@ -155,7 +185,7 @@
         "icon": "$(comment-discussion)"
       },
       {
-          "command": "speechToTextWhisper.recordAndSendToChat",
+        "command": "speechToTextWhisper.recordAndSendToChat",
         "title": "Record and Send to Cursor Chat",
         "category": "Speech to Text with Whisper",
         "icon": "$(microphone)"
@@ -201,6 +231,46 @@
         "title": "Import Audio Quality Settings",
         "category": "Speech to Text with Whisper",
         "icon": "$(import)"
+      },
+      {
+        "command": "speechToTextWhisper.audioSettings.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "speechToTextWhisper.audioSettings.detectDevices",
+        "title": "Detect Audio Devices",
+        "icon": "$(search)"
+      },
+      {
+        "command": "speechToTextWhisper.audioSettings.selectDevice",
+        "title": "Select Audio Device",
+        "icon": "$(device-microphone)"
+      },
+      {
+        "command": "speechToTextWhisper.audioSettings.testDevice",
+        "title": "Test Selected Device",
+        "icon": "$(play)"
+      },
+      {
+        "command": "speechToTextWhisper.audioSettings.openFFmpegSettings",
+        "title": "FFmpeg Settings",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "speechToTextWhisper.deviceManager.refresh",
+        "title": "Refresh Devices",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "speechToTextWhisper.diagnostics.runAll",
+        "title": "Run All Diagnostics",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "speechToTextWhisper.diagnostics.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -244,6 +314,38 @@
       }
     ],
     "menus": {
+      "view/title": [
+        {
+          "command": "speechToTextWhisper.audioSettings.refresh",
+          "when": "view == speechToTextWhisper.audioSettings",
+          "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.audioSettings.detectDevices",
+          "when": "view == speechToTextWhisper.audioSettings",
+          "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.deviceManager.refresh",
+          "when": "view == speechToTextWhisper.deviceManager",
+          "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.diagnostics.runAll",
+          "when": "view == speechToTextWhisper.diagnostics",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "speechToTextWhisper.audioSettings.selectDevice",
+          "when": "view == speechToTextWhisper.deviceManager && viewItem == audioDevice"
+        },
+        {
+          "command": "speechToTextWhisper.audioSettings.testDevice",
+          "when": "view == speechToTextWhisper.deviceManager && viewItem == audioDevice"
+        }
+      ],
       "editor/context": [
         {
           "command": "speechToTextWhisper.toggleRecording",
@@ -460,6 +562,69 @@
             "WebM format (modern, good compression)"
           ],
           "order": 5.1
+        },
+        "speechToTextWhisper.ffmpegPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to FFmpeg executable (leave empty for auto-detection)",
+          "scope": "application",
+          "order": 5.15
+        },
+        "speechToTextWhisper.inputDevice": {
+          "type": "string",
+          "default": "auto",
+          "description": "Audio input device (auto-detect or specific device)",
+          "order": 5.16
+        },
+        "speechToTextWhisper.audioCodec": {
+          "type": "string",
+          "enum": [
+            "pcm_s16le",
+            "aac",
+            "mp3",
+            "opus"
+          ],
+          "default": "pcm_s16le",
+          "description": "Audio codec for recording",
+          "enumDescriptions": [
+            "PCM 16-bit (WAV, uncompressed)",
+            "AAC (compressed, good quality)",
+            "MP3 (compressed, wide compatibility)",
+            "Opus (modern, excellent compression)"
+          ],
+          "order": 5.17
+        },
+        "speechToTextWhisper.sampleRate": {
+          "type": "number",
+          "enum": [
+            16000,
+            22050,
+            44100,
+            48000
+          ],
+          "default": 16000,
+          "description": "Audio sample rate in Hz",
+          "enumDescriptions": [
+            "16kHz (standard for speech)",
+            "22kHz (better quality)",
+            "44.1kHz (CD quality)",
+            "48kHz (professional quality)"
+          ],
+          "order": 5.18
+        },
+        "speechToTextWhisper.channels": {
+          "type": "number",
+          "enum": [
+            1,
+            2
+          ],
+          "default": 1,
+          "description": "Number of audio channels",
+          "enumDescriptions": [
+            "Mono (recommended for speech)",
+            "Stereo"
+          ],
+          "order": 5.19
         },
         "speechToTextWhisper.noiseReduction": {
           "type": "boolean",
@@ -708,7 +873,9 @@
     "@types/nock": "^10.0.3",
     "@types/node": "20.x",
     "@types/sinon": "^17.0.4",
+    "@types/tmp": "^0.2.6",
     "@types/vscode": "^1.74.0",
+    "@types/which": "^3.0.4",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.10",
@@ -749,6 +916,8 @@
     "branches": 70
   },
   "dependencies": {
-    "task-master-ai": "^0.15.0"
+    "task-master-ai": "^0.15.0",
+    "tmp": "^0.2.3",
+    "which": "^5.0.0"
   }
 }

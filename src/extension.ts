@@ -1,17 +1,19 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { AudioRecorder, AudioRecorderEvents } from './core/AudioRecorder';
+import { FFmpegAudioRecorder, AudioRecorderEvents } from './core/FFmpegAudioRecorder';
 import { WhisperClient } from './core/WhisperClient';
 import { TextInserter } from './ui/TextInserter';
 import { StatusBarManager, StatusBarEvents, StatusBarConfiguration } from './ui/StatusBarManager';
+import { AudioSettingsProvider, AudioDevice } from './ui/AudioSettingsProvider';
+import { DiagnosticsProvider } from './ui/DiagnosticsProvider';
 import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from './utils/ErrorHandler';
 import { RetryManager } from './utils/RetryManager';
 import { RecoveryActionHandler, RecoveryDependencies } from './utils/RecoveryActionHandler';
 import { ContextManager, IDEType, ContextType, IDEContext, ContextManagerEvents } from './core/ContextManager';
 
 // Глобальные переменные для компонентов
-let audioRecorder: AudioRecorder;
+let audioRecorder: FFmpegAudioRecorder | null = null;
 let whisperClient: WhisperClient;
 let textInserter: TextInserter;
 let statusBarManager: StatusBarManager;
@@ -33,6 +35,10 @@ let extensionContext: vscode.ExtensionContext;
 
 // Переменная для хранения последней транскрибации
 let lastTranscribedText: string | null = null;
+
+// UI провайдеры для боковых панелей
+let audioSettingsProvider: AudioSettingsProvider;
+let diagnosticsProvider: DiagnosticsProvider;
 
 /**
  * Функция активации расширения
@@ -109,9 +115,15 @@ function initializeErrorHandling(): void {
 	// Создаем RecoveryActionHandler с зависимостями
 	const recoveryDependencies: RecoveryDependencies = {
 		checkMicrophone: async () => {
-			const compatibility = AudioRecorder.checkBrowserCompatibility();
-			const permission = await AudioRecorder.checkMicrophonePermission();
-			return compatibility && permission.state === 'granted';
+			try {
+				const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
+				if (!ffmpegCheck.available) return false;
+				
+				const devices = await FFmpegAudioRecorder.detectInputDevices();
+				return devices.length > 0;
+			} catch (error) {
+				return false;
+			}
 		},
 		testApiKey: async () => {
 			if (!whisperClient) {
@@ -198,8 +210,7 @@ function initializeComponents(): void {
 			
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
-			// Обрабатываем действие пользователя если есть
-			if (userAction) {
+			if (userAction && userAction !== 'ignore') {
 				await handleUserRecoveryAction(userAction, context);
 			}
 		}
@@ -208,7 +219,11 @@ function initializeComponents(): void {
 	// События для StatusBar
 	const statusBarEvents: StatusBarEvents = {
 		onRecordingToggle: () => {
-			toggleRecording();
+			// Запускаем асинхронную операцию, но не ждем ее завершения в этом контексте
+			toggleRecording().catch(error => {
+				console.error('❌ Error in toggleRecording from StatusBar:', error);
+				vscode.window.showErrorMessage(`Recording toggle failed: ${error.message}`);
+			});
 		},
 		onSettings: () => {
 			openSettings();
@@ -218,18 +233,14 @@ function initializeComponents(): void {
 		}
 	};
 
-	// Создаем AudioRecorder
-	audioRecorder = new AudioRecorder(audioRecorderEvents);
-	
 	// Создаем StatusBarManager с конфигурацией
-	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 	const statusBarConfig: StatusBarConfiguration = {
-		position: config.get<'left' | 'right'>('statusBarPosition', 'right'),
-		showTooltips: config.get<boolean>('showTooltips', true),
-		enableAnimations: config.get<boolean>('enableAnimations', true),
-		autoHideOnSuccess: config.get<boolean>('autoHideSuccess', true),
-		successDisplayDuration: config.get<number>('successDuration', 2000),
-		errorDisplayDuration: config.get<number>('errorDuration', 3000)
+		position: 'right',
+		showTooltips: true,
+		enableAnimations: true,
+		autoHideOnSuccess: true,
+		successDisplayDuration: 2000,
+		errorDisplayDuration: 3000
 	};
 	
 	statusBarManager = new StatusBarManager(statusBarEvents, statusBarConfig);
@@ -245,6 +256,23 @@ function initializeComponents(): void {
  */
 function registerCommands(context: vscode.ExtensionContext): void {
 	console.log('📝 Registering commands...');
+	
+	// Инициализируем провайдеры для боковых панелей
+	audioSettingsProvider = new AudioSettingsProvider();
+	diagnosticsProvider = new DiagnosticsProvider();
+	
+	// Регистрируем провайдеры панелей
+	vscode.window.createTreeView('speechToTextWhisper.audioSettings', {
+		treeDataProvider: audioSettingsProvider
+	});
+	
+	vscode.window.createTreeView('speechToTextWhisper.deviceManager', {
+		treeDataProvider: audioSettingsProvider
+	});
+	
+	vscode.window.createTreeView('speechToTextWhisper.diagnostics', {
+		treeDataProvider: diagnosticsProvider
+	});
 	
 	const commands = [
 		// Основные команды записи
@@ -268,6 +296,16 @@ function registerCommands(context: vscode.ExtensionContext): void {
 			await toggleRecording();
 			// После записи автоматически отправляем в чат
 		}),
+		
+		// Команды для аудио панелей
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.refresh', () => audioSettingsProvider.refresh()),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.detectDevices', () => audioSettingsProvider.detectDevices()),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.selectDevice', (device: AudioDevice) => audioSettingsProvider.selectDevice(device)),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.testDevice', (device: AudioDevice) => audioSettingsProvider.testDevice(device)),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.openFFmpegSettings', () => audioSettingsProvider.openFFmpegSettings()),
+		vscode.commands.registerCommand('speechToTextWhisper.deviceManager.refresh', () => audioSettingsProvider.refresh()),
+		vscode.commands.registerCommand('speechToTextWhisper.diagnostics.runAll', () => diagnosticsProvider.runAllDiagnostics()),
+		vscode.commands.registerCommand('speechToTextWhisper.diagnostics.refresh', () => diagnosticsProvider.refresh()),
 		
 		// Утилитные команды
 		vscode.commands.registerCommand('speechToTextWhisper.openSettings', openSettings),
@@ -325,10 +363,13 @@ async function startRecording(): Promise<void> {
 	try {
 		console.log('▶️ Starting recording...');
 		
+		// Обеспечиваем инициализацию FFmpeg Audio Recorder
+		await ensureFFmpegAudioRecorder();
+		
 		// Проверяем состояние микрофона с retry
 		const microphoneResult = await retryManager.retryMicrophoneOperation(
 			async () => {
-				const hasPermission = await AudioRecorder.checkMicrophonePermission();
+				const hasPermission = await FFmpegAudioRecorder.checkMicrophonePermission();
 				if (hasPermission.state !== 'granted') {
 					throw new Error('Microphone permission not granted');
 				}
@@ -341,10 +382,14 @@ async function startRecording(): Promise<void> {
 			const error = microphoneResult.lastError || new Error('Microphone access failed');
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
-			if (userAction) {
+			if (userAction && userAction !== 'ignore') {
 				await handleUserRecoveryAction(userAction, context);
 			}
 			return;
+		}
+		
+		if (!audioRecorder) {
+			throw new Error('Failed to initialize audio recorder');
 		}
 		
 		await audioRecorder.startRecording();
@@ -354,7 +399,7 @@ async function startRecording(): Promise<void> {
 		
 		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
 		
-		if (userAction) {
+		if (userAction && userAction !== 'ignore') {
 			await handleUserRecoveryAction(userAction, context);
 		}
 	}
@@ -369,6 +414,12 @@ function stopRecording(): void {
 
 	try {
 		console.log('⏹️ Stopping recording...');
+		
+		if (!audioRecorder) {
+			console.warn('Audio recorder not initialized');
+			return;
+		}
+		
 		audioRecorder.stopRecording();
 		
 	} catch (error) {
@@ -379,11 +430,23 @@ function stopRecording(): void {
 	}
 }
 
-function toggleRecording(): void {
-	if (audioRecorder.getIsRecording()) {
-		stopRecording();
-	} else {
-		startRecording();
+async function toggleRecording(): Promise<void> {
+	try {
+		// Обеспечиваем инициализацию FFmpeg Audio Recorder
+		await ensureFFmpegAudioRecorder();
+		
+		if (!audioRecorder) {
+			throw new Error('Failed to initialize audio recorder');
+		}
+		
+		if (audioRecorder.getIsRecording()) {
+			stopRecording();
+		} else {
+			await startRecording();
+		}
+	} catch (error) {
+		console.error('❌ Failed to toggle recording:', error);
+		vscode.window.showErrorMessage(`Recording toggle failed: ${(error as Error).message}`);
 	}
 }
 
@@ -421,7 +484,7 @@ function stopHoldToRecord(): void {
 	// Обновляем context variable
 	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 	
-	if (audioRecorder.getIsRecording()) {
+	if (audioRecorder && audioRecorder.getIsRecording()) {
 		stopRecording();
 	}
 }
@@ -490,7 +553,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			const error = transcriptionResult.lastError || new Error('Transcription failed after retries');
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
-			if (userAction) {
+			if (userAction && userAction !== 'ignore') {
 				await handleUserRecoveryAction(userAction, context);
 			}
 			return;
@@ -523,7 +586,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			// Обработка пустой транскрибации
 			const userAction = await errorHandler.handleError(ErrorType.TRANSCRIPTION_EMPTY, context);
 			
-			if (userAction) {
+			if (userAction && userAction !== 'ignore') {
 				await handleUserRecoveryAction(userAction, context);
 			}
 		}
@@ -533,7 +596,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		
 		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
 		
-		if (userAction) {
+		if (userAction && userAction !== 'ignore') {
 			await handleUserRecoveryAction(userAction, context);
 		}
 	}
@@ -578,7 +641,7 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 			const error = insertResult.lastError || new Error('Text insertion failed after retries');
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
-			if (userAction) {
+			if (userAction && userAction !== 'ignore') {
 				await handleUserRecoveryAction(userAction, context);
 			}
 			throw error;
@@ -593,7 +656,7 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 		if (!(error as any).handled) {
 			const userAction = await errorHandler.handleErrorFromException(error as Error, context);
 			
-			if (userAction) {
+			if (userAction && userAction !== 'ignore') {
 				await handleUserRecoveryAction(userAction, context);
 			}
 		}
@@ -785,15 +848,20 @@ async function checkMicrophone(): Promise<void> {
 	try {
 		statusBarManager.showProcessing();
 		
-		const compatibility = AudioRecorder.checkBrowserCompatibility();
-		const permission = await AudioRecorder.checkMicrophonePermission();
-		
-		if (compatibility && permission) {
-			statusBarManager.showSuccess('Microphone ready');
-			vscode.window.showInformationMessage('✅ Microphone is working correctly');
-		} else {
-			throw new Error(`Microphone check failed: ${!compatibility ? 'Incompatible browser' : 'Permission denied'}`);
+		// Проверяем доступность FFmpeg
+		const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
+		if (!ffmpegCheck.available) {
+			throw new Error(`FFmpeg not available: ${ffmpegCheck.error || 'Not found in PATH'}`);
 		}
+		
+		// Проверяем наличие аудио устройств
+		const devices = await FFmpegAudioRecorder.detectInputDevices();
+		if (devices.length === 0) {
+			throw new Error('No audio input devices found');
+		}
+		
+		statusBarManager.showSuccess('Microphone ready');
+		vscode.window.showInformationMessage(`✅ Microphone is working correctly. Found ${devices.length} audio device(s).`);
 		
 	} catch (error) {
 		const errorMessage = (error as Error).message;
@@ -1035,24 +1103,30 @@ async function runDiagnostics(): Promise<void> {
 		diagnosticsResults.push('❌ API key missing');
 	}
 	
-	// Проверяем поддержку браузера
-	const browserCompatibility = AudioRecorder.checkBrowserCompatibility();
-	if (browserCompatibility) {
-		diagnosticsResults.push('✅ Browser compatibility OK');
+	// Проверяем поддержку FFmpeg
+	const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
+	if (ffmpegCheck.available) {
+		diagnosticsResults.push('✅ FFmpeg available');
+		if (ffmpegCheck.version) {
+			diagnosticsResults.push(`📦 FFmpeg version: ${ffmpegCheck.version}`);
+		}
 	} else {
-		diagnosticsResults.push('❌ Browser not compatible');
+		diagnosticsResults.push(`❌ FFmpeg not available: ${ffmpegCheck.error || 'Not found'}`);
 	}
 	
-	// Проверяем разрешения микрофона
+	// Проверяем аудио устройства
 	try {
-		const micPermission = await AudioRecorder.checkMicrophonePermission();
-		if (micPermission.state === 'granted') {
-			diagnosticsResults.push('✅ Microphone permission granted');
+		const devices = await FFmpegAudioRecorder.detectInputDevices();
+		if (devices.length > 0) {
+			diagnosticsResults.push(`✅ Audio devices found: ${devices.length}`);
+			devices.slice(0, 3).forEach(device => {
+				diagnosticsResults.push(`  📱 ${device}`);
+			});
 		} else {
-			diagnosticsResults.push(`❌ Microphone permission: ${micPermission.state}`);
+			diagnosticsResults.push('❌ No audio input devices found');
 		}
 	} catch (error) {
-		diagnosticsResults.push(`❌ Microphone check failed: ${(error as Error).message}`);
+		diagnosticsResults.push(`❌ Audio device check failed: ${(error as Error).message}`);
 	}
 	
 	// Проверяем состояния
@@ -1080,4 +1154,99 @@ async function runDiagnostics(): Promise<void> {
 	});
 	
 	console.log('Diagnostics results:', diagnosticsResults);
+}
+
+/**
+ * Ленивая инициализация FFmpeg Audio Recorder
+ */
+async function ensureFFmpegAudioRecorder(): Promise<void> {
+	if (audioRecorder) return;
+
+	console.log('🔧 Initializing FFmpeg audio recorder...');
+
+	// Проверка доступности FFmpeg
+	const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
+	if (!ffmpegCheck.available) {
+		const error = new Error('FFmpeg not found. Please install FFmpeg and add it to PATH.');
+		
+		// Показать пользователю инструкции по установке
+		const action = await vscode.window.showErrorMessage(
+			'FFmpeg is required for audio recording but was not found.',
+			'Install Guide', 'Settings'
+		);
+		
+		if (action === 'Install Guide') {
+			vscode.env.openExternal(vscode.Uri.parse('https://ffmpeg.org/download.html'));
+		} else if (action === 'Settings') {
+			vscode.commands.executeCommand('workbench.action.openSettings', 'speechToTextWhisper.ffmpegPath');
+		}
+		
+		throw error;
+	}
+
+	// Создание экземпляра с настройками из конфигурации
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
+	
+	// Получаем inputDevice настройку и обрабатываем ее правильно
+	const inputDeviceSetting = config.get<string>('inputDevice');
+	const inputDevice = inputDeviceSetting === 'auto' || !inputDeviceSetting ? undefined : inputDeviceSetting;
+	
+	// События для AudioRecorder
+	const audioRecorderEvents: AudioRecorderEvents = {
+		onRecordingStart: () => {
+			console.log('🎤 Recording started');
+			
+			// Обновляем context variables
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', true);
+			
+			statusBarManager.updateRecordingState(true);
+			
+			// Показываем уведомление только если не в hold-to-record режиме
+			if (!isHoldToRecordActive) {
+				vscode.window.showInformationMessage('🎤 Recording started...');
+			}
+		},
+		onRecordingStop: async (audioBlob: Blob) => {
+			console.log('⏹️ Recording stopped');
+			
+			// Обновляем context variables
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
+			
+			statusBarManager.updateRecordingState(false);
+			await handleTranscription(audioBlob);
+		},
+		onError: async (error: Error) => {
+			console.error('❌ Recording error:', error);
+			
+			// Сбрасываем состояния при ошибке
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
+			isHoldToRecordActive = false;
+			
+			// Используем новую систему обработки ошибок
+			const context: ErrorContext = {
+				operation: 'audio_recording',
+				isHoldToRecordMode: isHoldToRecordActive,
+				timestamp: new Date()
+			};
+			
+			const userAction = await errorHandler.handleErrorFromException(error, context);
+			
+			if (userAction && userAction !== 'ignore') {
+				await handleUserRecoveryAction(userAction, context);
+			}
+		}
+	};
+	
+	audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, {
+		sampleRate: config.get<number>('sampleRate', 16000),
+		channelCount: config.get<number>('channels', 1),
+		audioFormat: config.get<'wav' | 'mp3' | 'webm' | 'opus'>('audioFormat', 'wav'),
+		codec: config.get<string>('audioCodec', 'pcm_s16le'),
+		inputDevice: inputDevice,
+		ffmpegPath: config.get<string>('ffmpegPath') || undefined,
+		maxDuration: config.get<number>('maxRecordingDuration', 60)
+	});
+	
+	console.log('✅ FFmpeg audio recorder initialized');
 }
