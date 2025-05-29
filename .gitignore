@@ -16,6 +16,8 @@ node_modules/
 .env
 .env.example
 
+eslint.config.mjs 
+
 # Editor directories and files
 .idea
 .vscode
@@ -33,6 +35,8 @@ Thumbs.db
 tasks.json
 tasks/
 .taskmasterconfig
+scripts
+.cursor
 
 # Some docs
 docs/prd
@@ -45,6 +49,8 @@ dist/
 
 # Test outputs
 .vscode-test/
+.vscode-test.mjs 
+.mocharc.json
 coverage/
 .nyc_output/
 
