@@ -66,14 +66,14 @@ export class StatusBarManager implements vscode.Disposable {
             text: '$(mic)',
             tooltip: 'Click to start voice recording',
             icon: 'mic',
-            command: 'voiceScribe.toggleRecording'
+            command: 'speechToTextWhisper.toggleRecording'
         },
         recording: {
             text: '$(record)',
             tooltip: 'Recording... Click to stop',
             icon: 'record',
             backgroundColor: new vscode.ThemeColor('statusBarItem.warningBackground'),
-            command: 'voiceScribe.toggleRecording'
+            command: 'speechToTextWhisper.toggleRecording'
         },
         processing: {
             text: '$(loading~spin)',

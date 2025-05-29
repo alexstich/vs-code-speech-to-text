@@ -1,4 +1,4 @@
-# VoiceScribe - Speech to Text Extension
+# SpeechToTextWhisper - Speech to Text Extension
 
 Transform your voice into text effortlessly with OpenAI Whisper API integration for VS Code and Cursor IDE.
 
@@ -17,7 +17,7 @@ Transform your voice into text effortlessly with OpenAI Whisper API integration 
 1. **Install the extension** from VS Code Marketplace
 2. **Set your OpenAI API key**:
    - Open VS Code settings (`Ctrl+,` / `Cmd+,`)
-   - Search for "VoiceScribe"
+   - Search for "SpeechToTextWhisper"
    - Enter your OpenAI API key
 3. **Start recording**: Press `F9` and start speaking!
 
@@ -50,12 +50,12 @@ Transform your voice into text effortlessly with OpenAI Whisper API integration 
 
 Access via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
-- `VoiceScribe: Start Voice Recording`
-- `VoiceScribe: Stop Voice Recording`
-- `VoiceScribe: Toggle Voice Recording`
-- `VoiceScribe: Record and Send to AI Chat`
-- `VoiceScribe: Record and Insert as Comment`
-- `VoiceScribe: Open VoiceScribe Settings`
+- `SpeechToTextWhisper: Start Voice Recording`
+- `SpeechToTextWhisper: Stop Voice Recording`
+- `SpeechToTextWhisper: Toggle Voice Recording`
+- `SpeechToTextWhisper: Record and Send to AI Chat`
+- `SpeechToTextWhisper: Record and Insert as Comment`
+- `SpeechToTextWhisper: Open SpeechToTextWhisper Settings`
 
 ## 🌍 Supported Languages
 

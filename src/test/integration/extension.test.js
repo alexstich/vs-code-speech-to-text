@@ -62,25 +62,25 @@ suite('Extension Integration Tests', () => {
         });
         test('Should register all commands', async () => {
             const commands = await vscode.commands.getCommands(true);
-            const voiceScribeCommands = [
-                'voiceScribe.startRecording',
-                'voiceScribe.stopRecording',
-                'voiceScribe.toggleRecording',
-                'voiceScribe.startHoldToRecord',
-                'voiceScribe.stopHoldToRecord',
-                'voiceScribe.insertAtCursor',
-                'voiceScribe.insertAsComment',
-                'voiceScribe.replaceSelection',
-                'voiceScribe.copyToClipboard',
-                'voiceScribe.openSettings',
-                'voiceScribe.showHelp',
-                'voiceScribe.showStatus',
-                'voiceScribe.checkMicrophone',
-                'voiceScribe.testApiKey',
-                'voiceScribe.resetConfiguration',
-                'voiceScribe.toggleStatusBar'
+            const speechToTextWhisperCommands = [
+                'speechToTextWhisper.startRecording',
+                'speechToTextWhisper.stopRecording',
+                'speechToTextWhisper.toggleRecording',
+                'speechToTextWhisper.startHoldToRecord',
+                'speechToTextWhisper.stopHoldToRecord',
+                'speechToTextWhisper.insertAtCursor',
+                'speechToTextWhisper.insertAsComment',
+                'speechToTextWhisper.replaceSelection',
+                'speechToTextWhisper.copyToClipboard',
+                'speechToTextWhisper.openSettings',
+                'speechToTextWhisper.showHelp',
+                'speechToTextWhisper.showStatus',
+                'speechToTextWhisper.checkMicrophone',
+                'speechToTextWhisper.testApiKey',
+                'speechToTextWhisper.resetConfiguration',
+                'speechToTextWhisper.toggleStatusBar'
             ];
-            voiceScribeCommands.forEach(cmd => {
+            speechToTextWhisperCommands.forEach(cmd => {
                 assert.ok(commands.includes(cmd), `Command ${cmd} should be registered`);
             });
         });
@@ -99,30 +99,30 @@ suite('Extension Integration Tests', () => {
         });
         test('Should handle openSettings command', async () => {
             executeCommandStub.resolves();
-            await vscode.commands.executeCommand('voiceScribe.openSettings');
-            assert.ok(executeCommandStub.calledWith('workbench.action.openSettings', 'voiceScribe'), 'Should open settings with voiceScribe filter');
+            await vscode.commands.executeCommand('speechToTextWhisper.openSettings');
+            assert.ok(executeCommandStub.calledWith('workbench.action.openSettings', 'speechToTextWhisper'), 'Should open settings with speechToTextWhisper filter');
         });
         test('Should handle showHelp command', async () => {
             showInformationMessageStub.resolves();
-            await vscode.commands.executeCommand('voiceScribe.showHelp');
+            await vscode.commands.executeCommand('speechToTextWhisper.showHelp');
             assert.ok(showInformationMessageStub.called, 'Should show help message');
             const helpMessage = showInformationMessageStub.getCall(0).args[0];
-            assert.ok(helpMessage.includes('VoiceScribe Help'), 'Should contain help title');
+            assert.ok(helpMessage.includes('SpeechToTextWhisper Help'), 'Should contain help title');
             assert.ok(helpMessage.includes('F9'), 'Should mention F9 key');
         });
         test('Should handle showStatus command', async () => {
             showInformationMessageStub.resolves();
-            await vscode.commands.executeCommand('voiceScribe.showStatus');
+            await vscode.commands.executeCommand('speechToTextWhisper.showStatus');
             assert.ok(showInformationMessageStub.called, 'Should show status message');
             const statusMessage = showInformationMessageStub.getCall(0).args[0];
-            assert.ok(statusMessage.includes('VoiceScribe Status'), 'Should contain status title');
+            assert.ok(statusMessage.includes('SpeechToTextWhisper Status'), 'Should contain status title');
         });
         test('Should handle resetConfiguration command', async () => {
             const showWarningMessageStub = sinon.stub(vscode.window, 'showWarningMessage').resolves({ title: 'Yes' });
             const configStub = sinon.stub(vscode.workspace, 'getConfiguration').returns({
                 update: sinon.stub().resolves()
             });
-            await vscode.commands.executeCommand('voiceScribe.resetConfiguration');
+            await vscode.commands.executeCommand('speechToTextWhisper.resetConfiguration');
             assert.ok(showWarningMessageStub.called, 'Should show confirmation dialog');
             assert.ok(configStub.called, 'Should access configuration');
         });
@@ -137,13 +137,13 @@ suite('Extension Integration Tests', () => {
         });
         test('Should handle F9 key down (start hold-to-record)', async () => {
             commandStub.resolves();
-            await vscode.commands.executeCommand('voiceScribe.startHoldToRecord');
+            await vscode.commands.executeCommand('speechToTextWhisper.startHoldToRecord');
             // Проверяем что команда выполнена без ошибок
             assert.ok(commandStub.called);
         });
         test('Should handle F9 key up (stop hold-to-record)', async () => {
             commandStub.resolves();
-            await vscode.commands.executeCommand('voiceScribe.stopHoldToRecord');
+            await vscode.commands.executeCommand('speechToTextWhisper.stopHoldToRecord');
             // Проверяем что команда выполнена без ошибок
             assert.ok(commandStub.called);
         });
@@ -163,19 +163,19 @@ suite('Extension Integration Tests', () => {
         });
         test('Should read API key configuration', () => {
             mockConfig.get.withArgs('apiKey').returns('sk-test1234567890abcdef1234567890abcdef1234567890abcd');
-            const config = vscode.workspace.getConfiguration('voiceScribe');
+            const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const apiKey = config.get('apiKey');
             assert.strictEqual(apiKey, 'sk-test1234567890abcdef1234567890abcdef1234567890abcd');
         });
         test('Should read language configuration', () => {
             mockConfig.get.withArgs('language', 'auto').returns('en');
-            const config = vscode.workspace.getConfiguration('voiceScribe');
+            const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const language = config.get('language', 'auto');
             assert.strictEqual(language, 'en');
         });
         test('Should read insertMode configuration', () => {
             mockConfig.get.withArgs('insertMode', 'cursor').returns('comment');
-            const config = vscode.workspace.getConfiguration('voiceScribe');
+            const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const insertMode = config.get('insertMode', 'cursor');
             assert.strictEqual(insertMode, 'comment');
         });
@@ -194,7 +194,7 @@ suite('Extension Integration Tests', () => {
             const getConfigurationStub = sinon.stub(vscode.workspace, 'getConfiguration').returns({
                 get: sinon.stub().withArgs('apiKey').returns(undefined)
             });
-            await vscode.commands.executeCommand('voiceScribe.testApiKey');
+            await vscode.commands.executeCommand('speechToTextWhisper.testApiKey');
             assert.ok(showWarningMessageStub.called, 'Should show warning for missing API key');
         });
         test('Should handle microphone check errors', async () => {
@@ -205,7 +205,7 @@ suite('Extension Integration Tests', () => {
                     getUserMedia: sinon.stub().rejects(new Error('Permission denied'))
                 };
             }
-            await vscode.commands.executeCommand('voiceScribe.checkMicrophone');
+            await vscode.commands.executeCommand('speechToTextWhisper.checkMicrophone');
             // Восстанавливаем
             if (global.navigator && originalMediaDevices) {
                 global.navigator.mediaDevices = originalMediaDevices;
@@ -224,21 +224,21 @@ suite('Extension Integration Tests', () => {
             sinon.restore();
         });
         test('Should warn when no transcription available for insertAtCursor', async () => {
-            await vscode.commands.executeCommand('voiceScribe.insertAtCursor');
+            await vscode.commands.executeCommand('speechToTextWhisper.insertAtCursor');
             assert.ok(showWarningMessageStub.called, 'Should warn about no transcription');
             const message = showWarningMessageStub.getCall(0).args[0];
             assert.ok(message.includes('No transcribed text available'), 'Should mention no text available');
         });
         test('Should warn when no transcription available for insertAsComment', async () => {
-            await vscode.commands.executeCommand('voiceScribe.insertAsComment');
+            await vscode.commands.executeCommand('speechToTextWhisper.insertAsComment');
             assert.ok(showWarningMessageStub.called, 'Should warn about no transcription');
         });
         test('Should warn when no transcription available for replaceSelection', async () => {
-            await vscode.commands.executeCommand('voiceScribe.replaceSelection');
+            await vscode.commands.executeCommand('speechToTextWhisper.replaceSelection');
             assert.ok(showWarningMessageStub.called, 'Should warn about no transcription');
         });
         test('Should warn when no transcription available for copyToClipboard', async () => {
-            await vscode.commands.executeCommand('voiceScribe.copyToClipboard');
+            await vscode.commands.executeCommand('speechToTextWhisper.copyToClipboard');
             assert.ok(showWarningMessageStub.called, 'Should warn about no transcription');
         });
     });

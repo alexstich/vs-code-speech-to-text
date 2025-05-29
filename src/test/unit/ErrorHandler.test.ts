@@ -280,7 +280,7 @@ suite('ErrorHandler Tests', () => {
             const logMessages = logCalls.map(call => call.args.join(' '));
             const fullLog = logMessages.join(' ');
             
-            assert.ok(fullLog.includes('[VoiceScribe]'), 'Should include app prefix');
+            assert.ok(fullLog.includes('[SpeechToTextWhisper]'), 'Should include app prefix');
             assert.ok(fullLog.includes('test_operation'), 'Should include operation name');
             assert.ok(fullLog.includes('Original error'), 'Should log original error');
         });

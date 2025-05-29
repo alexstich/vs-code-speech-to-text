@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.globalErrorHandler = exports.ErrorHandler = exports.VSCodeErrorDisplayHandler = exports.DisplayStrategy = exports.RecoveryAction = exports.ErrorSeverity = exports.ErrorType = void 0;
 const vscode = __importStar(require("vscode"));
 /**
- * Типы ошибок в системе VoiceScribe
+ * Типы ошибок в системе SpeechToTextWhisper
  */
 var ErrorType;
 (function (ErrorType) {
@@ -337,7 +337,7 @@ class ErrorHandler {
                 this.displayHandler.updateStatusBar(config.message, severity);
                 return;
             case DisplayStrategy.CONSOLE:
-                console.error(`[VoiceScribe] ${config.message}`);
+                console.error(`[SpeechToTextWhisper] ${config.message}`);
                 return;
             case DisplayStrategy.SILENT:
                 return;
@@ -370,7 +370,7 @@ class ErrorHandler {
      * Логирование ошибки
      */
     logError(config, context, originalError) {
-        const logPrefix = `[VoiceScribe][${config.severity.toUpperCase()}]`;
+        const logPrefix = `[SpeechToTextWhisper][${config.severity.toUpperCase()}]`;
         const logMessage = `${logPrefix} ${config.type}: ${config.message}`;
         const contextInfo = `Operation: ${context.operation}, Timestamp: ${context.timestamp.toISOString()}`;
         console.error(logMessage);

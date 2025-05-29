@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Типы ошибок в системе VoiceScribe
+ * Типы ошибок в системе SpeechToTextWhisper
  */
 export enum ErrorType {
     MICROPHONE_ACCESS = 'microphone_access',
@@ -365,7 +365,7 @@ export class ErrorHandler {
                 return;
 
             case DisplayStrategy.CONSOLE:
-                console.error(`[VoiceScribe] ${config.message}`);
+                console.error(`[SpeechToTextWhisper] ${config.message}`);
                 return;
 
             case DisplayStrategy.SILENT:
@@ -402,7 +402,7 @@ export class ErrorHandler {
      * Логирование ошибки
      */
     private logError(config: ErrorConfig, context: ErrorContext, originalError?: Error): void {
-        const logPrefix = `[VoiceScribe][${config.severity.toUpperCase()}]`;
+        const logPrefix = `[SpeechToTextWhisper][${config.severity.toUpperCase()}]`;
         const logMessage = `${logPrefix} ${config.type}: ${config.message}`;
         const contextInfo = `Operation: ${context.operation}, Timestamp: ${context.timestamp.toISOString()}`;
         

@@ -103,37 +103,37 @@ export const testLanguageConfigs = {
 export const testUserSettings = {
     // Настройки расширения для тестирования
     default: {
-        'voiceScribe.apiKey': 'test-api-key',
-        'voiceScribe.language': 'auto',
-        'voiceScribe.recordingMode': 'hold',
-        'voiceScribe.insertMode': 'cursor'
+        'speechToTextWhisper.apiKey': 'test-api-key',
+        'speechToTextWhisper.language': 'auto',
+        'speechToTextWhisper.recordingMode': 'hold',
+        'speechToTextWhisper.insertMode': 'cursor'
     },
     
     withRussianLanguage: {
-        'voiceScribe.apiKey': 'test-api-key',
-        'voiceScribe.language': 'ru',
-        'voiceScribe.recordingMode': 'hold',
-        'voiceScribe.insertMode': 'cursor'
+        'speechToTextWhisper.apiKey': 'test-api-key',
+        'speechToTextWhisper.language': 'ru',
+        'speechToTextWhisper.recordingMode': 'hold',
+        'speechToTextWhisper.insertMode': 'cursor'
     },
     
     toggleMode: {
-        'voiceScribe.apiKey': 'test-api-key',
-        'voiceScribe.language': 'auto',
-        'voiceScribe.recordingMode': 'toggle',
-        'voiceScribe.insertMode': 'cursor'
+        'speechToTextWhisper.apiKey': 'test-api-key',
+        'speechToTextWhisper.language': 'auto',
+        'speechToTextWhisper.recordingMode': 'toggle',
+        'speechToTextWhisper.insertMode': 'cursor'
     },
     
     commentMode: {
-        'voiceScribe.apiKey': 'test-api-key',
-        'voiceScribe.language': 'auto',
-        'voiceScribe.recordingMode': 'hold',
-        'voiceScribe.insertMode': 'comment'
+        'speechToTextWhisper.apiKey': 'test-api-key',
+        'speechToTextWhisper.language': 'auto',
+        'speechToTextWhisper.recordingMode': 'hold',
+        'speechToTextWhisper.insertMode': 'comment'
     },
     
     noApiKey: {
-        'voiceScribe.language': 'auto',
-        'voiceScribe.recordingMode': 'hold',
-        'voiceScribe.insertMode': 'cursor'
+        'speechToTextWhisper.language': 'auto',
+        'speechToTextWhisper.recordingMode': 'hold',
+        'speechToTextWhisper.insertMode': 'cursor'
     }
 };
 

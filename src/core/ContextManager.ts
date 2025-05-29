@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Типы IDE, поддерживаемые VoiceScribe
+ * Типы IDE, поддерживаемые SpeechToTextWhisper
  */
 export enum IDEType {
     VSCODE = 'vscode',
@@ -71,7 +71,7 @@ export interface ContextManagerEvents {
 }
 
 /**
- * Менеджер контекста IDE для адаптации поведения VoiceScribe
+ * Менеджер контекста IDE для адаптации поведения SpeechToTextWhisper
  */
 export class ContextManager {
     private ideType: IDEType = IDEType.UNKNOWN;

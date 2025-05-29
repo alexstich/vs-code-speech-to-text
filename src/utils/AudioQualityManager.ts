@@ -23,7 +23,7 @@ export interface QualityPreset {
 }
 
 /**
- * Менеджер настроек качества аудио для VoiceScribe
+ * Менеджер настроек качества аудио для SpeechToTextWhisper
  */
 export class AudioQualityManager {
     private static readonly QUALITY_PRESETS: QualityPreset[] = [
@@ -66,7 +66,7 @@ export class AudioQualityManager {
      * Получает текущие настройки качества аудио из конфигурации VS Code
      */
     static getCurrentSettings(): AudioQualitySettings {
-        const config = vscode.workspace.getConfiguration('voiceScribe');
+        const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         
         return {
             quality: config.get<'standard' | 'high' | 'ultra'>('audioQuality', 'standard'),
@@ -90,7 +90,7 @@ export class AudioQualityManager {
             throw new Error(`Quality preset '${presetName}' not found`);
         }
 
-        const config = vscode.workspace.getConfiguration('voiceScribe');
+        const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         
         // Применяем настройки из пресета
         for (const [key, value] of Object.entries(preset.settings)) {
@@ -236,7 +236,7 @@ export class AudioQualityManager {
                 throw new Error(`Invalid settings: ${validation.warnings.join(', ')}`);
             }
 
-            const config = vscode.workspace.getConfiguration('voiceScribe');
+            const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             
             // Применяем настройки
             for (const [key, value] of Object.entries(settings)) {

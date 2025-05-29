@@ -37,7 +37,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AudioQualityManager = void 0;
 const vscode = __importStar(require("vscode"));
 /**
- * Менеджер настроек качества аудио для VoiceScribe
+ * Менеджер настроек качества аудио для SpeechToTextWhisper
  */
 class AudioQualityManager {
     static QUALITY_PRESETS = [
@@ -79,7 +79,7 @@ class AudioQualityManager {
      * Получает текущие настройки качества аудио из конфигурации VS Code
      */
     static getCurrentSettings() {
-        const config = vscode.workspace.getConfiguration('voiceScribe');
+        const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         return {
             quality: config.get('audioQuality', 'standard'),
             audioFormat: config.get('audioFormat', 'wav'),
@@ -100,7 +100,7 @@ class AudioQualityManager {
         if (!preset) {
             throw new Error(`Quality preset '${presetName}' not found`);
         }
-        const config = vscode.workspace.getConfiguration('voiceScribe');
+        const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         // Применяем настройки из пресета
         for (const [key, value] of Object.entries(preset.settings)) {
             if (value !== undefined) {
@@ -218,7 +218,7 @@ class AudioQualityManager {
             if (!validation.isValid) {
                 throw new Error(`Invalid settings: ${validation.warnings.join(', ')}`);
             }
-            const config = vscode.workspace.getConfiguration('voiceScribe');
+            const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             // Применяем настройки
             for (const [key, value] of Object.entries(settings)) {
                 if (value !== undefined) {

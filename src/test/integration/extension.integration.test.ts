@@ -82,7 +82,7 @@ suite('Extension Integration Tests', () => {
             const registerCommandStub = mockVscode.commands.registerCommand as sinon.SinonStub;
             
             // Симулируем регистрацию команды
-            const disposable = mockVscode.commands.registerCommand('voiceScribe.startRecording', () => {
+            const disposable = mockVscode.commands.registerCommand('speechToTextWhisper.startRecording', () => {
                 return 'Command executed';
             });
 
@@ -115,7 +115,7 @@ suite('Extension Integration Tests', () => {
             };
             getConfigStub.returns(mockConfig);
 
-            const config = mockVscode.workspace.getConfiguration('voiceScribe');
+            const config = mockVscode.workspace.getConfiguration('speechToTextWhisper');
             const apiKey = config.get('apiKey');
             const language = config.get('language');
 
@@ -131,7 +131,7 @@ suite('Extension Integration Tests', () => {
             };
             getConfigStub.returns(mockConfig);
 
-            const config = mockVscode.workspace.getConfiguration('voiceScribe');
+            const config = mockVscode.workspace.getConfiguration('speechToTextWhisper');
             const apiKey = config.get('apiKey');
 
             assert.strictEqual(apiKey, undefined);

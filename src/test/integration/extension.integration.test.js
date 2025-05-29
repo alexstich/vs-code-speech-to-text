@@ -104,7 +104,7 @@ suite('Extension Integration Tests', () => {
             // Проверяем регистрацию команд
             const registerCommandStub = vscodeMocks_1.mockVscode.commands.registerCommand;
             // Симулируем регистрацию команды
-            const disposable = vscodeMocks_1.mockVscode.commands.registerCommand('voiceScribe.startRecording', () => {
+            const disposable = vscodeMocks_1.mockVscode.commands.registerCommand('speechToTextWhisper.startRecording', () => {
                 return 'Command executed';
             });
             assert.ok(registerCommandStub.calledOnce);
@@ -131,7 +131,7 @@ suite('Extension Integration Tests', () => {
                 })
             };
             getConfigStub.returns(mockConfig);
-            const config = vscodeMocks_1.mockVscode.workspace.getConfiguration('voiceScribe');
+            const config = vscodeMocks_1.mockVscode.workspace.getConfiguration('speechToTextWhisper');
             const apiKey = config.get('apiKey');
             const language = config.get('language');
             assert.strictEqual(apiKey, 'test-api-key');
@@ -144,7 +144,7 @@ suite('Extension Integration Tests', () => {
                 get: sinon.stub().returns(undefined)
             };
             getConfigStub.returns(mockConfig);
-            const config = vscodeMocks_1.mockVscode.workspace.getConfiguration('voiceScribe');
+            const config = vscodeMocks_1.mockVscode.workspace.getConfiguration('speechToTextWhisper');
             const apiKey = config.get('apiKey');
             assert.strictEqual(apiKey, undefined);
         });

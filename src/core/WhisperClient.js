@@ -54,7 +54,7 @@ class WhisperClient {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'User-Agent': 'VoiceScribe-Extension/1.0'
+                    'User-Agent': 'SpeechToTextWhisper-Extension/1.0'
                 },
                 signal: AbortSignal.timeout(this.timeout)
             });
@@ -72,7 +72,7 @@ class WhisperClient {
             const response = await fetch(`${this.baseURL}/usage`, {
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'User-Agent': 'VoiceScribe-Extension/1.0'
+                    'User-Agent': 'SpeechToTextWhisper-Extension/1.0'
                 },
                 signal: AbortSignal.timeout(this.timeout)
             });
@@ -165,7 +165,7 @@ class WhisperClient {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
-                    'User-Agent': 'VoiceScribe-Extension/1.0'
+                    'User-Agent': 'SpeechToTextWhisper-Extension/1.0'
                 },
                 body: formData,
                 signal: controller.signal

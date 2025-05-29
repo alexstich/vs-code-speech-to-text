@@ -96,7 +96,7 @@ Please configure your OpenAI API Key:
 3. Paste it in the 'Voice Scribe: Api Key' setting below
 4. Save the settings
 
-After setting the API key, try using VoiceScribe again.
+After setting the API key, try using SpeechToTextWhisper again.
         `;
         await vscode.window.showInformationMessage(instruction, { modal: true }, 'Got it');
         return {
@@ -143,12 +143,12 @@ Microphone Setup Instructions:
    - Linux: Check audio system settings
 
 4. **Test Microphone:**
-   - Use the "Check Microphone" command in VoiceScribe
+   - Use the "Check Microphone" command in SpeechToTextWhisper
    - Or try recording in another application
 
-After fixing the microphone, try VoiceScribe again.
+After fixing the microphone, try SpeechToTextWhisper again.
         `;
-        const action = await vscode.window.showWarningMessage('Microphone access is required for VoiceScribe to work.', { modal: true }, 'Show Instructions', 'Check Microphone', 'Open Settings');
+        const action = await vscode.window.showWarningMessage('Microphone access is required for SpeechToTextWhisper to work.', { modal: true }, 'Show Instructions', 'Check Microphone', 'Open Settings');
         if (action === 'Show Instructions') {
             await vscode.window.showInformationMessage(instruction, { modal: true });
         }
@@ -293,7 +293,7 @@ Try again after resolving network issues.
             };
         }
         // Предлагаем пользователю перезагрузить вручную
-        vscode.window.showInformationMessage('Please reload VS Code to refresh the VoiceScribe extension.', 'Reload Window').then(action => {
+        vscode.window.showInformationMessage('Please reload VS Code to refresh the SpeechToTextWhisper extension.', 'Reload Window').then(action => {
             if (action === 'Reload Window') {
                 vscode.commands.executeCommand('workbench.action.reloadWindow');
             }
@@ -311,7 +311,7 @@ Try again after resolving network issues.
             this.dependencies.openSettings();
         }
         else {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'voiceScribe');
+            vscode.commands.executeCommand('workbench.action.openSettings', 'speechToTextWhisper');
         }
     }
     /**

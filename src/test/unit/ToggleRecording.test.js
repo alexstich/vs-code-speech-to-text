@@ -66,8 +66,8 @@ class ToggleRecordingManager {
         this.state.isToggleRecordingActive = true;
         this.state.isRecording = true;
         // Мокируем VS Code команды
-        await mockVSCode.commands.executeCommand('setContext', 'voiceScribe.isToggleRecording', true);
-        await mockVSCode.commands.executeCommand('setContext', 'voiceScribe.isRecording', true);
+        await mockVSCode.commands.executeCommand('setContext', 'speechToTextWhisper.isToggleRecording', true);
+        await mockVSCode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', true);
         // Показываем уведомление
         mockVSCode.window.showInformationMessage('🎤 Toggle recording started. Press again to stop.');
         // Настраиваем timeout
@@ -90,8 +90,8 @@ class ToggleRecordingManager {
         this.state.isToggleRecordingActive = false;
         this.state.isRecording = false;
         // Обновляем контексты
-        await mockVSCode.commands.executeCommand('setContext', 'voiceScribe.isToggleRecording', false);
-        await mockVSCode.commands.executeCommand('setContext', 'voiceScribe.isRecording', false);
+        await mockVSCode.commands.executeCommand('setContext', 'speechToTextWhisper.isToggleRecording', false);
+        await mockVSCode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
     }
     async handleToggleRecording() {
         if (this.state.isToggleRecordingActive) {
@@ -157,8 +157,8 @@ suite('Toggle Recording Tests', () => {
             assert.strictEqual(state.isToggleRecordingActive, true);
             assert.strictEqual(state.isRecording, true);
             // Проверяем вызовы VS Code API
-            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'voiceScribe.isToggleRecording', true));
-            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'voiceScribe.isRecording', true));
+            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'speechToTextWhisper.isToggleRecording', true));
+            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'speechToTextWhisper.isRecording', true));
             assert.ok(mockVSCode.window.showInformationMessage.calledWith('🎤 Toggle recording started. Press again to stop.'));
         });
         test('Should throw error when recording already active', async () => {
@@ -189,8 +189,8 @@ suite('Toggle Recording Tests', () => {
             assert.strictEqual(state.isRecording, false);
             assert.strictEqual(state.toggleRecordingTimeout, null);
             // Проверяем обновление контекстов
-            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'voiceScribe.isToggleRecording', false));
-            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'voiceScribe.isRecording', false));
+            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'speechToTextWhisper.isToggleRecording', false));
+            assert.ok(mockVSCode.commands.executeCommand.calledWith('setContext', 'speechToTextWhisper.isRecording', false));
         });
         test('Should handle stop when not recording', async () => {
             // Пытаемся остановить без начала записи
@@ -244,7 +244,7 @@ suite('Toggle Recording Tests', () => {
             mockVSCode.workspace.getConfiguration.returns({
                 get: sinon.stub().withArgs('recordingMode', 'hold').returns('toggle')
             });
-            const config = mockVSCode.workspace.getConfiguration('voiceScribe');
+            const config = mockVSCode.workspace.getConfiguration('speechToTextWhisper');
             const recordingMode = config.get('recordingMode', 'hold');
             assert.strictEqual(recordingMode, 'toggle');
         });
@@ -252,7 +252,7 @@ suite('Toggle Recording Tests', () => {
             mockVSCode.workspace.getConfiguration.returns({
                 get: sinon.stub().withArgs('recordingMode', 'hold').returns('hold')
             });
-            const config = mockVSCode.workspace.getConfiguration('voiceScribe');
+            const config = mockVSCode.workspace.getConfiguration('speechToTextWhisper');
             const recordingMode = config.get('recordingMode', 'hold');
             assert.strictEqual(recordingMode, 'hold');
         });

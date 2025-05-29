@@ -39,12 +39,15 @@ let lastTranscribedText: string | null = null;
  * Вызывается при первом использовании команды расширения
  */
 export function activate(context: vscode.ExtensionContext) {
-	console.log('🎤 VoiceScribe extension is now active!');
+	console.log('🎤 SpeechToTextWhisper extension is now active!');
 	
 	// Сохраняем контекст для глобального использования
 	extensionContext = context;
 
 	try {
+		// Устанавливаем начальные context variables для управления горячими клавишами
+		initializeContextVariables();
+		
 		// Инициализируем систему обработки ошибок
 		initializeErrorHandling();
 		
@@ -63,13 +66,32 @@ export function activate(context: vscode.ExtensionContext) {
 		// Показываем приветственное сообщение
 		showWelcomeMessage();
 		
-		console.log('✅ VoiceScribe extension successfully activated');
+		console.log('✅ SpeechToTextWhisper extension successfully activated');
 		
 	} catch (error) {
-		const errorMessage = `Failed to activate VoiceScribe: ${(error as Error).message}`;
+		const errorMessage = `Failed to activate SpeechToTextWhisper: ${(error as Error).message}`;
 		console.error(errorMessage);
 		vscode.window.showErrorMessage(errorMessage);
 	}
+}
+
+/**
+ * Инициализация context variables для управления состоянием расширения
+ */
+function initializeContextVariables(): void {
+	console.log('🔧 Initializing context variables...');
+	
+	// Устанавливаем начальные значения context variables
+	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.active', true);
+	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
+	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
+	
+	// Получаем режим записи из настроек
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
+	const recordingMode = config.get<string>('recordingMode', 'hold');
+	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.recordingMode', recordingMode);
+	
+	console.log(`✅ Context variables initialized (recordingMode: ${recordingMode})`);
 }
 
 /**
@@ -107,7 +129,7 @@ function initializeErrorHandling(): void {
 			}
 		},
 		openSettings: () => {
-			vscode.commands.executeCommand('workbench.action.openSettings', 'voiceScribe');
+			vscode.commands.executeCommand('workbench.action.openSettings', 'speechToTextWhisper');
 		},
 		reloadExtension: () => {
 			vscode.commands.executeCommand('workbench.action.reloadWindow');
@@ -127,7 +149,7 @@ function initializeErrorHandling(): void {
  * Инициализация всех компонентов расширения
  */
 function initializeComponents(): void {
-	console.log('🔧 Initializing VoiceScribe components...');
+	console.log('🔧 Initializing SpeechToTextWhisper components...');
 	
 	// Инициализируем ContextManager
 	initializeContextManager();
@@ -139,6 +161,10 @@ function initializeComponents(): void {
 	const audioRecorderEvents: AudioRecorderEvents = {
 		onRecordingStart: () => {
 			console.log('🎤 Recording started');
+			
+			// Обновляем context variables
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', true);
+			
 			statusBarManager.updateRecordingState(true);
 			
 			// Показываем уведомление только если не в hold-to-record режиме
@@ -148,11 +174,20 @@ function initializeComponents(): void {
 		},
 		onRecordingStop: async (audioBlob: Blob) => {
 			console.log('⏹️ Recording stopped');
+			
+			// Обновляем context variables
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
+			
 			statusBarManager.updateRecordingState(false);
 			await handleTranscription(audioBlob);
 		},
 		onError: async (error: Error) => {
 			console.error('❌ Recording error:', error);
+			
+			// Сбрасываем состояния при ошибке
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
+			isHoldToRecordActive = false;
 			
 			// Используем новую систему обработки ошибок
 			const context: ErrorContext = {
@@ -187,7 +222,7 @@ function initializeComponents(): void {
 	audioRecorder = new AudioRecorder(audioRecorderEvents);
 	
 	// Создаем StatusBarManager с конфигурацией
-	const config = vscode.workspace.getConfiguration('voiceScribe');
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 	const statusBarConfig: StatusBarConfiguration = {
 		position: config.get<'left' | 'right'>('statusBarPosition', 'right'),
 		showTooltips: config.get<boolean>('showTooltips', true),
@@ -213,32 +248,49 @@ function registerCommands(context: vscode.ExtensionContext): void {
 	
 	const commands = [
 		// Основные команды записи
-		vscode.commands.registerCommand('voiceScribe.startRecording', startRecording),
-		vscode.commands.registerCommand('voiceScribe.stopRecording', stopRecording),
-		vscode.commands.registerCommand('voiceScribe.toggleRecording', toggleRecording),
+		vscode.commands.registerCommand('speechToTextWhisper.startRecording', startRecording),
+		vscode.commands.registerCommand('speechToTextWhisper.stopRecording', stopRecording),
+		vscode.commands.registerCommand('speechToTextWhisper.toggleRecording', toggleRecording),
 		
 		// Hold-to-record команды
-		vscode.commands.registerCommand('voiceScribe.startHoldToRecord', startHoldToRecord),
-		vscode.commands.registerCommand('voiceScribe.stopHoldToRecord', stopHoldToRecord),
+		vscode.commands.registerCommand('speechToTextWhisper.startHoldToRecord', startHoldToRecord),
+		vscode.commands.registerCommand('speechToTextWhisper.stopHoldToRecord', stopHoldToRecord),
 		
 		// Команды режимов вставки
-		vscode.commands.registerCommand('voiceScribe.insertAtCursor', () => insertLastTranscription('cursor')),
-		vscode.commands.registerCommand('voiceScribe.insertAsComment', () => insertLastTranscription('comment')),
-		vscode.commands.registerCommand('voiceScribe.replaceSelection', () => insertLastTranscription('replace')),
-		vscode.commands.registerCommand('voiceScribe.copyToClipboard', () => insertLastTranscription('clipboard')),
+		vscode.commands.registerCommand('speechToTextWhisper.insertAtCursor', () => insertLastTranscription('cursor')),
+		vscode.commands.registerCommand('speechToTextWhisper.insertAsComment', () => insertLastTranscription('comment')),
+		vscode.commands.registerCommand('speechToTextWhisper.replaceSelection', () => insertLastTranscription('replace')),
+		vscode.commands.registerCommand('speechToTextWhisper.copyToClipboard', () => insertLastTranscription('clipboard')),
+		
+		// Команды интеграции
+		vscode.commands.registerCommand('speechToTextWhisper.sendToChat', () => insertLastTranscription('chat')),
+		vscode.commands.registerCommand('speechToTextWhisper.recordAndSendToChat', async () => {
+			await toggleRecording();
+			// После записи автоматически отправляем в чат
+		}),
 		
 		// Утилитные команды
-		vscode.commands.registerCommand('voiceScribe.openSettings', openSettings),
-		vscode.commands.registerCommand('voiceScribe.showHelp', showHelp),
-		vscode.commands.registerCommand('voiceScribe.showStatus', showStatus),
-		vscode.commands.registerCommand('voiceScribe.checkMicrophone', checkMicrophone),
-		vscode.commands.registerCommand('voiceScribe.testApiKey', testApiKey),
-		vscode.commands.registerCommand('voiceScribe.showContext', showContextInfo),
-		vscode.commands.registerCommand('voiceScribe.refreshContext', refreshContext),
+		vscode.commands.registerCommand('speechToTextWhisper.openSettings', openSettings),
+		vscode.commands.registerCommand('speechToTextWhisper.showHelp', showHelp),
+		vscode.commands.registerCommand('speechToTextWhisper.showStatus', showStatus),
+		vscode.commands.registerCommand('speechToTextWhisper.checkMicrophone', checkMicrophone),
+		vscode.commands.registerCommand('speechToTextWhisper.testApiKey', testApiKey),
+		vscode.commands.registerCommand('speechToTextWhisper.showContext', showContextInfo),
+		vscode.commands.registerCommand('speechToTextWhisper.refreshContext', refreshContext),
 		
 		// Команды управления
-		vscode.commands.registerCommand('voiceScribe.resetConfiguration', resetConfiguration),
-		vscode.commands.registerCommand('voiceScribe.toggleStatusBar', toggleStatusBar)
+		vscode.commands.registerCommand('speechToTextWhisper.resetConfiguration', resetConfiguration),
+		vscode.commands.registerCommand('speechToTextWhisper.toggleStatusBar', toggleStatusBar),
+		
+		// Команда для тестирования
+		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', runDiagnostics)
+		
+		// TODO: Добавить команды качества аудио позже
+		// vscode.commands.registerCommand('speechToTextWhisper.showQualitySettings', showQualitySettings),
+		// vscode.commands.registerCommand('speechToTextWhisper.applyQualityPreset', applyQualityPreset),
+		// vscode.commands.registerCommand('speechToTextWhisper.optimizeForContext', optimizeForContext),
+		// vscode.commands.executeCommand('speechToTextWhisper.exportQualitySettings', exportQualitySettings),
+		// vscode.commands.registerCommand('speechToTextWhisper.importQualitySettings', importQualitySettings)
 	];
 
 	// Добавляем все команды в подписки
@@ -254,13 +306,13 @@ function setupKeyBindings(context: vscode.ExtensionContext): void {
 	console.log('⌨️ Setting up key bindings...');
 	
 	// F9 hold-to-record: нажал = начал запись, отпустил = остановил
-	const keyDownCommand = vscode.commands.registerCommand('voiceScribe.keyDown', () => {
+	const keyDownCommand = vscode.commands.registerCommand('speechToTextWhisper.keyDown', () => {
 		if (!isHoldToRecordActive) {
 			startHoldToRecord();
 		}
 	});
 	
-	const keyUpCommand = vscode.commands.registerCommand('voiceScribe.keyUp', () => {
+	const keyUpCommand = vscode.commands.registerCommand('speechToTextWhisper.keyUp', () => {
 		if (isHoldToRecordActive) {
 			stopHoldToRecord();
 		}
@@ -357,10 +409,14 @@ async function startHoldToRecord(): Promise<void> {
 	console.log('🎯 Starting hold-to-record mode');
 	isHoldToRecordActive = true;
 	
+	// Обновляем context variable
+	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', true);
+	
 	try {
 		await startRecording();
 	} catch (error) {
 		isHoldToRecordActive = false;
+		vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 		throw error;
 	}
 }
@@ -372,6 +428,9 @@ function stopHoldToRecord(): void {
 	
 	console.log('🎯 Stopping hold-to-record mode');
 	isHoldToRecordActive = false;
+	
+	// Обновляем context variable
+	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 	
 	if (audioRecorder.getIsRecording()) {
 		stopRecording();
@@ -392,6 +451,11 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 	try {
 		console.log('🔄 Starting transcription process...');
 		
+		// Показываем уведомление о начале транскрибации
+		if (!isHoldToRecordActive) {
+			vscode.window.showInformationMessage('🔄 Transcribing audio...');
+		}
+		
 		// Показываем состояние обработки
 		statusBarManager.showProcessing();
 		
@@ -408,7 +472,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		statusBarManager.showTranscribing();
 
 		// Получаем настройки
-		const config = vscode.workspace.getConfiguration('voiceScribe');
+		const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 		const language = config.get<string>('language', 'auto');
 		const insertMode = config.get<string>('insertMode', 'cursor');
 		const prompt = config.get<string>('prompt', '');
@@ -461,9 +525,9 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
 			statusBarManager.showSuccess(`Inserted: "${truncatedText}"`);
 			
-			// Показываем уведомление только если не в hold-to-record режиме
+			// Показываем уведомление о завершении
 			if (!isHoldToRecordActive) {
-				vscode.window.showInformationMessage(`✅ Transcribed: "${truncatedText}"`);
+				vscode.window.showInformationMessage(`✅ Transcribed and inserted: "${truncatedText}"`);
 			}
 			
 		} else {
@@ -474,11 +538,10 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 				await handleUserRecoveryAction(userAction, context);
 			}
 		}
-
-	} catch (error) {
-		console.error('❌ Transcription process failed:', error);
 		
-		// Обработка через ErrorHandler
+	} catch (error) {
+		console.error('❌ Transcription failed:', error);
+		
 		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
 		
 		if (userAction) {
@@ -505,7 +568,7 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 	try {
 		console.log(`📝 Inserting text in ${mode} mode...`);
 		
-		const config = vscode.workspace.getConfiguration('voiceScribe');
+		const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 		const formatText = config.get<boolean>('formatText', true);
 		const addNewLine = config.get<boolean>('addNewLine', true);
 		const indentToSelection = config.get<boolean>('indentToSelection', false);
@@ -582,7 +645,7 @@ async function insertLastTranscription(mode: string): Promise<void> {
 function initializeWhisperClient(): void {
 	console.log('🔧 Initializing Whisper client...');
 	
-	const config = vscode.workspace.getConfiguration('voiceScribe');
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 	const apiKey = config.get<string>('apiKey');
 
 	if (!apiKey) {
@@ -619,12 +682,12 @@ function initializeWhisperClient(): void {
  * Утилитные команды
  */
 function openSettings(): void {
-	vscode.commands.executeCommand('workbench.action.openSettings', 'voiceScribe');
+	vscode.commands.executeCommand('workbench.action.openSettings', 'speechToTextWhisper');
 }
 
 function showHelp(): void {
 	const helpText = `
-🎤 **VoiceScribe Help**
+🎤 **SpeechToTextWhisper Help**
 
 **Recording:**
 • F9 (hold): Hold to record, release to stop
@@ -657,7 +720,7 @@ function showStatus(): void {
 	const context = textInserter.getActiveContext();
 	
 	const statusText = `
-**VoiceScribe Status:**
+**SpeechToTextWhisper Status:**
 
 🎤 Recording: ${status.isRecording ? 'Active' : 'Inactive'}
 📊 State: ${status.state}
@@ -680,7 +743,7 @@ function showContextInfo(): void {
 	const language = contextManager.getCurrentLanguage();
 	
 	const contextText = `
-**VoiceScribe Context Information:**
+**SpeechToTextWhisper Context Information:**
 
 🔍 **IDE Type:** ${context.ideType}
 📍 **Current Context:** ${context.contextType}
@@ -786,11 +849,11 @@ async function testApiKey(): Promise<void> {
 
 function resetConfiguration(): void {
 	vscode.window.showWarningMessage(
-		'This will reset all VoiceScribe settings to defaults. Continue?',
+		'This will reset all SpeechToTextWhisper settings to defaults. Continue?',
 		'Yes', 'No'
 	).then(selection => {
 		if (selection === 'Yes') {
-			const config = vscode.workspace.getConfiguration('voiceScribe');
+			const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 			// Сбрасываем основные настройки (кроме API ключа)
 			config.update('language', 'auto', vscode.ConfigurationTarget.Global);
 			config.update('insertMode', 'cursor', vscode.ConfigurationTarget.Global);
@@ -816,12 +879,12 @@ function toggleStatusBar(): void {
  * Приветственное сообщение
  */
 function showWelcomeMessage(): void {
-	const config = vscode.workspace.getConfiguration('voiceScribe');
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 	const hasApiKey = config.get<string>('apiKey');
 	
 	if (!hasApiKey) {
 		vscode.window.showInformationMessage(
-			'🎤 Welcome to VoiceScribe! Please configure your OpenAI API key to get started.',
+			'🎤 Welcome to SpeechToTextWhisper! Please configure your OpenAI API key to get started.',
 			'Open Settings'
 		).then(selection => {
 			if (selection === 'Open Settings') {
@@ -836,7 +899,7 @@ function showWelcomeMessage(): void {
  * Вызывается при отключении расширения
  */
 export function deactivate() {
-	console.log('🔌 Deactivating VoiceScribe extension...');
+	console.log('🔌 Deactivating SpeechToTextWhisper extension...');
 	
 	try {
 		// Останавливаем запись если активна
@@ -861,7 +924,7 @@ export function deactivate() {
 			contextManager.dispose();
 		}
 		
-		console.log('✅ VoiceScribe extension deactivated successfully');
+		console.log('✅ SpeechToTextWhisper extension deactivated successfully');
 		
 	} catch (error) {
 		console.error('❌ Error during deactivation:', error);
@@ -961,4 +1024,71 @@ function adaptToContext(context: IDEContext): void {
 	} catch (error) {
 		console.error('❌ Error adapting to context:', error);
 	}
+}
+
+/**
+ * Команда для комплексной диагностики расширения
+ */
+async function runDiagnostics(): Promise<void> {
+	console.log('🔧 Running SpeechToTextWhisper diagnostics...');
+	
+	const diagnosticsResults: string[] = [];
+	
+	// Проверяем активацию расширения
+	diagnosticsResults.push('✅ Extension activated');
+	
+	// Проверяем API ключ
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
+	const apiKey = config.get<string>('apiKey');
+	if (apiKey && apiKey.trim()) {
+		diagnosticsResults.push('✅ API key configured');
+	} else {
+		diagnosticsResults.push('❌ API key missing');
+	}
+	
+	// Проверяем поддержку браузера
+	const browserCompatibility = AudioRecorder.checkBrowserCompatibility();
+	if (browserCompatibility) {
+		diagnosticsResults.push('✅ Browser compatibility OK');
+	} else {
+		diagnosticsResults.push('❌ Browser not compatible');
+	}
+	
+	// Проверяем разрешения микрофона
+	try {
+		const micPermission = await AudioRecorder.checkMicrophonePermission();
+		if (micPermission.state === 'granted') {
+			diagnosticsResults.push('✅ Microphone permission granted');
+		} else {
+			diagnosticsResults.push(`❌ Microphone permission: ${micPermission.state}`);
+		}
+	} catch (error) {
+		diagnosticsResults.push(`❌ Microphone check failed: ${(error as Error).message}`);
+	}
+	
+	// Проверяем состояния
+	diagnosticsResults.push(`📊 Recording state: ${audioRecorder?.getIsRecording() ? 'active' : 'inactive'}`);
+	diagnosticsResults.push(`📊 Hold-to-record: ${isHoldToRecordActive ? 'active' : 'inactive'}`);
+	diagnosticsResults.push(`📊 Last transcription: ${lastTranscribedText ? 'available' : 'none'}`);
+	
+	// Проверяем настройки
+	const recordingMode = config.get<string>('recordingMode', 'hold');
+	const language = config.get<string>('language', 'auto');
+	const insertMode = config.get<string>('insertMode', 'cursor');
+	
+	diagnosticsResults.push(`⚙️ Recording mode: ${recordingMode}`);
+	diagnosticsResults.push(`⚙️ Language: ${language}`);
+	diagnosticsResults.push(`⚙️ Insert mode: ${insertMode}`);
+	
+	// Показываем результаты
+	const message = 'SpeechToTextWhisper Diagnostics:\n\n' + diagnosticsResults.join('\n');
+	
+	vscode.window.showInformationMessage(message, 'Copy to Clipboard', 'OK').then(selection => {
+		if (selection === 'Copy to Clipboard') {
+			vscode.env.clipboard.writeText(message);
+			vscode.window.showInformationMessage('Diagnostics copied to clipboard');
+		}
+	});
+	
+	console.log('Diagnostics results:', diagnosticsResults);
 }

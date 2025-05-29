@@ -111,21 +111,21 @@ class MockWorkspaceConfiguration {
     config = new Map();
     constructor() {
         // Настройки по умолчанию для расширения
-        this.config.set('voiceScribe.apiKey', 'test-api-key');
-        this.config.set('voiceScribe.language', 'en');
-        this.config.set('voiceScribe.quality', 'standard');
-        this.config.set('voiceScribe.toggleMode', false);
-        this.config.set('voiceScribe.maxRecordingDuration', 60);
-        this.config.set('voiceScribe.insertMode', 'cursor');
+        this.config.set('speechToTextWhisper.apiKey', 'test-api-key');
+        this.config.set('speechToTextWhisper.language', 'en');
+        this.config.set('speechToTextWhisper.quality', 'standard');
+        this.config.set('speechToTextWhisper.toggleMode', false);
+        this.config.set('speechToTextWhisper.maxRecordingDuration', 60);
+        this.config.set('speechToTextWhisper.insertMode', 'cursor');
         // Настройки аудио качества
-        this.config.set('voiceScribe.audioQuality.format', 'webm');
-        this.config.set('voiceScribe.audioQuality.sampleRate', 16000);
-        this.config.set('voiceScribe.audioQuality.channelCount', 1);
-        this.config.set('voiceScribe.audioQuality.bitRate', 128000);
-        this.config.set('voiceScribe.audioQuality.enableAudioProcessing', true);
-        this.config.set('voiceScribe.audioQuality.noiseSuppression', true);
-        this.config.set('voiceScribe.audioQuality.autoGainControl', true);
-        this.config.set('voiceScribe.audioQuality.echoCancellation', true);
+        this.config.set('speechToTextWhisper.audioQuality.format', 'webm');
+        this.config.set('speechToTextWhisper.audioQuality.sampleRate', 16000);
+        this.config.set('speechToTextWhisper.audioQuality.channelCount', 1);
+        this.config.set('speechToTextWhisper.audioQuality.bitRate', 128000);
+        this.config.set('speechToTextWhisper.audioQuality.enableAudioProcessing', true);
+        this.config.set('speechToTextWhisper.audioQuality.noiseSuppression', true);
+        this.config.set('speechToTextWhisper.audioQuality.autoGainControl', true);
+        this.config.set('speechToTextWhisper.audioQuality.echoCancellation', true);
     }
     get(key, defaultValue) {
         return this.config.get(key) || defaultValue;
@@ -244,22 +244,22 @@ exports.mockVscode = {
         registerCommand: sinon.stub().returns(new MockDisposable()),
         executeCommand: sinon.stub().resolves(),
         getCommands: sinon.stub().resolves([
-            'voiceScribe.startRecording',
-            'voiceScribe.stopRecording',
-            'voiceScribe.toggleRecording',
-            'voiceScribe.startHoldToRecord',
-            'voiceScribe.stopHoldToRecord',
-            'voiceScribe.insertAtCursor',
-            'voiceScribe.insertAsComment',
-            'voiceScribe.replaceSelection',
-            'voiceScribe.copyToClipboard',
-            'voiceScribe.openSettings',
-            'voiceScribe.showHelp',
-            'voiceScribe.showStatus',
-            'voiceScribe.checkMicrophone',
-            'voiceScribe.testApiKey',
-            'voiceScribe.resetConfiguration',
-            'voiceScribe.toggleStatusBar'
+            'speechToTextWhisper.startRecording',
+            'speechToTextWhisper.stopRecording',
+            'speechToTextWhisper.toggleRecording',
+            'speechToTextWhisper.startHoldToRecord',
+            'speechToTextWhisper.stopHoldToRecord',
+            'speechToTextWhisper.insertAtCursor',
+            'speechToTextWhisper.insertAsComment',
+            'speechToTextWhisper.replaceSelection',
+            'speechToTextWhisper.copyToClipboard',
+            'speechToTextWhisper.openSettings',
+            'speechToTextWhisper.showHelp',
+            'speechToTextWhisper.showStatus',
+            'speechToTextWhisper.checkMicrophone',
+            'speechToTextWhisper.testApiKey',
+            'speechToTextWhisper.resetConfiguration',
+            'speechToTextWhisper.toggleStatusBar'
         ])
     },
     env: {

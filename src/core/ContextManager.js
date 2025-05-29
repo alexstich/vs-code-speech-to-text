@@ -36,7 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ContextManager = exports.ContextType = exports.IDEType = void 0;
 const vscode = __importStar(require("vscode"));
 /**
- * Типы IDE, поддерживаемые VoiceScribe
+ * Типы IDE, поддерживаемые SpeechToTextWhisper
  */
 var IDEType;
 (function (IDEType) {
@@ -59,7 +59,7 @@ var ContextType;
     ContextType["UNKNOWN"] = "unknown"; // Неизвестный контекст
 })(ContextType || (exports.ContextType = ContextType = {}));
 /**
- * Менеджер контекста IDE для адаптации поведения VoiceScribe
+ * Менеджер контекста IDE для адаптации поведения SpeechToTextWhisper
  */
 class ContextManager {
     ideType = IDEType.UNKNOWN;
