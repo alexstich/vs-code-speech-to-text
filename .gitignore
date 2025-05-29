@@ -8,10 +8,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 dev-debug.log
+
 # Dependency directories
 node_modules/
+
 # Environment variables
 .env
+
 # Editor directories and files
 .idea
 .vscode
@@ -20,8 +23,47 @@ node_modules/
 *.njsproj
 *.sln
 *.sw?
+
 # OS specific
 .DS_Store
+Thumbs.db
+
 # Task files
 tasks.json
-tasks/ 
+tasks/
+
+# Build outputs
+out/
+dist/
+*.vsix
+
+# Test outputs
+.vscode-test/
+coverage/
+.nyc_output/
+
+# Cache directories
+.cache/
+.tmp/
+
+# Runtime files
+speech-to-text-whis
+
+# TypeScript
+*.tsbuildinfo
+
+# Debugging
+chrome-debug.log
+
+# Platform specific
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.orig
+
+# Lock files (uncomment if you want to ignore them)
+# package-lock.json
+# yarn.lock 

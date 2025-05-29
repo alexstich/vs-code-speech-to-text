@@ -1,81 +1,113 @@
-# VS Code Speech-to-Text Extension
+# VoiceScribe - Speech to Text Extension
 
-Расширение для Visual Studio Code и Cursor IDE, позволяющее транскрибировать речь в текст с помощью OpenAI Whisper API.
+Transform your voice into text effortlessly with OpenAI Whisper API integration for VS Code and Cursor IDE.
 
-## 🎯 Основные возможности
+## ✨ Features
 
-- **Голосовой ввод текста** прямо в редакторе кода
-- **Интеграция с AI-чатом** Cursor IDE
-- **Два режима записи**: нажал-держи или нажал-старт/стоп
-- **Высокое качество транскрибации** благодаря OpenAI Whisper
-- **Поддержка 95+ языков**
-- **Настраиваемые горячие клавиши**
+- **🎙️ Voice Recording**: Hold F9 or use command palette to record audio
+- **🤖 AI Transcription**: Powered by OpenAI Whisper API for accurate speech-to-text
+- **🎯 Smart Insertion**: Insert text at cursor, as comments, or replace selection
+- **🔄 Multiple Modes**: Hold-to-record or toggle recording modes
+- **🌐 Multi-language**: Support for auto-detection and 11+ languages
+- **💬 Cursor Integration**: Special integration with Cursor IDE AI chat
+- **⚡ Fast & Efficient**: Quick transcription with status bar indicators
 
-## 🚀 Сценарии использования
+## 🚀 Quick Start
 
-### 1. Быстрые комментарии в коде
-```javascript
-// Говорите: "Эта функция вычисляет факториал числа"
-function factorial(n) {
-    // Автоматически добавляется комментарий
-    return n <= 1 ? 1 : n * factorial(n - 1);
-}
-```
+1. **Install the extension** from VS Code Marketplace
+2. **Set your OpenAI API key**:
+   - Open VS Code settings (`Ctrl+,` / `Cmd+,`)
+   - Search for "VoiceScribe"
+   - Enter your OpenAI API key
+3. **Start recording**: Press `F9` and start speaking!
 
-### 2. Вопросы в AI-чат
-- Нажмите кнопку микрофона
-- Скажите: "Как оптимизировать этот SQL запрос?"
-- Текст автоматически вставляется в чат
+## ⌨️ Keyboard Shortcuts
 
-### 3. Документация функций
-- Выделите функцию
-- Произнесите описание параметров
-- Получите автоматически сгенерированный JSDoc
+| Shortcut | Action |
+|----------|--------|
+| `F9` | Toggle voice recording (hold mode) |
+| `Ctrl+Shift+V` / `Cmd+Shift+V` | Start recording |
+| `Ctrl+Shift+Alt+V` / `Cmd+Shift+Alt+V` | Record and send to AI chat |
 
-## 📋 Требования
+## 🛠️ Configuration
 
-- VS Code 1.74.0 или выше
-- Cursor IDE (для интеграции с AI-чатом)
-- OpenAI API ключ
-- Микрофон
+### Basic Settings
 
-## 🛠 Планы разработки
+- **API Key**: Your OpenAI API key for Whisper transcription
+- **Language**: Choose specific language or auto-detect (default)
+- **Recording Mode**: Hold or toggle recording
+- **Insert Mode**: How to insert transcribed text
+- **Audio Quality**: Standard or high quality recording
 
-### Этап 1: MVP ✅
-- [x] Базовая структура расширения
-- [ ] Аудио запись (hold-to-record)
-- [ ] Интеграция с OpenAI Whisper API
-- [ ] Вставка текста в редактор
-- [ ] UI в статус-баре
+### Advanced Settings
 
-### Этап 2: Расширенная функциональность
-- [ ] Режим toggle-recording
-- [ ] Интеграция с Cursor AI-чатом
-- [ ] Настройки и конфигурация
-- [ ] Обработка ошибок
+- **Cursor Integration**: Enable special Cursor IDE features
+- **Status Bar**: Show/hide recording status indicator
+- **Context Detection**: Auto-detect active IDE context
+- **Max Duration**: Set maximum recording length (5-300 seconds)
 
-### Этап 3: Оптимизация
-- [ ] Улучшение производительности
-- [ ] UX полировка
-- [ ] Кроссплатформенное тестирование
+## 📋 Commands
 
-## 📖 Документация
+Access via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 
-- [Полный PRD](docs/main-plan_prd.md) - детальный план разработки
-- [Техническая архитектура](docs/main-plan_prd.md#7-техническая-архитектура)
-- [API интеграция](docs/main-plan_prd.md#32-openai-whisper-api)
+- `VoiceScribe: Start Voice Recording`
+- `VoiceScribe: Stop Voice Recording`
+- `VoiceScribe: Toggle Voice Recording`
+- `VoiceScribe: Record and Send to AI Chat`
+- `VoiceScribe: Record and Insert as Comment`
+- `VoiceScribe: Open VoiceScribe Settings`
 
-## 🤝 Вклад в проект
+## 🌍 Supported Languages
 
-Проект находится в стадии активной разработки. Приветствуются:
-- Идеи по улучшению функциональности
-- Тестирование на разных платформах
-- Обратная связь по UX
+- Auto-detect (recommended)
+- English, Russian, Spanish, French
+- German, Italian, Portuguese
+- Chinese, Japanese, Korean
 
-## 📝 Лицензия
+## 🔧 Requirements
 
-MIT License
+- VS Code 1.74.0 or later
+- OpenAI API key with Whisper access
+- Microphone access permission
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **No microphone access**: Grant microphone permissions in your browser/OS
+2. **API errors**: Verify your OpenAI API key and account credits
+3. **Recording not working**: Check microphone settings and restart VS Code
+4. **Poor transcription quality**: Try adjusting audio quality settings
+
+### Getting Help
+
+- Check the extension settings for configuration options
+- Report issues on our GitHub repository
+- Ensure your OpenAI API key has Whisper API access
+
+## 🎯 Use Cases
+
+- **Code Documentation**: Quickly add voice comments to your code
+- **AI Chat Interaction**: Voice input for Cursor IDE AI conversations  
+- **Meeting Notes**: Transcribe discussions directly into your editor
+- **Accessibility**: Voice input for hands-free coding
+- **Multilingual Development**: Support for international teams
+
+## 🔒 Privacy & Security
+
+- Audio is only sent to OpenAI Whisper API for transcription
+- No audio data is stored locally or elsewhere
+- Your API key is stored securely in VS Code settings
+- All communication uses HTTPS encryption
+
+## 📝 License
+
+MIT License - see LICENSE file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ---
 
-**Примечание**: Проект находится в стадии разработки. MVP планируется к выпуску в ближайшие 2-3 недели.
+**Made with ❤️ for developers who want to code with their voice**

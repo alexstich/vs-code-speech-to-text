@@ -1,0 +1,60 @@
+# Development files
+.vscode/**
+.vscode-test/**
+node_modules/**
+
+# Source files (only dist should be included)
+src/**
+
+# Build and configuration files
+esbuild.js
+tsconfig.json
+eslint.config.mjs
+.vscode-test.mjs
+
+# Documentation and project files
+vsc-extension-quickstart.md
+README.md
+CHANGELOG.md
+.gitignore
+
+# Test files and coverage
+coverage/**
+.nyc_output/**
+**/*.test.ts
+**/*.spec.ts
+.mocharc.json
+
+# Development tools and configs
+.taskmasterconfig
+tasks/**
+scripts/**
+
+# Editor specific
+.cursor/**
+.idea/**
+
+# Maps and temporary files
+**/*.map
+**/*.ts
+.tmp/**
+.cache/**
+
+# Runtime and generated files
+speech-to-text-whis
+*.log
+
+# Documentation
+docs/**
+
+# Media files (keep only icon)
+media/**
+!media/icon.png
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Package files
+package-lock.json
+yarn.lock
