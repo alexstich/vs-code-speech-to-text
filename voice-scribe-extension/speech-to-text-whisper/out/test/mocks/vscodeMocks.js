@@ -59,11 +59,25 @@ class MockTextDocument {
     constructor(languageId = 'javascript') {
         this.languageId = languageId;
     }
+    getText(range) {
+        // Мок для получения текста документа
+        if (range) {
+            return 'selected text';
+        }
+        return 'document content';
+    }
+    lineAt(line) {
+        return {
+            text: '    some indented text',
+            firstNonWhitespaceCharacterIndex: 4
+        };
+    }
 }
 exports.MockTextDocument = MockTextDocument;
 class MockSelection {
     active;
     anchor;
+    isEmpty = false;
     constructor() {
         this.active = new MockPosition(0, 0);
         this.anchor = new MockPosition(0, 0);
@@ -76,6 +90,9 @@ class MockPosition {
     constructor(line, character) {
         this.line = line;
         this.character = character;
+    }
+    translate(deltaLine, deltaCharacter) {
+        return new MockPosition(this.line + deltaLine, this.character + deltaCharacter);
     }
 }
 exports.MockPosition = MockPosition;
@@ -128,8 +145,18 @@ exports.mockVscode = {
         Right: 2
     },
     ThemeColor: MockThemeColor,
+    Selection: class {
+        anchor;
+        active;
+        constructor(anchor, active) {
+            this.anchor = anchor;
+            this.active = active;
+        }
+    },
+    Position: MockPosition,
     window: {
         activeTextEditor: null,
+        activeTerminal: null,
         showInformationMessage: sinon.stub(),
         showWarningMessage: sinon.stub(),
         showErrorMessage: sinon.stub(),

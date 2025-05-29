@@ -56,7 +56,7 @@
         "command": "voiceScribe.stopRecording",
         "title": "Stop Voice Recording",
         "category": "VoiceScribe",
-        "icon": "$(record-stop)"
+        "icon": "$(record)"
       },
       {
         "command": "voiceScribe.toggleRecording",
@@ -65,32 +65,103 @@
         "icon": "$(mic)"
       },
       {
+        "command": "voiceScribe.startHoldToRecord",
+        "title": "Start Hold-to-Record",
+        "category": "VoiceScribe",
+        "icon": "$(mic)"
+      },
+      {
+        "command": "voiceScribe.stopHoldToRecord",
+        "title": "Stop Hold-to-Record",
+        "category": "VoiceScribe",
+        "icon": "$(mic-filled)"
+      },
+      {
+        "command": "voiceScribe.insertAtCursor",
+        "title": "Insert Last Transcription at Cursor",
+        "category": "VoiceScribe",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "voiceScribe.insertAsComment",
+        "title": "Insert Last Transcription as Comment",
+        "category": "VoiceScribe",
+        "icon": "$(comment)"
+      },
+      {
+        "command": "voiceScribe.replaceSelection",
+        "title": "Replace Selection with Last Transcription",
+        "category": "VoiceScribe",
+        "icon": "$(replace)"
+      },
+      {
+        "command": "voiceScribe.copyToClipboard",
+        "title": "Copy Last Transcription to Clipboard",
+        "category": "VoiceScribe",
+        "icon": "$(clippy)"
+      },
+      {
         "command": "voiceScribe.sendToChat",
         "title": "Record and Send to AI Chat",
         "category": "VoiceScribe",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "voiceScribe.insertAsComment",
-        "title": "Record and Insert as Comment",
-        "category": "VoiceScribe",
-        "icon": "$(comment)"
-      },
-      {
         "command": "voiceScribe.openSettings",
         "title": "Open VoiceScribe Settings",
         "category": "VoiceScribe",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "voiceScribe.showHelp",
+        "title": "Show VoiceScribe Help",
+        "category": "VoiceScribe",
+        "icon": "$(question)"
+      },
+      {
+        "command": "voiceScribe.showStatus",
+        "title": "Show VoiceScribe Status",
+        "category": "VoiceScribe",
+        "icon": "$(info)"
+      },
+      {
+        "command": "voiceScribe.checkMicrophone",
+        "title": "Check Microphone",
+        "category": "VoiceScribe",
+        "icon": "$(device-microphone)"
+      },
+      {
+        "command": "voiceScribe.testApiKey",
+        "title": "Test OpenAI API Key",
+        "category": "VoiceScribe",
+        "icon": "$(key)"
+      },
+      {
+        "command": "voiceScribe.resetConfiguration",
+        "title": "Reset Configuration",
+        "category": "VoiceScribe",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "voiceScribe.toggleStatusBar",
+        "title": "Toggle Status Bar",
+        "category": "VoiceScribe",
+        "icon": "$(eye)"
       }
     ],
     "keybindings": [
       {
-        "command": "voiceScribe.toggleRecording",
+        "command": "voiceScribe.startHoldToRecord",
         "key": "F9",
-        "when": "editorTextFocus || terminalFocus"
+        "when": "!voiceScribe.holdToRecordActive"
       },
       {
-        "command": "voiceScribe.startRecording",
+        "command": "voiceScribe.stopHoldToRecord", 
+        "key": "F9",
+        "when": "voiceScribe.holdToRecordActive"
+      },
+      {
+        "command": "voiceScribe.toggleRecording",
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
         "when": "editorTextFocus"
@@ -100,6 +171,17 @@
         "key": "ctrl+shift+alt+v",
         "mac": "cmd+shift+alt+v",
         "when": "true"
+      },
+      {
+        "command": "voiceScribe.insertAsComment",
+        "key": "ctrl+shift+c",
+        "mac": "cmd+shift+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "voiceScribe.showHelp",
+        "key": "F1",
+        "when": "voiceScribe.active"
       }
     ],
     "menus": {
@@ -246,6 +328,109 @@
           "maximum": 300,
           "description": "Maximum recording duration in seconds",
           "order": 9
+        },
+        "voiceScribe.prompt": {
+          "type": "string",
+          "default": "",
+          "description": "Optional context prompt to improve transcription accuracy",
+          "order": 10
+        },
+        "voiceScribe.temperature": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "OpenAI temperature (0 = deterministic, 1 = creative)",
+          "order": 11
+        },
+        "voiceScribe.timeout": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 5000,
+          "maximum": 120000,
+          "description": "API request timeout in milliseconds",
+          "order": 12
+        },
+        "voiceScribe.maxRetries": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Maximum number of retry attempts for failed API requests",
+          "order": 13
+        },
+        "voiceScribe.retryDelay": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 100,
+          "maximum": 10000,
+          "description": "Delay between retry attempts in milliseconds",
+          "order": 14
+        },
+        "voiceScribe.formatText": {
+          "type": "boolean",
+          "default": true,
+          "description": "Format transcribed text (capitalize, trim whitespace)",
+          "order": 15
+        },
+        "voiceScribe.addNewLine": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add new line after inserted text",
+          "order": 16
+        },
+        "voiceScribe.indentToSelection": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indent inserted text to match selection",
+          "order": 17
+        },
+        "voiceScribe.statusBarPosition": {
+          "type": "string",
+          "enum": ["left", "right"],
+          "default": "right",
+          "description": "Position of status bar indicator",
+          "order": 18
+        },
+        "voiceScribe.showTooltips": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show helpful tooltips in status bar",
+          "order": 19
+        },
+        "voiceScribe.enableAnimations": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable status bar animations",
+          "order": 20
+        },
+        "voiceScribe.autoHideSuccess": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically hide success messages",
+          "order": 21
+        },
+        "voiceScribe.successDuration": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 500,
+          "maximum": 10000,
+          "description": "Duration to show success messages (ms)",
+          "order": 22
+        },
+        "voiceScribe.errorDuration": {
+          "type": "number",
+          "default": 3000,
+          "minimum": 1000,
+          "maximum": 10000,
+          "description": "Duration to show error messages (ms)",
+          "order": 23
+        },
+        "voiceScribe.baseURL": {
+          "type": "string",
+          "default": "",
+          "description": "Custom OpenAI API base URL (leave empty for default)",
+          "order": 24
         }
       }
     }

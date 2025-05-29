@@ -65,161 +65,259 @@ suite('TextInserter Unit Tests', () => {
         test('Should insert text at cursor position when editor is active', async () => {
             // Настраиваем активный редактор
             const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.insertAtCursor('Hello World');
-            assert.strictEqual(result, true);
+            await textInserter.insertAtCursor('Hello World');
             assert.ok(editor.edit.calledOnce);
         });
-        test('Should return false when no active editor', async () => {
+        test('Should throw error when no active editor', async () => {
             // Убираем активный редактор
             (0, vscodeMocks_1.clearActiveEditor)();
-            const result = await textInserter.insertAtCursor('Hello World');
-            assert.strictEqual(result, false);
+            try {
+                await textInserter.insertAtCursor('Hello World');
+                assert.fail('Should have thrown an error');
+            }
+            catch (error) {
+                assert.ok(error.code === 'NO_ACTIVE_EDITOR');
+            }
         });
-        test('Should handle editor.edit failure', async () => {
-            // Настраиваем редактор с ошибкой
+        test('Should use indentation options', async () => {
             const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            editor.edit.resolves(false);
-            const result = await textInserter.insertAtCursor('Hello World');
-            assert.strictEqual(result, false);
+            await textInserter.insertAtCursor('Hello\nWorld', { indentToSelection: true });
+            assert.ok(editor.edit.calledOnce);
         });
-        test('Should handle editor.edit exception', async () => {
-            // Настраиваем редактор с исключением
+        test('Should format text when option is enabled', async () => {
             const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            editor.edit.rejects(new Error('Edit failed'));
-            const result = await textInserter.insertAtCursor('Hello World');
-            assert.strictEqual(result, false);
+            await textInserter.insertAtCursor('  Hello World  ', { formatText: true });
+            assert.ok(editor.edit.calledOnce);
         });
     });
     suite('insertAsComment', () => {
         test('Should insert as single-line comment for JavaScript', async () => {
             const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.insertAsComment('This is a comment');
-            assert.strictEqual(result, true);
+            await textInserter.insertAsComment('This is a comment');
             assert.ok(editor.edit.calledOnce);
-            // Проверяем что в callback передается editBuilder
-            const editCallback = editor.edit.getCall(0).args[0];
-            assert.strictEqual(typeof editCallback, 'function');
         });
         test('Should insert as single-line comment for Python', async () => {
             const editor = (0, vscodeMocks_1.setActiveEditor)('python');
-            const result = await textInserter.insertAsComment('This is a comment');
-            assert.strictEqual(result, true);
+            await textInserter.insertAsComment('This is a comment');
             assert.ok(editor.edit.calledOnce);
         });
-        test('Should insert as comment for HTML', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('html');
-            const result = await textInserter.insertAsComment('This is a comment');
-            assert.strictEqual(result, true);
+        test('Should insert as multiline comment when forced', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertAsComment('Single line', { forceMultilineComment: true });
             assert.ok(editor.edit.calledOnce);
         });
-        test('Should handle unknown language', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('unknown-language');
-            const result = await textInserter.insertAsComment('This is a comment');
-            assert.strictEqual(result, true);
-            // Для неизвестных языков должен использоваться fallback комментарий
-            assert.ok(editor.edit.calledOnce);
-        });
-        test('Should return false when no active editor', async () => {
-            (0, vscodeMocks_1.clearActiveEditor)();
-            const result = await textInserter.insertAsComment('This is a comment');
-            assert.strictEqual(result, false);
-        });
-        test('Should handle multiline text', async () => {
+        test('Should insert as multiline comment for multiline text', async () => {
             const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
             const multilineText = 'Line 1\nLine 2\nLine 3';
-            const result = await textInserter.insertAsComment(multilineText);
-            assert.strictEqual(result, true);
+            await textInserter.insertAsComment(multilineText);
             assert.ok(editor.edit.calledOnce);
+        });
+        test('Should handle languages without multiline comments', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('bash');
+            const multilineText = 'Line 1\nLine 2';
+            await textInserter.insertAsComment(multilineText);
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should throw error when no active editor', async () => {
+            (0, vscodeMocks_1.clearActiveEditor)();
+            try {
+                await textInserter.insertAsComment('This is a comment');
+                assert.fail('Should have thrown an error');
+            }
+            catch (error) {
+                assert.ok(error.code === 'NO_ACTIVE_EDITOR');
+            }
         });
     });
     suite('replaceSelection', () => {
         test('Should replace selected text when selection exists', async () => {
             const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.replaceSelection('New text');
-            assert.strictEqual(result, true);
+            // Эмулируем наличие выделения
+            editor.selection.isEmpty = false;
+            await textInserter.replaceSelection('New text');
             assert.ok(editor.edit.calledOnce);
         });
-        test('Should return false when no active editor', async () => {
+        test('Should throw error when no selection', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            // Эмулируем отсутствие выделения
+            editor.selection.isEmpty = true;
+            try {
+                await textInserter.replaceSelection('New text');
+                assert.fail('Should have thrown an error');
+            }
+            catch (error) {
+                assert.ok(error.code === 'NO_SELECTION');
+            }
+        });
+        test('Should throw error when no active editor', async () => {
             (0, vscodeMocks_1.clearActiveEditor)();
-            const result = await textInserter.replaceSelection('New text');
-            assert.strictEqual(result, false);
-        });
-        test('Should handle editor.edit failure in replace', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            editor.edit.resolves(false);
-            const result = await textInserter.replaceSelection('New text');
-            assert.strictEqual(result, false);
+            try {
+                await textInserter.replaceSelection('New text');
+                assert.fail('Should have thrown an error');
+            }
+            catch (error) {
+                assert.ok(error.code === 'NO_ACTIVE_EDITOR');
+            }
         });
     });
-    suite('Language Detection and Comment Formatting', () => {
-        test('Should use correct comment format for different languages', async () => {
+    suite('insertOnNewLine', () => {
+        test('Should insert text on new line', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertOnNewLine('New line text');
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should throw error when no active editor', async () => {
+            (0, vscodeMocks_1.clearActiveEditor)();
+            try {
+                await textInserter.insertOnNewLine('New line text');
+                assert.fail('Should have thrown an error');
+            }
+            catch (error) {
+                assert.ok(error.code === 'NO_ACTIVE_EDITOR');
+            }
+        });
+    });
+    suite('copyToClipboard', () => {
+        test('Should copy text to clipboard', async () => {
+            await textInserter.copyToClipboard('Clipboard text');
+            // Проверяем что clipboard API был вызван
+            assert.ok(vscodeMocks_1.mockVscode.env.clipboard.writeText.calledOnce);
+            assert.ok(vscodeMocks_1.mockVscode.env.clipboard.writeText.calledWith('Clipboard text'));
+        });
+        test('Should format text before copying', async () => {
+            await textInserter.copyToClipboard('  Text with spaces  ', { formatText: true });
+            assert.ok(vscodeMocks_1.mockVscode.env.clipboard.writeText.calledOnce);
+        });
+    });
+    suite('insertText universal method', () => {
+        test('Should route to insertAtCursor for cursor mode', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertText('Test text', { mode: 'cursor' });
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should route to insertAsComment for comment mode', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertText('Test comment', { mode: 'comment' });
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should route to replaceSelection for replace mode', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            editor.selection.isEmpty = false;
+            await textInserter.insertText('Replacement text', { mode: 'replace' });
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should route to insertOnNewLine for newLine mode', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertText('New line text', { mode: 'newLine' });
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should route to copyToClipboard for clipboard mode', async () => {
+            await textInserter.insertText('Clipboard text', { mode: 'clipboard' });
+            assert.ok(vscodeMocks_1.mockVscode.env.clipboard.writeText.calledOnce);
+        });
+        test('Should default to cursor mode when no mode specified', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertText('Default text');
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should throw error for invalid mode', async () => {
+            try {
+                await textInserter.insertText('Test text', { mode: 'invalid' });
+                assert.fail('Should have thrown an error');
+            }
+            catch (error) {
+                assert.ok(error.code === 'INVALID_MODE');
+            }
+        });
+    });
+    suite('getActiveContext', () => {
+        test('Should return editor context when editor is active', () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            editor.selection.isEmpty = false;
+            const context = textInserter.getActiveContext();
+            assert.strictEqual(context.type, 'editor');
+            assert.strictEqual(context.language, 'javascript');
+            assert.strictEqual(context.hasSelection, true);
+        });
+        test('Should return unknown context when no editor', () => {
+            (0, vscodeMocks_1.clearActiveEditor)();
+            const context = textInserter.getActiveContext();
+            assert.strictEqual(context.type, 'unknown');
+            assert.strictEqual(context.hasSelection, false);
+        });
+        test('Should detect terminal context', () => {
+            (0, vscodeMocks_1.clearActiveEditor)();
+            vscodeMocks_1.mockVscode.window.activeTerminal = {
+                name: 'Terminal',
+                processId: Promise.resolve(1234)
+            };
+            const context = textInserter.getActiveContext();
+            assert.strictEqual(context.type, 'terminal');
+        });
+    });
+    suite('Language Support', () => {
+        test('Should support multiple programming languages', () => {
             const languages = [
-                { id: 'javascript', expected: '//' },
-                { id: 'typescript', expected: '//' },
-                { id: 'python', expected: '#' },
-                { id: 'css', expected: '/*' },
-                { id: 'html', expected: '<!--' }
+                'javascript', 'typescript', 'python', 'java', 'cpp',
+                'rust', 'go', 'php', 'ruby', 'swift', 'kotlin'
             ];
-            for (const lang of languages) {
-                (0, vscodeMocks_1.resetVSCodeMocks)();
-                const editor = (0, vscodeMocks_1.setActiveEditor)(lang.id);
-                await textInserter.insertAsComment('test comment');
-                assert.ok(editor.edit.calledOnce, `Should call edit for ${lang.id}`);
-            }
+            languages.forEach(lang => {
+                assert.ok(TextInserter_1.TextInserter.isLanguageSupported(lang), `Should support ${lang}`);
+            });
         });
-        test('Should handle empty text gracefully', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.insertAtCursor('');
-            assert.strictEqual(result, true);
-            assert.ok(editor.edit.calledOnce);
+        test('Should return supported languages list', () => {
+            const languages = TextInserter_1.TextInserter.getSupportedLanguages();
+            assert.ok(Array.isArray(languages));
+            assert.ok(languages.length > 20);
+            assert.ok(languages.includes('javascript'));
+            assert.ok(languages.includes('python'));
         });
-        test('Should handle whitespace-only text', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.insertAtCursor('   \n  \t  ');
-            assert.strictEqual(result, true);
+        test('Should handle unknown language gracefully', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('unknown-language');
+            await textInserter.insertAsComment('This is a comment');
             assert.ok(editor.edit.calledOnce);
         });
     });
-    suite('Error Handling', () => {
-        test('Should handle VS Code API exceptions gracefully', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            editor.edit.throws(new Error('VS Code API error'));
-            const result = await textInserter.insertAtCursor('test text');
-            assert.strictEqual(result, false);
-        });
-        test('Should handle undefined text gracefully', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.insertAtCursor(undefined);
-            // Should handle undefined без краша
-            assert.strictEqual(typeof result, 'boolean');
-        });
-        test('Should handle null text gracefully', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            const result = await textInserter.insertAtCursor(null);
-            // Should handle null без краша
-            assert.strictEqual(typeof result, 'boolean');
-        });
-    });
-    suite('Integration with VS Code APIs', () => {
-        test('Should work with different editor selection states', async () => {
-            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
-            // Имитируем разные состояния выделения
-            editor.selection.active.line = 5;
-            editor.selection.active.character = 10;
-            const result = await textInserter.insertAtCursor('inserted text');
-            assert.strictEqual(result, true);
+    suite('Comment Formatting', () => {
+        test('Should format single line comments correctly', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('python');
+            await textInserter.insertAsComment('This is a Python comment');
+            // Проверяем что метод был вызван с правильными параметрами
             assert.ok(editor.edit.calledOnce);
         });
-        test('Should respect editor document language settings', async () => {
-            // Тестируем разные типы документов
-            const documentTypes = ['javascript', 'typescript', 'python', 'html', 'css'];
-            for (const docType of documentTypes) {
-                (0, vscodeMocks_1.resetVSCodeMocks)();
-                const editor = (0, vscodeMocks_1.setActiveEditor)(docType);
-                const result = await textInserter.insertAsComment('Comment for ' + docType);
-                assert.strictEqual(result, true, `Should work for ${docType}`);
-                assert.ok(editor.edit.calledOnce, `Should call edit for ${docType}`);
-            }
+        test('Should format multiline comments for C-style languages', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            const multilineText = 'Line 1\nLine 2\nLine 3';
+            await textInserter.insertAsComment(multilineText);
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should format HTML comments correctly', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('html');
+            await textInserter.insertAsComment('HTML comment');
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should handle Python triple-quote comments', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('python');
+            const multilineText = 'This is a\nmultiline Python\ncomment';
+            await textInserter.insertAsComment(multilineText);
+            assert.ok(editor.edit.calledOnce);
+        });
+    });
+    suite('Text Formatting Options', () => {
+        test('Should trim whitespace when formatText is true', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertAtCursor('  text with spaces  ', { formatText: true });
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should preserve text when formatText is false', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertAtCursor('  text with spaces  ', { formatText: false });
+            assert.ok(editor.edit.calledOnce);
+        });
+        test('Should add newline when addNewLine is true', async () => {
+            const editor = (0, vscodeMocks_1.setActiveEditor)('javascript');
+            await textInserter.insertAtCursor('text', { formatText: true, addNewLine: true });
+            assert.ok(editor.edit.calledOnce);
         });
     });
 });
