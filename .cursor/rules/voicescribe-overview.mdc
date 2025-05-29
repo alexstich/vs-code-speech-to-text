@@ -1,6 +1,6 @@
 ---
-description:
-globs:
+description: 
+globs: 
 alwaysApply: false
 ---
 # VoiceScribe - Speech to Text Extension Overview
@@ -9,14 +9,14 @@ alwaysApply: false
 
 ## 🏗️ Структура проекта
 
-- **[voice-scribe-extension/speech-to-text-whisper/](mdc:voice-scribe-extension/speech-to-text-whisper/)** — основная папка расширения
-- **[src/](mdc:voice-scribe-extension/speech-to-text-whisper/src/)** — исходный код TypeScript
-  - **[core/](mdc:voice-scribe-extension/speech-to-text-whisper/src/core/)** — основные модули (AudioRecorder, WhisperClient, TextInserter)
-  - **[ui/](mdc:voice-scribe-extension/speech-to-text-whisper/src/ui/)** — UI компоненты (StatusBarManager)
-  - **[integrations/](mdc:voice-scribe-extension/speech-to-text-whisper/src/integrations/)** — интеграции (CursorIntegration, ContextManager)
-  - **[utils/](mdc:voice-scribe-extension/speech-to-text-whisper/src/utils/)** — утилиты и общие функции
-- **[test/](mdc:voice-scribe-extension/speech-to-text-whisper/src/test/)** — тесты (unit, integration, mocks)
-- **[tasks/](mdc:tasks/)** — управление задачами через Task Master AI
+- **** — основная папка расширения
+- **[src/](mdc:voice-scribe-extension/speech-to-text-whisper/src)** — исходный код TypeScript
+  - **[core/](mdc:voice-scribe-extension/speech-to-text-whisper/src/core)** — основные модули (AudioRecorder, WhisperClient, TextInserter)
+  - **[ui/](mdc:voice-scribe-extension/speech-to-text-whisper/src/ui)** — UI компоненты (StatusBarManager)
+  - **[integrations/](mdc:voice-scribe-extension/speech-to-text-whisper/src/integrations)** — интеграции (CursorIntegration, ContextManager)
+  - **[utils/](mdc:voice-scribe-extension/speech-to-text-whisper/src/utils)** — утилиты и общие функции
+- **[test/](mdc:voice-scribe-extension/speech-to-text-whisper/src/test)** — тесты (unit, integration, mocks)
+- **[tasks/](mdc:tasks)** — управление задачами через Task Master AI
 
 ## 📋 Ключевые файлы
 
