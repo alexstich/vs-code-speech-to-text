@@ -18,6 +18,22 @@ import {
     simulatePlatformSpecificBehavior,
     simulateFFmpegVersion
 } from '../mocks/ffmpegMocks';
+import { EventEmitter } from 'events';
+
+// Полный мок ChildProcess
+class MockChildProcess extends EventEmitter {
+    stderr = new EventEmitter();
+    stdout = new EventEmitter();
+    
+    kill(signal?: string) {
+        return true;
+    }
+}
+
+// Мок для child_process
+const mockChildProcess = {
+    spawn: sinon.stub()
+};
 
 suite('FFmpegAudioRecorder Unit Tests', () => {
     let audioRecorder: FFmpegAudioRecorder;
@@ -92,56 +108,74 @@ suite('FFmpegAudioRecorder Unit Tests', () => {
         });
 
         test('detectInputDevices - should return device list for macOS', async () => {
-            simulatePlatformSpecificBehavior('darwin');
-            const mockProcess = new MockChildProcess();
-            mockProcess.simulateFFmpegOutput(`[AVFoundation indev @ 0x12345] AVFoundation audio devices:
-[AVFoundation indev @ 0x12345] [0] MacBook Pro Microphone
-[AVFoundation indev @ 0x12345] [1] External Microphone`);
-            mockChildProcess.spawn.returns(mockProcess);
+            // Мокаем spawn для возврата macOS вывода
+            const child = new MockChildProcess();
+            mockChildProcess.spawn.returns(child);
             
+            // Симулируем вывод FFmpeg
+            setTimeout(() => {
+                child.stderr.emit('data', 'AVFoundation audio devices:\n[AVFoundation indev @ 0x...] [0] MacBook Pro Microphone\n[AVFoundation indev @ 0x...] [1] External Microphone\n');
+                child.emit('close', 0);
+            }, 10);
+
             const devices = await FFmpegAudioRecorder.detectInputDevices();
-            
+            assert.ok(Array.isArray(devices));
             assert.strictEqual(devices.length, 2);
-            assert.ok(devices.includes('MacBook Pro Microphone'));
-            assert.ok(devices.includes('External Microphone'));
+            assert.ok(devices.some(device => device.name === 'MacBook Pro Microphone' && device.id === ':0'));
+            assert.ok(devices.some(device => device.name === 'External Microphone' && device.id === ':1'));
         });
 
         test('detectInputDevices - should return device list for Windows', async () => {
-            simulatePlatformSpecificBehavior('win32');
-            const mockProcess = new MockChildProcess();
-            mockProcess.simulateFFmpegOutput(`[dshow @ 0x12345] DirectShow audio devices
-[dshow @ 0x12345]  "Microphone (High Definition Audio Device)"
-[dshow @ 0x12345]  "Line In (High Definition Audio Device)"`);
-            mockChildProcess.spawn.returns(mockProcess);
+            // Мокаем spawn для возврата Windows вывода
+            const child = new MockChildProcess();
+            mockChildProcess.spawn.returns(child);
             
+            // Симулируем вывод FFmpeg
+            setTimeout(() => {
+                child.stderr.emit('data', 'DirectShow audio devices:\n"Microphone (High Definition Audio Device)"\n"Line In (High Definition Audio Device)"\n');
+                child.emit('close', 0);
+            }, 10);
+
             const devices = await FFmpegAudioRecorder.detectInputDevices();
-            
+            assert.ok(Array.isArray(devices));
             assert.strictEqual(devices.length, 2);
-            assert.ok(devices.includes('Microphone (High Definition Audio Device)'));
-            assert.ok(devices.includes('Line In (High Definition Audio Device)'));
+            assert.ok(devices.some(device => device.name === 'Microphone (High Definition Audio Device)'));
+            assert.ok(devices.some(device => device.name === 'Line In (High Definition Audio Device)'));
         });
 
         test('detectInputDevices - should return device list for Linux', async () => {
-            simulatePlatformSpecificBehavior('linux');
-            const mockProcess = new MockChildProcess();
-            mockProcess.simulateFFmpegOutput(`[pulse @ 0x12345] PulseAudio audio devices:
-[pulse @ 0x12345]  "default" (PulseAudio default)
-[pulse @ 0x12345]  "alsa_input.pci-0000_00_1f.3.analog-stereo" (Built-in Audio Analog Stereo)`);
-            mockChildProcess.spawn.returns(mockProcess);
+            // Мокаем spawn для возврата Linux вывода
+            const child = new MockChildProcess();
+            mockChildProcess.spawn.returns(child);
             
+            // Симулируем вывод FFmpeg
+            setTimeout(() => {
+                child.stderr.emit('data', 'PulseAudio devices:\n[default]\n[alsa_input.pci-0000_00_1f.3.analog-stereo]\n');
+                child.emit('close', 0);
+            }, 10);
+
             const devices = await FFmpegAudioRecorder.detectInputDevices();
-            
+            assert.ok(Array.isArray(devices));
             assert.strictEqual(devices.length, 2);
-            assert.ok(devices.includes('default'));
-            assert.ok(devices.includes('alsa_input.pci-0000_00_1f.3.analog-stereo'));
+            assert.ok(devices.some(device => device.name === 'default' && device.isDefault));
+            assert.ok(devices.some(device => device.name === 'alsa_input.pci-0000_00_1f.3.analog-stereo'));
         });
 
         test('detectInputDevices - should handle no devices found', async () => {
-            FFmpegTestScenarios.noAudioDevices();
+            // Мокаем spawn для возврата пустого вывода
+            const child = new MockChildProcess();
+            mockChildProcess.spawn.returns(child);
             
+            // Симулируем вывод FFmpeg
+            setTimeout(() => {
+                child.stderr.emit('data', 'No devices found\n');
+                child.emit('close', 0);
+            }, 10);
+
             const devices = await FFmpegAudioRecorder.detectInputDevices();
-            
-            assert.strictEqual(devices.length, 0);
+            assert.ok(Array.isArray(devices));
+            assert.strictEqual(devices.length, 1); // Должно вернуть дефолтное устройство
+            assert.ok(devices[0].name.includes('Default Audio Device'));
         });
     });
 

@@ -53,20 +53,20 @@
         {
           "id": "speechToTextWhisper",
           "title": "Speech to Text",
-          "icon": "$(device-microphone)"
+          "icon": "$(unmute)"
         }
       ]
     },
     "views": {
       "speechToTextWhisper": [
         {
-          "id": "speechToTextWhisper.audioSettings",
-          "name": "Audio Settings",
+          "id": "speechToTextWhisper.deviceManager",
+          "name": "Audio Devices",
           "when": "true"
         },
         {
-          "id": "speechToTextWhisper.deviceManager",
-          "name": "Device Manager",
+          "id": "speechToTextWhisper.audioSettings",
+          "name": "FFmpeg Settings",
           "when": "true"
         },
         {
@@ -138,7 +138,7 @@
       },
       {
         "command": "speechToTextWhisper.openSettings",
-        "title": "Open Speech to Text with Whisper Settings",
+        "title": "Open Settings",
         "category": "Speech to Text with Whisper",
         "icon": "$(settings-gear)"
       },
@@ -334,6 +334,11 @@
           "command": "speechToTextWhisper.diagnostics.runAll",
           "when": "view == speechToTextWhisper.diagnostics",
           "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.openSettings",
+          "when": "view == speechToTextWhisper.audioSettings || view == speechToTextWhisper.deviceManager || view == speechToTextWhisper.diagnostics",
+          "group": "1_settings"
         }
       ],
       "view/item/context": [

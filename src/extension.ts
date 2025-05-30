@@ -5,8 +5,8 @@ import { FFmpegAudioRecorder, AudioRecorderEvents } from './core/FFmpegAudioReco
 import { WhisperClient } from './core/WhisperClient';
 import { TextInserter } from './ui/TextInserter';
 import { StatusBarManager, StatusBarEvents, StatusBarConfiguration } from './ui/StatusBarManager';
-import { AudioSettingsProvider, AudioDevice } from './ui/AudioSettingsProvider';
-import { DiagnosticsProvider } from './ui/DiagnosticsProvider';
+import { AudioSettingsProvider } from './ui/AudioSettingsProvider';
+import { DiagnosticsProvider, DeviceManagerProvider } from './ui/DiagnosticsProvider';
 import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from './utils/ErrorHandler';
 import { RetryManager } from './utils/RetryManager';
 import { RecoveryActionHandler, RecoveryDependencies } from './utils/RecoveryActionHandler';
@@ -36,8 +36,22 @@ let extensionContext: vscode.ExtensionContext;
 // Переменная для хранения последней транскрибации
 let lastTranscribedText: string | null = null;
 
+// Время последнего запуска записи для предотвращения частых попыток
+let lastRecordingStartTime = 0;
+const MIN_RECORDING_INTERVAL = 200; // минимум 200ms между попытками
+
+// Переменные для предотвращения спама ошибок
+let lastErrorTime = 0;
+let lastErrorMessage = '';
+const MIN_ERROR_INTERVAL = 3000; // минимум 3 секунды между одинаковыми ошибками
+
+// Переменная для debouncing hold-to-record
+let holdToRecordDebounceTimer: NodeJS.Timeout | null = null;
+const HOLD_TO_RECORD_DEBOUNCE = 150; // 150ms debounce для hold-to-record
+
 // UI провайдеры для боковых панелей
 let audioSettingsProvider: AudioSettingsProvider;
+let deviceManagerProvider: DeviceManagerProvider;
 let diagnosticsProvider: DiagnosticsProvider;
 
 /**
@@ -201,6 +215,12 @@ function initializeComponents(): void {
 			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 			isHoldToRecordActive = false;
 			
+			// Проверяем нужно ли показывать ошибку
+			const errorMessage = error.message;
+			if (!shouldShowError(errorMessage)) {
+				return; // Пропускаем дублирующиеся ошибки
+			}
+			
 			// Используем новую систему обработки ошибок
 			const context: ErrorContext = {
 				operation: 'audio_recording',
@@ -208,6 +228,17 @@ function initializeComponents(): void {
 				timestamp: new Date()
 			};
 			
+			// Для hold-to-record режима только логируем, не показываем popup
+			if (isHoldToRecordActive || errorMessage.includes('Recording too short') || errorMessage.includes('Recording is already in progress')) {
+				console.log(`🔇 Suppressing hold-to-record error: ${errorMessage}`);
+				// Только обновляем status bar
+				if (statusBarManager) {
+					statusBarManager.showWarning('Recording issue');
+				}
+				return;
+			}
+			
+			// Для обычных ошибок показываем через ErrorHandler
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
 			if (userAction && userAction !== 'ignore') {
@@ -259,6 +290,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 	
 	// Инициализируем провайдеры для боковых панелей
 	audioSettingsProvider = new AudioSettingsProvider();
+	deviceManagerProvider = new DeviceManagerProvider();
 	diagnosticsProvider = new DiagnosticsProvider();
 	
 	// Регистрируем провайдеры панелей
@@ -267,7 +299,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 	});
 	
 	vscode.window.createTreeView('speechToTextWhisper.deviceManager', {
-		treeDataProvider: audioSettingsProvider
+		treeDataProvider: deviceManagerProvider
 	});
 	
 	vscode.window.createTreeView('speechToTextWhisper.diagnostics', {
@@ -299,11 +331,10 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		
 		// Команды для аудио панелей
 		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.refresh', () => audioSettingsProvider.refresh()),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.detectDevices', () => audioSettingsProvider.detectDevices()),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.selectDevice', (device: AudioDevice) => audioSettingsProvider.selectDevice(device)),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.testDevice', (device: AudioDevice) => audioSettingsProvider.testDevice(device)),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.openFFmpegSettings', () => audioSettingsProvider.openFFmpegSettings()),
-		vscode.commands.registerCommand('speechToTextWhisper.deviceManager.refresh', () => audioSettingsProvider.refresh()),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.openFFmpegSettings', () => audioSettingsProvider.configureFFmpegPath()),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.selectDevice', (deviceName: string) => deviceManagerProvider.selectDevice(deviceName)),
+		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.testDevice', (deviceName: string) => deviceManagerProvider.testDevice(deviceName)),
+		vscode.commands.registerCommand('speechToTextWhisper.deviceManager.refresh', () => deviceManagerProvider.refresh()),
 		vscode.commands.registerCommand('speechToTextWhisper.diagnostics.runAll', () => diagnosticsProvider.runAllDiagnostics()),
 		vscode.commands.registerCommand('speechToTextWhisper.diagnostics.refresh', () => diagnosticsProvider.refresh()),
 		
@@ -363,8 +394,22 @@ async function startRecording(): Promise<void> {
 	try {
 		console.log('▶️ Starting recording...');
 		
+		// Проверяем минимальный интервал между попытками
+		const now = Date.now();
+		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
+			console.log('⚠️ Too frequent recording attempts, skipping');
+			return;
+		}
+		lastRecordingStartTime = now;
+		
 		// Обеспечиваем инициализацию FFmpeg Audio Recorder
 		await ensureFFmpegAudioRecorder();
+		
+		// Проверяем, не идет ли уже запись
+		if (audioRecorder && audioRecorder.getIsRecording()) {
+			console.log('⚠️ Recording already in progress, skipping start');
+			return;
+		}
 		
 		// Проверяем состояние микрофона с retry
 		const microphoneResult = await retryManager.retryMicrophoneOperation(
@@ -454,26 +499,60 @@ async function toggleRecording(): Promise<void> {
  * Hold-to-record функции (F9)
  */
 async function startHoldToRecord(): Promise<void> {
+	// Очищаем предыдущий debounce timer
+	if (holdToRecordDebounceTimer) {
+		clearTimeout(holdToRecordDebounceTimer);
+		holdToRecordDebounceTimer = null;
+	}
+	
+	// Если уже активен или идет запись - игнорируем
 	if (isHoldToRecordActive) {
-		return; // Уже активен
+		console.log('🎯 Hold-to-record already active, ignoring');
+		return;
 	}
 	
-	console.log('🎯 Starting hold-to-record mode');
-	isHoldToRecordActive = true;
-	
-	// Обновляем context variable
-	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', true);
-	
-	try {
-		await startRecording();
-	} catch (error) {
-		isHoldToRecordActive = false;
-		vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
-		throw error;
-	}
+	// Добавляем небольшой debounce для предотвращения множественных вызовов
+	holdToRecordDebounceTimer = setTimeout(async () => {
+		try {
+			// Обеспечиваем инициализацию FFmpeg Audio Recorder
+			await ensureFFmpegAudioRecorder();
+			
+			// Проверяем, не идет ли уже запись
+			if (audioRecorder && audioRecorder.getIsRecording()) {
+				console.log('🎯 Recording already in progress, just switching to hold-to-record mode');
+				isHoldToRecordActive = true;
+				vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', true);
+				return;
+			}
+			
+			console.log('🎯 Starting hold-to-record mode');
+			isHoldToRecordActive = true;
+			
+			// Обновляем context variable
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', true);
+			
+			await startRecording();
+		} catch (error) {
+			isHoldToRecordActive = false;
+			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
+			
+			// Показываем ошибку только если это не спам
+			const errorMessage = (error as Error).message;
+			if (shouldShowError(errorMessage)) {
+				console.error('❌ Hold-to-record failed:', error);
+				// Не показываем уведомление для пользователя при hold-to-record ошибках
+			}
+		}
+	}, HOLD_TO_RECORD_DEBOUNCE);
 }
 
 function stopHoldToRecord(): void {
+	// Очищаем debounce timer
+	if (holdToRecordDebounceTimer) {
+		clearTimeout(holdToRecordDebounceTimer);
+		holdToRecordDebounceTimer = null;
+	}
+	
 	if (!isHoldToRecordActive) {
 		return; // Не активен
 	}
@@ -1073,7 +1152,7 @@ function adaptToContext(context: IDEContext): void {
 		}
 		
 		// Адаптируем режим вставки в зависимости от типа файла
-		if (context.activeEditor) {
+		if (context.activeEditor && context.activeEditor.language && contextManager) {
 			const language = context.activeEditor.language;
 			console.log(`📝 Active file: ${language.name}, supports comments: line=${contextManager.supportsComments('line')}, block=${contextManager.supportsComments('block')}`);
 		}
@@ -1103,57 +1182,144 @@ async function runDiagnostics(): Promise<void> {
 		diagnosticsResults.push('❌ API key missing');
 	}
 	
-	// Проверяем поддержку FFmpeg
-	const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
-	if (ffmpegCheck.available) {
-		diagnosticsResults.push('✅ FFmpeg available');
-		if (ffmpegCheck.version) {
-			diagnosticsResults.push(`📦 FFmpeg version: ${ffmpegCheck.version}`);
-		}
-	} else {
-		diagnosticsResults.push(`❌ FFmpeg not available: ${ffmpegCheck.error || 'Not found'}`);
-	}
-	
-	// Проверяем аудио устройства
 	try {
-		const devices = await FFmpegAudioRecorder.detectInputDevices();
-		if (devices.length > 0) {
-			diagnosticsResults.push(`✅ Audio devices found: ${devices.length}`);
-			devices.slice(0, 3).forEach(device => {
-				diagnosticsResults.push(`  📱 ${device}`);
+		// Запускаем расширенную диагностику FFmpeg
+		console.log('Running FFmpeg diagnostics...');
+		const ffmpegDiagnostics = await FFmpegAudioRecorder.runDiagnostics();
+		
+		// Проверяем поддержку FFmpeg
+		if (ffmpegDiagnostics.ffmpegAvailable.available) {
+			diagnosticsResults.push('✅ FFmpeg available');
+			if (ffmpegDiagnostics.ffmpegAvailable.version) {
+				diagnosticsResults.push(`📦 FFmpeg version: ${ffmpegDiagnostics.ffmpegAvailable.version}`);
+			}
+			if (ffmpegDiagnostics.ffmpegAvailable.path) {
+				diagnosticsResults.push(`📂 FFmpeg path: ${ffmpegDiagnostics.ffmpegAvailable.path}`);
+			}
+		} else {
+			diagnosticsResults.push(`❌ FFmpeg not available: ${ffmpegDiagnostics.ffmpegAvailable.error || 'Not found'}`);
+		}
+		
+		// Платформа
+		diagnosticsResults.push(`🖥️ Platform: ${ffmpegDiagnostics.platform}`);
+		diagnosticsResults.push(`⚙️ Audio input: ${ffmpegDiagnostics.platformCommands.audioInput}`);
+		diagnosticsResults.push(`🎙️ Default device: ${ffmpegDiagnostics.platformCommands.defaultDevice}`);
+		
+		if (ffmpegDiagnostics.recommendedDevice) {
+			diagnosticsResults.push(`🔍 Recommended device: ${ffmpegDiagnostics.recommendedDevice}`);
+		}
+		
+		// Проверяем аудио устройства
+		if (ffmpegDiagnostics.inputDevices.length > 0) {
+			diagnosticsResults.push(`✅ Audio devices found: ${ffmpegDiagnostics.inputDevices.length}`);
+			ffmpegDiagnostics.inputDevices.slice(0, 3).forEach((device, index) => {
+				const cleanDevice = device.replace(/\[\w+.*?\]\s*/, '').trim();
+				diagnosticsResults.push(`  📱 ${index}: ${cleanDevice}`);
 			});
+			if (ffmpegDiagnostics.inputDevices.length > 3) {
+				diagnosticsResults.push(`  ... and ${ffmpegDiagnostics.inputDevices.length - 3} more devices`);
+			}
 		} else {
 			diagnosticsResults.push('❌ No audio input devices found');
 		}
+		
+		// Ошибки и предупреждения диагностики
+		if (ffmpegDiagnostics.errors.length > 0) {
+			diagnosticsResults.push('❌ Diagnostic errors:');
+			ffmpegDiagnostics.errors.forEach(error => {
+				diagnosticsResults.push(`  • ${error}`);
+			});
+		}
+		
+		if (ffmpegDiagnostics.warnings.length > 0) {
+			diagnosticsResults.push('⚠️ Diagnostic warnings:');
+			ffmpegDiagnostics.warnings.forEach(warning => {
+				diagnosticsResults.push(`  • ${warning}`);
+			});
+		}
+		
+		// Тест записи (только если FFmpeg доступен)
+		if (ffmpegDiagnostics.ffmpegAvailable.available) {
+			diagnosticsResults.push('');
+			diagnosticsResults.push('🧪 Running audio recording test...');
+			
+			try {
+				const testResult = await FFmpegAudioRecorder.testRecording(2);
+				
+				if (testResult.success) {
+					diagnosticsResults.push(`✅ Recording test successful`);
+					diagnosticsResults.push(`📊 File size: ${testResult.fileSize} bytes`);
+					diagnosticsResults.push(`⏱️ Duration: ${testResult.duration}ms`);
+				} else {
+					diagnosticsResults.push(`❌ Recording test failed`);
+					if (testResult.error) {
+						diagnosticsResults.push(`  Error: ${testResult.error}`);
+					}
+					if (testResult.command) {
+						diagnosticsResults.push(`  Command: ${testResult.command}`);
+					}
+				}
+			} catch (testError) {
+				diagnosticsResults.push(`❌ Recording test exception: ${(testError as Error).message}`);
+			}
+		}
+		
 	} catch (error) {
-		diagnosticsResults.push(`❌ Audio device check failed: ${(error as Error).message}`);
+		diagnosticsResults.push(`❌ Diagnostics error: ${(error as Error).message}`);
 	}
 	
 	// Проверяем состояния
-	diagnosticsResults.push(`📊 Recording state: ${audioRecorder?.getIsRecording() ? 'active' : 'inactive'}`);
-	diagnosticsResults.push(`📊 Hold-to-record: ${isHoldToRecordActive ? 'active' : 'inactive'}`);
-	diagnosticsResults.push(`📊 Last transcription: ${lastTranscribedText ? 'available' : 'none'}`);
+	diagnosticsResults.push('');
+	diagnosticsResults.push('📊 Extension states:');
+	diagnosticsResults.push(`  Recording state: ${audioRecorder?.getIsRecording() ? 'active' : 'inactive'}`);
+	diagnosticsResults.push(`  Hold-to-record: ${isHoldToRecordActive ? 'active' : 'inactive'}`);
+	diagnosticsResults.push(`  Last transcription: ${lastTranscribedText ? 'available' : 'none'}`);
 	
 	// Проверяем настройки
 	const recordingMode = config.get<string>('recordingMode', 'hold');
 	const language = config.get<string>('language', 'auto');
 	const insertMode = config.get<string>('insertMode', 'cursor');
+	const inputDevice = config.get<string>('inputDevice', 'auto');
 	
-	diagnosticsResults.push(`⚙️ Recording mode: ${recordingMode}`);
-	diagnosticsResults.push(`⚙️ Language: ${language}`);
-	diagnosticsResults.push(`⚙️ Insert mode: ${insertMode}`);
+	diagnosticsResults.push('');
+	diagnosticsResults.push('⚙️ Configuration:');
+	diagnosticsResults.push(`  Recording mode: ${recordingMode}`);
+	diagnosticsResults.push(`  Language: ${language}`);
+	diagnosticsResults.push(`  Insert mode: ${insertMode}`);
+	diagnosticsResults.push(`  Input device: ${inputDevice}`);
 	
 	// Показываем результаты
 	const message = 'SpeechToTextWhisper Diagnostics:\n\n' + diagnosticsResults.join('\n');
 	
-	vscode.window.showInformationMessage(message, 'Copy to Clipboard', 'OK').then(selection => {
-		if (selection === 'Copy to Clipboard') {
-			vscode.env.clipboard.writeText(message);
-			vscode.window.showInformationMessage('Diagnostics copied to clipboard');
-		}
-	});
+	const selection = await vscode.window.showInformationMessage(
+		'Diagnostics completed. View results?', 
+		'Show Results', 
+		'Copy to Clipboard', 
+		'Test Recording'
+	);
 	
-	console.log('Diagnostics results:', diagnosticsResults);
+	if (selection === 'Show Results') {
+		// Создаем новый документ с результатами
+		const doc = await vscode.workspace.openTextDocument({
+			content: message,
+			language: 'plaintext'
+		});
+		await vscode.window.showTextDocument(doc);
+	} else if (selection === 'Copy to Clipboard') {
+		await vscode.env.clipboard.writeText(message);
+		vscode.window.showInformationMessage('Diagnostics copied to clipboard');
+	} else if (selection === 'Test Recording') {
+		// Запускаем быстрый тест записи
+		try {
+			await ensureFFmpegAudioRecorder();
+			await startRecording();
+			vscode.window.showInformationMessage('Test recording started. Stop it manually to test the full flow.');
+		} catch (error) {
+			vscode.window.showErrorMessage(`Test recording failed: ${(error as Error).message}`);
+		}
+	}
+	
+	console.log('Diagnostics completed:', diagnosticsResults);
 }
 
 /**
@@ -1223,6 +1389,12 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 			isHoldToRecordActive = false;
 			
+			// Проверяем нужно ли показывать ошибку
+			const errorMessage = error.message;
+			if (!shouldShowError(errorMessage)) {
+				return; // Пропускаем дублирующиеся ошибки
+			}
+			
 			// Используем новую систему обработки ошибок
 			const context: ErrorContext = {
 				operation: 'audio_recording',
@@ -1230,6 +1402,17 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				timestamp: new Date()
 			};
 			
+			// Для hold-to-record режима только логируем, не показываем popup
+			if (isHoldToRecordActive || errorMessage.includes('Recording too short') || errorMessage.includes('Recording is already in progress')) {
+				console.log(`🔇 Suppressing hold-to-record error: ${errorMessage}`);
+				// Только обновляем status bar
+				if (statusBarManager) {
+					statusBarManager.showWarning('Recording issue');
+				}
+				return;
+			}
+			
+			// Для обычных ошибок показываем через ErrorHandler
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
 			if (userAction && userAction !== 'ignore') {
@@ -1249,4 +1432,22 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 	});
 	
 	console.log('✅ FFmpeg audio recorder initialized');
+}
+
+/**
+ * Проверяет, нужно ли показывать ошибку или это спам
+ */
+function shouldShowError(errorMessage: string): boolean {
+	const now = Date.now();
+	const timeSinceLastError = now - lastErrorTime;
+	
+	// Если та же ошибка в течение 3 секунд - не показываем
+	if (lastErrorMessage === errorMessage && timeSinceLastError < MIN_ERROR_INTERVAL) {
+		console.log(`⚠️ Suppressing duplicate error: ${errorMessage}`);
+		return false;
+	}
+	
+	lastErrorTime = now;
+	lastErrorMessage = errorMessage;
+	return true;
 }

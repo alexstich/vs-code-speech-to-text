@@ -213,11 +213,11 @@ export class ErrorHandler {
         }],
         [ErrorType.AUDIO_RECORDING_FAILED, {
             type: ErrorType.AUDIO_RECORDING_FAILED,
-            severity: ErrorSeverity.ERROR,
-            displayStrategy: DisplayStrategy.POPUP,
-            recoveryAction: RecoveryAction.ENABLE_MICROPHONE,
-            message: 'Audio recording failed. Please check your microphone.',
-            retryable: true
+            severity: ErrorSeverity.WARNING,
+            displayStrategy: DisplayStrategy.STATUS_BAR,
+            recoveryAction: RecoveryAction.NONE,
+            message: 'Audio recording issue detected.',
+            retryable: false
         }],
         [ErrorType.CONFIGURATION_ERROR, {
             type: ErrorType.CONFIGURATION_ERROR,

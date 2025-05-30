@@ -6,6 +6,7 @@ import * as tmp from 'tmp';
 import which from 'which';
 import * as os from 'os';
 import * as path from 'path';
+import * as vscode from 'vscode';
 
 // Совместимые интерфейсы с текущим AudioRecorder
 export interface AudioRecorderEvents {
@@ -45,6 +46,13 @@ export interface FFmpegAvailability {
     version?: string;
     path?: string;
     error?: string;
+}
+
+// Результат обнаружения аудио устройств
+export interface AudioDevice {
+    id: string;           // ID для FFmpeg (например, ":0", ":1")
+    name: string;         // Читаемое имя (например, "MacBook Pro Microphone")
+    isDefault?: boolean;  // Является ли устройством по умолчанию
 }
 
 export class FFmpegAudioRecorder {
@@ -91,7 +99,7 @@ export class FFmpegAudioRecorder {
                 return {
                     platform,
                     audioInput: '-f avfoundation',
-                    defaultDevice: ':0'  // ":0" - встроенный микрофон
+                    defaultDevice: ':0'  // ":0" - первое аудио устройство (микрофон)
                 };
             case 'windows':
                 return {
@@ -171,7 +179,7 @@ export class FFmpegAudioRecorder {
     /**
      * Обнаружение доступных аудио устройств
      */
-    static async detectInputDevices(): Promise<string[]> {
+    static async detectInputDevices(): Promise<AudioDevice[]> {
         try {
             const ffmpegPath = await which('ffmpeg');
             const platform = FFmpegAudioRecorder.detectPlatform();
@@ -191,56 +199,111 @@ export class FFmpegAudioRecorder {
                         break;
                 }
 
+                console.log(`Detecting input devices with command: ffmpeg ${args.join(' ')}`);
                 const listProcess = spawn(ffmpegPath, args);
                 let output = '';
                 
+                // AVFoundation output идет в stderr
                 listProcess.stderr.on('data', (data) => {
                     output += data.toString();
                 });
 
                 listProcess.on('close', () => {
-                    const devices: string[] = [];
+                    const devices: AudioDevice[] = [];
                     
                     // Парсинг зависит от платформы
                     const lines = output.split('\n');
-                    console.log('FFmpeg device detection output:', output);
+                    console.log('FFmpeg device detection raw output:', output);
                     
-                    for (const line of lines) {
-                        if (platform === 'macos') {
-                            // AVFoundation формат: [AVFoundation indev @ 0x...] [0] MacBook Pro Microphone
-                            if (line.includes('AVFoundation indev') && line.match(/\[\d+\]/)) {
-                                const match = line.match(/\[\d+\]\s+(.+)$/);
-                                if (match && match[1].trim()) {
-                                    devices.push(match[1].trim());
+                    if (platform === 'macos') {
+                        let inAudioSection = false;
+                        
+                        for (const line of lines) {
+                            const trimmedLine = line.trim();
+                            
+                            // Ищем начало секции аудио устройств
+                            if (trimmedLine.includes('AVFoundation audio devices:')) {
+                                inAudioSection = true;
+                                continue;
+                            }
+                            
+                            // Парсим аудио устройства в формате [AVFoundation indev @ 0x...] [0] Device Name
+                            if (inAudioSection && trimmedLine.match(/\[AVFoundation.*?\]\s+\[(\d+)\]\s+(.+)$/)) {
+                                const match = trimmedLine.match(/\[AVFoundation.*?\]\s+\[(\d+)\]\s+(.+)$/);
+                                if (match && match[2].trim()) {
+                                    const deviceIndex = match[1];
+                                    const deviceName = match[2].trim();
+                                    devices.push({
+                                        id: `:${deviceIndex}`,
+                                        name: deviceName,
+                                        isDefault: deviceIndex === '0'
+                                    });
                                 }
                             }
-                        } else if (platform === 'windows' && line.includes('DirectShow audio device')) {
-                            const match = line.match(/"([^"]+)"/);
-                            if (match) devices.push(match[1]);
-                        } else if (platform === 'linux' && line.includes('pulse audio device')) {
-                            const match = line.match(/\[([^\]]+)\]/);
-                            if (match) devices.push(match[1]);
+                        }
+                    } else if (platform === 'windows') {
+                        for (const line of lines) {
+                            if (line.includes('DirectShow audio device') || line.includes('"')) {
+                                const match = line.match(/"([^"]+)"/);
+                                if (match) {
+                                    devices.push({
+                                        id: `audio="${match[1]}"`,
+                                        name: match[1],
+                                        isDefault: devices.length === 0
+                                    });
+                                }
+                            }
+                        }
+                    } else if (platform === 'linux') {
+                        for (const line of lines) {
+                            if (line.includes('pulse') || line.includes('alsa')) {
+                                const match = line.match(/\[([^\]]+)\]/);
+                                if (match) {
+                                    devices.push({
+                                        id: match[1],
+                                        name: match[1],
+                                        isDefault: match[1] === 'default'
+                                    });
+                                }
+                            }
                         }
                     }
+                    
+                    console.log('Parsed devices:', devices);
                     
                     // Если не нашли устройства, возвращаем дефолтные
                     if (devices.length === 0) {
                         console.log('No devices found, using default');
-                        devices.push('default');
-                    } else {
-                        console.log('Found devices:', devices);
+                        const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
+                        devices.push({
+                            id: platformCommands.defaultDevice,
+                            name: 'Default Audio Device',
+                            isDefault: true
+                        });
                     }
                     
                     resolve(devices);
                 });
 
-                listProcess.on('error', () => {
-                    resolve(['default']); // Fallback
+                listProcess.on('error', (error) => {
+                    console.error('Error detecting devices:', error);
+                    const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
+                    resolve([{
+                        id: platformCommands.defaultDevice,
+                        name: 'Default Audio Device (Error)',
+                        isDefault: true
+                    }]); // Fallback
                 });
             });
 
         } catch (error) {
-            return ['default']; // Fallback если что-то пошло не так
+            console.error('Exception in detectInputDevices:', error);
+            const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
+            return [{
+                id: platformCommands.defaultDevice,
+                name: 'Default Audio Device (Exception)',
+                isDefault: true
+            }]; // Fallback если что-то пошло не так
         }
     }
 
@@ -259,6 +322,18 @@ export class FFmpegAudioRecorder {
         }
 
         try {
+            // Запускаем диагностику для получения рекомендуемого устройства
+            console.log('Running audio diagnostics...');
+            const diagnostics = await FFmpegAudioRecorder.runDiagnostics();
+            
+            if (diagnostics.errors.length > 0) {
+                console.warn('Diagnostic errors:', diagnostics.errors);
+            }
+            
+            if (diagnostics.warnings.length > 0) {
+                console.warn('Diagnostic warnings:', diagnostics.warnings);
+            }
+
             // Создаем временный файл
             const tempFile = tmp.fileSync({ 
                 prefix: 'vscs-recording-', 
@@ -269,8 +344,43 @@ export class FFmpegAudioRecorder {
             this.tempFilePath = tempFile.name;
             this.tempFileCleanup = tempFile.removeCallback;
 
-            // Формируем команду FFmpeg
-            const ffmpegArgs = this.buildFFmpegArgs(this.tempFilePath);
+            const config = vscode.workspace.getConfiguration('speechToTextWhisper');
+            const selectedDeviceId = config.get<string>('inputDevice', 'auto');
+            const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
+            
+            // Определяем устройство для записи
+            let deviceToUse: string;
+            
+            try {
+                // Получаем доступные устройства
+                const devices = await FFmpegAudioRecorder.detectInputDevices();
+                
+                if (selectedDeviceId === 'auto' || !selectedDeviceId) {
+                    // Используем первое доступное устройство (обычно default)
+                    const defaultDevice = devices.find(device => device.isDefault) || devices[0];
+                    deviceToUse = defaultDevice?.id || platformCommands.defaultDevice;
+                    console.log(`🎯 Using auto-selected device: ${defaultDevice?.name || 'Default'} (${deviceToUse})`);
+                } else {
+                    // Проверяем, существует ли выбранное устройство
+                    const selectedDevice = devices.find(device => device.id === selectedDeviceId);
+                    if (selectedDevice) {
+                        deviceToUse = selectedDevice.id;
+                        console.log(`🎯 Using configured device: ${selectedDevice.name} (${deviceToUse})`);
+                    } else {
+                        console.warn(`⚠️ Configured device "${selectedDeviceId}" not found, falling back to default`);
+                        const defaultDevice = devices.find(device => device.isDefault) || devices[0];
+                        deviceToUse = defaultDevice?.id || platformCommands.defaultDevice;
+                    }
+                }
+            } catch (error) {
+                console.warn(`⚠️ Failed to get devices list, using platform default: ${(error as Error).message}`);
+                deviceToUse = platformCommands.defaultDevice;
+            }
+
+            // Формируем команду FFmpeg с рекомендуемым устройством
+            const ffmpegArgs = this.buildFFmpegArgs(this.tempFilePath, deviceToUse);
+            
+            console.log(`Starting recording with command: ffmpeg ${ffmpegArgs.join(' ')}`);
             
             // Запускаем процесс записи
             this.ffmpegProcess = spawn(ffmpegCheck.path!, ffmpegArgs);
@@ -299,6 +409,15 @@ export class FFmpegAudioRecorder {
             return;
         }
 
+        const recordingDuration = Date.now() - this.recordingStartTime;
+        console.log(`📊 Recording duration: ${recordingDuration}ms`);
+
+        // Если запись слишком короткая (менее 500ms), покажем предупреждение
+        if (recordingDuration < 500) {
+            console.warn('⚠️ Very short recording detected, may result in empty file');
+            // Но все равно попробуем остановить запись
+        }
+
         try {
             // Отправляем SIGTERM для graceful shutdown
             this.ffmpegProcess.kill('SIGTERM');
@@ -306,6 +425,7 @@ export class FFmpegAudioRecorder {
             // Timeout на случай, если процесс не завершится gracefully
             setTimeout(() => {
                 if (this.ffmpegProcess && !this.ffmpegProcess.killed) {
+                    console.log('⚠️ FFmpeg process did not terminate gracefully, forcing kill');
                     this.ffmpegProcess.kill('SIGKILL');
                 }
             }, 5000);
@@ -318,7 +438,7 @@ export class FFmpegAudioRecorder {
     /**
      * Создание аргументов для FFmpeg команды
      */
-    private buildFFmpegArgs(outputPath: string): string[] {
+    private buildFFmpegArgs(outputPath: string, recommendedDevice?: string): string[] {
         const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
         const args: string[] = [];
 
@@ -330,7 +450,8 @@ export class FFmpegAudioRecorder {
         args.push(...inputParts);
 
         // Устройство ввода
-        const inputDevice = this.options.inputDevice || platformCommands.defaultDevice;
+        const inputDevice = recommendedDevice || platformCommands.defaultDevice;
+        console.log(`Using input device: ${inputDevice} (platform: ${platformCommands.platform})`);
         args.push('-i', inputDevice);
 
         // Настройки аудио
@@ -359,6 +480,7 @@ export class FFmpegAudioRecorder {
         args.push('-y'); // Перезаписать если существует
         args.push(outputPath);
 
+        console.log(`FFmpeg command: ffmpeg ${args.join(' ')}`);
         return args;
     }
 
@@ -389,12 +511,14 @@ export class FFmpegAudioRecorder {
         if (!this.ffmpegProcess) return;
 
         this.ffmpegProcess.on('close', (code) => {
+            console.log(`FFmpeg process closed with code: ${code}`);
             if (this.isRecording) {
                 this.handleRecordingComplete(code);
             }
         });
 
         this.ffmpegProcess.on('error', (error) => {
+            console.error('FFmpeg process error:', error);
             this.isRecording = false;
             this.clearMaxDurationTimer();
             this.events.onError(new Error(`FFmpeg process error: ${error.message}`));
@@ -410,11 +534,46 @@ export class FFmpegAudioRecorder {
             const errorMessage = data.toString();
             console.log('FFmpeg stderr:', errorMessage);
             
-            // Проверяем критические ошибки, но не паникуем по поводу предупреждений
-            if (errorMessage.includes('No such file or directory') || 
-                errorMessage.includes('Permission denied') ||
-                errorMessage.includes('Device or resource busy')) {
-                console.error('FFmpeg critical error:', errorMessage);
+            // Ищем специфические ошибки, которые могут указывать на проблемы
+            if (errorMessage.includes('No such file or directory')) {
+                console.error('❌ FFmpeg error: Input device not found -', errorMessage);
+                this.events.onError(new Error('Audio input device not found. Please check your microphone.'));
+                return;
+            }
+            
+            if (errorMessage.includes('Permission denied')) {
+                console.error('❌ FFmpeg error: Permission denied -', errorMessage);
+                this.events.onError(new Error('Permission denied accessing microphone. Please grant microphone access to VS Code.'));
+                return;
+            }
+            
+            if (errorMessage.includes('Device or resource busy')) {
+                console.error('❌ FFmpeg error: Device busy -', errorMessage);
+                this.events.onError(new Error('Microphone is busy or being used by another application.'));
+                return;
+            }
+            
+            if (errorMessage.includes('Invalid data found when processing input')) {
+                console.error('❌ FFmpeg error: Invalid input data -', errorMessage);
+                this.events.onError(new Error('Invalid audio input. Please check your microphone settings.'));
+                return;
+            }
+            
+            if (errorMessage.includes('Immediate exit requested')) {
+                console.log('ℹ️ FFmpeg immediate exit (normal for short recordings)');
+                return;
+            }
+            
+            // Ошибки устройств на macOS
+            if (errorMessage.includes('AVFoundation input device') && errorMessage.includes('not found')) {
+                console.error('❌ macOS audio device error:', errorMessage);
+                this.events.onError(new Error('Audio input device not found on macOS. Please check microphone permissions in System Preferences.'));
+                return;
+            }
+            
+            // Проверяем на успешные индикаторы записи
+            if (errorMessage.includes('size=') && errorMessage.includes('time=')) {
+                console.log('✅ FFmpeg recording progress:', errorMessage.trim());
             }
         });
     }
@@ -433,33 +592,80 @@ export class FFmpegAudioRecorder {
                 console.warn(`FFmpeg exited with code ${exitCode}, but checking if file was created anyway`);
             }
 
-            if (!this.tempFilePath || !fs.existsSync(this.tempFilePath)) {
-                throw new Error('Recording file was not created');
+            // Проверяем наличие tempFilePath до всех операций
+            if (!this.tempFilePath) {
+                throw new Error('Recording was cancelled or temp file path is not available');
+            }
+
+            const currentTempFilePath = this.tempFilePath; // Сохраняем локальную копию
+
+            // Даем FFmpeg время записать файл
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            console.log(`Checking for recording file: ${currentTempFilePath}`);
+
+            if (!fs.existsSync(currentTempFilePath)) {
+                // Попробуем подождать еще немного
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (!fs.existsSync(currentTempFilePath)) {
+                    throw new Error(`Recording file was not created at: ${currentTempFilePath}`);
+                }
             }
 
             // Проверяем размер файла - если файл пустой, это ошибка
-            const stats = fs.statSync(this.tempFilePath);
+            const stats = fs.statSync(currentTempFilePath);
+            console.log(`Recording file size: ${stats.size} bytes`);
+            
+            const recordingDuration = Date.now() - this.recordingStartTime;
+            const MIN_FILE_SIZE = 1000; // Минимум 1KB для валидного аудиофайла
+            
             if (stats.size === 0) {
-                throw new Error('Recording file is empty');
+                // Подождем еще немного и проверим снова
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const newStats = fs.statSync(currentTempFilePath);
+                console.log(`Recording file size after wait: ${newStats.size} bytes`);
+                
+                if (newStats.size === 0) {
+                    console.error(`❌ Recording file is empty after ${recordingDuration}ms recording`);
+                    
+                    if (recordingDuration < 1000) {
+                        throw new Error('Recording too short. Hold the record button for at least 1 second.');
+                    } else {
+                        throw new Error('Recording file is empty. Please check your microphone permissions and ensure your microphone is working.');
+                    }
+                }
+            } else if (stats.size < MIN_FILE_SIZE) {
+                console.warn(`⚠️ Recording file is very small: ${stats.size} bytes (duration: ${recordingDuration}ms)`);
+                
+                if (recordingDuration < 1000) {
+                    throw new Error(`Recording too short (${recordingDuration}ms). Hold the record button longer to capture audio.`);
+                } else {
+                    throw new Error(`Recording file too small (${stats.size} bytes). Please check your microphone and try again.`);
+                }
             }
 
             // Читаем записанный файл
-            const audioBuffer = fs.readFileSync(this.tempFilePath);
+            const audioBuffer = fs.readFileSync(currentTempFilePath);
             
-            // Определяем MIME type
+            // Определяем MIME type и расширение файла
             const mimeType = this.getMimeType();
+            const fileExtension = this.getFileExtension();
             
             // Создаем Blob совместимый с текущим API
-            const audioBlob = new Blob([audioBuffer], { type: mimeType });
+            // Добавляем свойство name для определения формата в Whisper API
+            const audioBlob = new Blob([audioBuffer], { type: mimeType }) as Blob & { name?: string };
+            audioBlob.name = `recording.${fileExtension}`;
 
-            console.log(`Recording completed: ${stats.size} bytes, ${mimeType}`);
+            console.log(`Recording completed successfully: ${audioBuffer.length} bytes, ${mimeType}, filename: ${audioBlob.name}`);
 
             // Уведомляем о завершении записи
             this.events.onRecordingStop(audioBlob);
-
+            
         } catch (error) {
+            console.error('Error processing recording:', error);
             this.events.onError(new Error(`Failed to process recording: ${(error as Error).message}`));
         } finally {
+            // Очищаем ресурсы
             this.cleanup();
         }
     }
@@ -481,6 +687,26 @@ export class FFmpegAudioRecorder {
                 return 'audio/webm';
             default:
                 return 'audio/wav';
+        }
+    }
+
+    /**
+     * Получение расширения файла для записанного аудио
+     */
+    private getFileExtension(): string {
+        const format = this.options.audioFormat || 'wav';
+        
+        switch (format) {
+            case 'wav':
+                return 'wav';
+            case 'mp3':
+                return 'mp3';
+            case 'opus':
+                return 'opus';
+            case 'webm':
+                return 'webm';
+            default:
+                return 'wav';
         }
     }
 
@@ -628,5 +854,176 @@ export class FFmpegAudioRecorder {
                 available: false
             };
         }
+    }
+
+    /**
+     * Диагностика аудиоустройств и FFmpeg
+     */
+    static async runDiagnostics(): Promise<{
+        ffmpegAvailable: FFmpegAvailability;
+        inputDevices: string[];
+        platform: string;
+        platformCommands: PlatformCommands;
+        recommendedDevice?: string;
+        errors: string[];
+        warnings: string[];
+    }> {
+        const result = {
+            ffmpegAvailable: await FFmpegAudioRecorder.checkFFmpegAvailability(),
+            inputDevices: [] as string[],
+            platform: FFmpegAudioRecorder.detectPlatform(),
+            platformCommands: FFmpegAudioRecorder.getPlatformCommands(),
+            recommendedDevice: undefined as string | undefined,
+            errors: [] as string[],
+            warnings: [] as string[]
+        };
+
+        // Проверяем доступные устройства только если FFmpeg доступен
+        if (result.ffmpegAvailable.available) {
+            try {
+                result.inputDevices = await FFmpegAudioRecorder.detectInputDevices().then(devices => devices.map(device => device.name));
+                
+                // Рекомендации по устройствам для macOS
+                if (result.platform === 'macos') {
+                    // Проверяем доступность устройства ":0"
+                    const hasBuiltinMic = result.inputDevices.some(device => 
+                        device.toLowerCase().includes('built-in') || 
+                        device.toLowerCase().includes('microphone')
+                    );
+                    
+                    if (!hasBuiltinMic) {
+                        result.warnings.push('Built-in microphone not detected. You may need to grant microphone permissions to VS Code.');
+                    }
+                    
+                    // Если есть устройства, рекомендуем первое найденное аудиоустройство
+                    if (result.inputDevices.length > 0) {
+                        // Ищем устройство в формате [0] Device Name
+                        const firstDevice = result.inputDevices[0];
+                        const match = firstDevice.match(/^\[(\d+)\]/);
+                        if (match) {
+                            result.recommendedDevice = `:${match[1]}`;
+                        } else {
+                            // Fallback - используем :0
+                            result.recommendedDevice = ':0';
+                        }
+                    }
+                }
+            } catch (error) {
+                result.errors.push(`Failed to detect input devices: ${(error as Error).message}`);
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Тест записи аудио для диагностики
+     */
+    static async testRecording(duration: number = 2): Promise<{
+        success: boolean;
+        fileSize: number;
+        duration: number;
+        error?: string;
+        command?: string;
+    }> {
+        const diagnostics = await FFmpegAudioRecorder.runDiagnostics();
+        
+        if (!diagnostics.ffmpegAvailable.available) {
+            return {
+                success: false,
+                fileSize: 0,
+                duration: 0,
+                error: diagnostics.ffmpegAvailable.error || 'FFmpeg not available'
+            };
+        }
+
+        return new Promise((resolve) => {
+            const tempFile = tmp.fileSync({ 
+                prefix: 'vscs-test-recording-', 
+                postfix: '.wav',
+                keep: false
+            });
+
+            const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
+            const inputDevice = diagnostics.recommendedDevice || platformCommands.defaultDevice;
+            
+            const args = [
+                '-loglevel', 'info',  // Больше информации для диагностики
+                ...platformCommands.audioInput.split(' '),
+                '-i', inputDevice,
+                '-ar', '16000',
+                '-ac', '1',
+                '-acodec', 'pcm_s16le',
+                '-t', duration.toString(),
+                '-y',
+                tempFile.name
+            ];
+
+            console.log(`Test recording command: ffmpeg ${args.join(' ')}`);
+
+            const startTime = Date.now();
+            const testProcess = spawn(diagnostics.ffmpegAvailable.path!, args);
+            
+            let errorOutput = '';
+            let hasOutput = false;
+
+            testProcess.stderr?.on('data', (data) => {
+                const output = data.toString();
+                errorOutput += output;
+                console.log('FFmpeg test stderr:', output);
+                
+                // Проверяем есть ли признаки успешной записи
+                if (output.includes('size=') || output.includes('time=')) {
+                    hasOutput = true;
+                }
+            });
+
+            testProcess.on('close', (code) => {
+                const actualDuration = Date.now() - startTime;
+                
+                try {
+                    if (fs.existsSync(tempFile.name)) {
+                        const stats = fs.statSync(tempFile.name);
+                        
+                        // Очищаем временный файл
+                        tempFile.removeCallback();
+                        
+                        resolve({
+                            success: code === 0 && stats.size > 0,
+                            fileSize: stats.size,
+                            duration: actualDuration,
+                            command: `ffmpeg ${args.join(' ')}`,
+                            error: code !== 0 ? `Exit code: ${code}, stderr: ${errorOutput}` : undefined
+                        });
+                    } else {
+                        resolve({
+                            success: false,
+                            fileSize: 0,
+                            duration: actualDuration,
+                            command: `ffmpeg ${args.join(' ')}`,
+                            error: `No output file created. Exit code: ${code}, stderr: ${errorOutput}`
+                        });
+                    }
+                } catch (error) {
+                    resolve({
+                        success: false,
+                        fileSize: 0,
+                        duration: actualDuration,
+                        command: `ffmpeg ${args.join(' ')}`,
+                        error: `Error checking file: ${(error as Error).message}`
+                    });
+                }
+            });
+
+            testProcess.on('error', (error) => {
+                resolve({
+                    success: false,
+                    fileSize: 0,
+                    duration: Date.now() - startTime,
+                    command: `ffmpeg ${args.join(' ')}`,
+                    error: `Process error: ${error.message}`
+                });
+            });
+        });
     }
 } 
