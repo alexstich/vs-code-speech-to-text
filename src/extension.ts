@@ -352,14 +352,102 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('speechToTextWhisper.toggleStatusBar', toggleStatusBar),
 		
 		// Команда для тестирования
-		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', runDiagnostics)
+		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', runDiagnostics),
 		
-		// TODO: Добавить команды качества аудио позже
-		// vscode.commands.registerCommand('speechToTextWhisper.showQualitySettings', showQualitySettings),
-		// vscode.commands.registerCommand('speechToTextWhisper.applyQualityPreset', applyQualityPreset),
-		// vscode.commands.registerCommand('speechToTextWhisper.optimizeForContext', optimizeForContext),
-		// vscode.commands.executeCommand('speechToTextWhisper.exportQualitySettings', exportQualitySettings),
-		// vscode.commands.registerCommand('speechToTextWhisper.importQualitySettings', importQualitySettings)
+		// Диагностическая команда для F9 
+		vscode.commands.registerCommand('speechToTextWhisper.debugF9', async () => {
+			const config = vscode.workspace.getConfiguration('speechToTextWhisper');
+			const recordingMode = config.get<string>('recordingMode', 'hold');
+			const isRecording = audioRecorder?.getIsRecording() || false;
+			const apiKey = config.get<string>('apiKey');
+			
+			// Проверяем context variables
+			const contextActive = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.active');
+			const contextRecordingMode = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.recordingMode');
+			const contextHoldActive = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.holdToRecordActive');
+			const contextIsRecording = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.isRecording');
+			
+			const message = `F9 Debug Информация:
+
+🔧 Конфигурация:
+• Recording Mode: ${recordingMode}
+• API Key: ${apiKey ? 'Настроен' : '❌ Не настроен'}
+
+📊 Состояние:
+• Hold-to-Record Active: ${isHoldToRecordActive}
+• Is Recording: ${isRecording}
+• Audio Recorder: ${audioRecorder ? 'инициализирован' : '❌ не инициализирован'}
+
+🎮 Context Variables:
+• speechToTextWhisper.active: ${contextActive}
+• speechToTextWhisper.recordingMode: ${contextRecordingMode}
+• speechToTextWhisper.holdToRecordActive: ${contextHoldActive}
+• speechToTextWhisper.isRecording: ${contextIsRecording}
+
+⌨️ F9 должен:
+- В режиме "hold": удерживать F9 для записи
+- В режиме "toggle": нажать F9 для старт/стоп
+
+🔍 Следующие шаги:
+1. Откройте Developer Console (Help > Toggle Developer Tools)
+2. Попробуйте нажать F9 и проверьте логи
+3. Если логи не появляются - проблема с keybindings`;
+			
+			const selection = await vscode.window.showInformationMessage(
+				message, 
+				{ modal: true },
+				'Open Console', 
+				'Test Command', 
+				'Copy Debug Info'
+			);
+			
+			if (selection === 'Open Console') {
+				vscode.commands.executeCommand('workbench.action.toggleDevTools');
+			} else if (selection === 'Test Command') {
+				// Тестируем команду напрямую
+				console.log('🧪 Testing startHoldToRecord command directly');
+				await startHoldToRecord();
+				setTimeout(() => {
+					console.log('🧪 Testing stopHoldToRecord command directly');
+					stopHoldToRecord();
+				}, 2000);
+			} else if (selection === 'Copy Debug Info') {
+				await vscode.env.clipboard.writeText(message);
+				vscode.window.showInformationMessage('Debug info copied to clipboard');
+			}
+		}),
+		
+		// Команда для прямого тестирования F9
+		vscode.commands.registerCommand('speechToTextWhisper.testF9Commands', async () => {
+			vscode.window.showInformationMessage('Тестируем F9 команды...');
+			
+			console.log('🧪 Testing F9 commands manually');
+			
+			// Тест 1: Прямой вызов startHoldToRecord
+			try {
+				console.log('🧪 Test 1: startHoldToRecord');
+				await vscode.commands.executeCommand('speechToTextWhisper.startHoldToRecord');
+				
+				setTimeout(async () => {
+					console.log('🧪 Test 2: stopHoldToRecord');
+					await vscode.commands.executeCommand('speechToTextWhisper.stopHoldToRecord');
+					
+					setTimeout(async () => {
+						console.log('🧪 Test 3: toggleRecording');
+						await vscode.commands.executeCommand('speechToTextWhisper.toggleRecording');
+						
+						setTimeout(async () => {
+							await vscode.commands.executeCommand('speechToTextWhisper.toggleRecording');
+							vscode.window.showInformationMessage('F9 команды протестированы. Проверьте логи в консоли.');
+						}, 2000);
+					}, 1000);
+				}, 2000);
+				
+			} catch (error) {
+				console.error('🧪 Test failed:', error);
+				vscode.window.showErrorMessage(`Test failed: ${(error as Error).message}`);
+			}
+		})
 	];
 
 	// Добавляем все команды в подписки
@@ -499,6 +587,8 @@ async function toggleRecording(): Promise<void> {
  * Hold-to-record функции (F9)
  */
 async function startHoldToRecord(): Promise<void> {
+	console.log('🎯 startHoldToRecord called!'); // Добавляем лог
+	
 	// Очищаем предыдущий debounce timer
 	if (holdToRecordDebounceTimer) {
 		clearTimeout(holdToRecordDebounceTimer);
@@ -514,6 +604,8 @@ async function startHoldToRecord(): Promise<void> {
 	// Добавляем небольшой debounce для предотвращения множественных вызовов
 	holdToRecordDebounceTimer = setTimeout(async () => {
 		try {
+			console.log('🎯 Executing hold-to-record start after debounce');
+			
 			// Обеспечиваем инициализацию FFmpeg Audio Recorder
 			await ensureFFmpegAudioRecorder();
 			
@@ -533,6 +625,7 @@ async function startHoldToRecord(): Promise<void> {
 			
 			await startRecording();
 		} catch (error) {
+			console.error('❌ Hold-to-record failed:', error);
 			isHoldToRecordActive = false;
 			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 			
@@ -540,13 +633,16 @@ async function startHoldToRecord(): Promise<void> {
 			const errorMessage = (error as Error).message;
 			if (shouldShowError(errorMessage)) {
 				console.error('❌ Hold-to-record failed:', error);
-				// Не показываем уведомление для пользователя при hold-to-record ошибках
+				// Показываем уведомление для отладки
+				vscode.window.showErrorMessage(`Hold-to-record failed: ${errorMessage}`);
 			}
 		}
 	}, HOLD_TO_RECORD_DEBOUNCE);
 }
 
 function stopHoldToRecord(): void {
+	console.log('🎯 stopHoldToRecord called!'); // Добавляем лог
+	
 	// Очищаем debounce timer
 	if (holdToRecordDebounceTimer) {
 		clearTimeout(holdToRecordDebounceTimer);
@@ -554,6 +650,7 @@ function stopHoldToRecord(): void {
 	}
 	
 	if (!isHoldToRecordActive) {
+		console.log('🎯 Hold-to-record was not active, ignoring stop');
 		return; // Не активен
 	}
 	

@@ -12,9 +12,9 @@ import {
 // Mock для vscode API
 const mockVSCode = {
     window: {
-        showErrorMessage: sinon.stub(),
-        showWarningMessage: sinon.stub(),
-        showInformationMessage: sinon.stub()
+        showErrorMessage: sinon.stub().resolves('OK'),
+        showWarningMessage: sinon.stub().resolves('OK'),
+        showInformationMessage: sinon.stub().resolves('OK')
     }
 };
 
@@ -23,7 +23,7 @@ const mockVSCode = {
 
 suite('ErrorHandler Tests', () => {
     let errorHandler: ErrorHandler;
-    let mockDisplayHandler: sinon.SinonStubbedInstance<ErrorDisplayHandler>;
+    let mockDisplayHandler: any;
     let mockStatusBarManager: any;
 
     setup(() => {
@@ -32,16 +32,25 @@ suite('ErrorHandler Tests', () => {
         
         // Создаем моки
         mockDisplayHandler = {
-            showError: sinon.stub(),
-            showWarning: sinon.stub(),
-            showInformation: sinon.stub(),
+            showError: sinon.stub().resolves('OK'),
+            showWarning: sinon.stub().resolves('OK'),
+            showInformation: sinon.stub().resolves('OK'),
             updateStatusBar: sinon.stub()
         };
 
         mockStatusBarManager = {
-            showError: sinon.stub(),
-            showWarning: sinon.stub()
+            showError: sinon.stub().resolves(),
+            showWarning: sinon.stub().resolves()
         };
+
+        // Мокируем vscode методы с правильными возвращаемыми значениями
+        mockVSCode.window.showErrorMessage.reset();
+        mockVSCode.window.showWarningMessage.reset();
+        mockVSCode.window.showInformationMessage.reset();
+        
+        mockVSCode.window.showErrorMessage.resolves('OK');
+        mockVSCode.window.showWarningMessage.resolves('OK');
+        mockVSCode.window.showInformationMessage.resolves('OK');
 
         // Создаем ErrorHandler с моками
         errorHandler = new ErrorHandler(mockDisplayHandler, mockStatusBarManager);
@@ -228,27 +237,30 @@ suite('ErrorHandler Tests', () => {
         });
 
         test('Should call vscode.window.showErrorMessage for errors', async () => {
-            await displayHandler.showError('Test error', ErrorSeverity.ERROR, ['Action']);
+            const result = await displayHandler.showError('Test error', ErrorSeverity.ERROR, ['Action']);
 
             assert.ok(mockVSCode.window.showErrorMessage.called);
             const message = mockVSCode.window.showErrorMessage.firstCall.args[0];
             assert.ok(message.includes('❌'));
+            assert.strictEqual(result, 'OK');
         });
 
         test('Should call vscode.window.showWarningMessage for warnings', async () => {
-            await displayHandler.showWarning('Test warning', ['Action']);
+            const result = await displayHandler.showWarning('Test warning', ['Action']);
 
             assert.ok(mockVSCode.window.showWarningMessage.called);
             const message = mockVSCode.window.showWarningMessage.firstCall.args[0];
             assert.ok(message.includes('⚠️'));
+            assert.strictEqual(result, 'OK');
         });
 
         test('Should call vscode.window.showInformationMessage for info', async () => {
-            await displayHandler.showInformation('Test info', ['Action']);
+            const result = await displayHandler.showInformation('Test info', ['Action']);
 
             assert.ok(mockVSCode.window.showInformationMessage.called);
             const message = mockVSCode.window.showInformationMessage.firstCall.args[0];
             assert.ok(message.includes('ℹ️'));
+            assert.strictEqual(result, 'OK');
         });
     });
 

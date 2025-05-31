@@ -16,14 +16,13 @@ const mockVSCode = {
 // Сначала устанавливаем глобальный vscode
 (global as any).vscode = mockVSCode;
 
-// И только потом требуем модуль через require
-const { AudioQualityManager } = require('../../utils/AudioQualityManager');
+// И только потом требуем модуль через import
+import { AudioQualityManager } from '../../utils/AudioQualityManager';
 
 suite('AudioQualityManager Tests', () => {
     setup(() => {
-        // Сбрасываем моки
-        sinon.resetHistory();
-        sinon.resetBehavior();
+        // Полностью сбрасываем и пересоздаем моки
+        sinon.restore();
 
         // Настраиваем mock конфигурации
         mockConfig = {
@@ -31,21 +30,23 @@ suite('AudioQualityManager Tests', () => {
             update: sinon.stub().resolves()
         };
         
-        // Устанавливаем возврат конфигурации
+        // Переустанавливаем mock для workspace.getConfiguration
+        mockVSCode.workspace.getConfiguration.resetBehavior();
         mockVSCode.workspace.getConfiguration.returns(mockConfig);
 
-        // Базовые настройки с правильными ключами
+        // Настраиваем моки с правильными ключами конфигурации
+        // Используем точно те же ключи, что и в AudioQualityManager.getCurrentSettings()
         mockConfig.get.withArgs('audioQuality', 'standard').returns('standard');
         mockConfig.get.withArgs('audioFormat', 'wav').returns('wav');
         mockConfig.get.withArgs('echoCancellation', true).returns(true);
-        mockConfig.get.withArgs('noiseReduction', true).returns(true);
-        mockConfig.get.withArgs('autoGain', true).returns(true);
+        mockConfig.get.withArgs('noiseSuppression', true).returns(true);
+        mockConfig.get.withArgs('autoGain', true).returns(true);  // Обратите внимание: autoGain, не autoGainControl
         mockConfig.get.withArgs('silenceDetection', true).returns(true);
         mockConfig.get.withArgs('silenceThreshold', 2.0).returns(2.0);
         
-        // Добавим дополнительные настройки
+        // Дополнительные настройки (без значений по умолчанию)
         mockConfig.get.withArgs('sampleRate').returns(undefined);
-        mockConfig.get.withArgs('channelCount').returns(undefined);
+        mockConfig.get.withArgs('channels').returns(undefined);  // Обратите внимание: channels, не channelCount
     });
 
     teardown(() => {
@@ -66,8 +67,21 @@ suite('AudioQualityManager Tests', () => {
         });
 
         test('Should handle undefined optional settings', () => {
+            // Переустанавливаем мок для этого теста
+            mockConfig.get.reset();
+            
+            // Базовые обязательные настройки
+            mockConfig.get.withArgs('audioQuality', 'standard').returns('standard');
+            mockConfig.get.withArgs('audioFormat', 'wav').returns('wav');
+            mockConfig.get.withArgs('echoCancellation', true).returns(true);
+            mockConfig.get.withArgs('noiseSuppression', true).returns(true);
+            mockConfig.get.withArgs('autoGain', true).returns(true);
+            mockConfig.get.withArgs('silenceDetection', true).returns(true);
+            mockConfig.get.withArgs('silenceThreshold', 2.0).returns(2.0);
+            
+            // Необязательные настройки возвращают undefined
             mockConfig.get.withArgs('sampleRate').returns(undefined);
-            mockConfig.get.withArgs('channelCount').returns(undefined);
+            mockConfig.get.withArgs('channels').returns(undefined);
 
             const settings = AudioQualityManager.getCurrentSettings();
 
@@ -100,16 +114,19 @@ suite('AudioQualityManager Tests', () => {
         test('Should apply standard preset successfully', async () => {
             await AudioQualityManager.applyQualityPreset('standard');
 
-            assert.ok(mockConfig.update.calledWith('quality', 'standard'));
+            // Проверяем, что config.update был вызван с правильными ключами
+            assert.ok(mockConfig.update.calledWith('audioQuality', 'standard'));
             assert.ok(mockConfig.update.calledWith('sampleRate', 16000));
+            assert.ok(mockConfig.update.calledWith('channels', 1));  // channelCount -> channels
             assert.ok(mockConfig.update.calledWith('audioFormat', 'webm'));
         });
 
         test('Should apply high preset successfully', async () => {
             await AudioQualityManager.applyQualityPreset('high');
 
-            assert.ok(mockConfig.update.calledWith('quality', 'high'));
+            assert.ok(mockConfig.update.calledWith('audioQuality', 'high'));
             assert.ok(mockConfig.update.calledWith('sampleRate', 44100));
+            assert.ok(mockConfig.update.calledWith('channels', 1));
             assert.ok(mockConfig.update.calledWith('audioFormat', 'wav'));
         });
 

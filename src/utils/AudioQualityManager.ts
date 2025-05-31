@@ -72,9 +72,9 @@ export class AudioQualityManager {
             quality: config.get<'standard' | 'high' | 'ultra'>('audioQuality', 'standard'),
             audioFormat: config.get<'wav' | 'mp3' | 'webm'>('audioFormat', 'wav'),
             sampleRate: config.get<number>('sampleRate'),
-            channelCount: config.get<number>('channelCount'),
+            channelCount: config.get<number>('channels'),
             echoCancellation: config.get<boolean>('echoCancellation', true),
-            noiseSuppression: config.get<boolean>('noiseReduction', true),
+            noiseSuppression: config.get<boolean>('noiseSuppression', true),
             autoGainControl: config.get<boolean>('autoGain', true),
             silenceDetection: config.get<boolean>('silenceDetection', true),
             silenceThreshold: config.get<number>('silenceThreshold', 2.0)
@@ -92,10 +92,18 @@ export class AudioQualityManager {
 
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         
+        // Маппинг ключей между внутренним интерфейсом и VSCode настройками
+        const keyMapping: Record<string, string> = {
+            'quality': 'audioQuality',
+            'channelCount': 'channels',
+            'autoGainControl': 'autoGain'
+        };
+        
         // Применяем настройки из пресета
         for (const [key, value] of Object.entries(preset.settings)) {
             if (value !== undefined) {
-                await config.update(key, value, vscode.ConfigurationTarget.Global);
+                const configKey = keyMapping[key] || key;
+                await config.update(configKey, value, vscode.ConfigurationTarget.Global);
             }
         }
 
@@ -238,10 +246,18 @@ export class AudioQualityManager {
 
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             
+            // Маппинг ключей между внутренним интерфейсом и VSCode настройками
+            const keyMapping: Record<string, string> = {
+                'quality': 'audioQuality',
+                'channelCount': 'channels',
+                'autoGainControl': 'autoGain'
+            };
+            
             // Применяем настройки
             for (const [key, value] of Object.entries(settings)) {
                 if (value !== undefined) {
-                    await config.update(key, value, vscode.ConfigurationTarget.Global);
+                    const configKey = keyMapping[key] || key;
+                    await config.update(configKey, value, vscode.ConfigurationTarget.Global);
                 }
             }
 

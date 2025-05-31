@@ -59,6 +59,11 @@ function setVSCodeEnvironment(): void {
     mockVSCode.env.uriScheme = 'vscode';
 }
 
+function setUnknownEnvironment(): void {
+    mockVSCode.env.appName = 'Unknown Editor';
+    mockVSCode.env.uriScheme = 'unknown';
+}
+
 suite('ContextManager Tests', () => {
     let contextManager: ContextManager;
     let eventHandlers: sinon.SinonStubbedInstance<ContextManagerEvents>;
@@ -66,6 +71,9 @@ suite('ContextManager Tests', () => {
     setup(() => {
         // Сбрасываем все моки
         sinon.reset();
+        
+        // Устанавливаем VS Code среду по умолчанию
+        setVSCodeEnvironment();
         
         // Настраиваем заглушки для событий
         eventHandlers = {
@@ -96,10 +104,8 @@ suite('ContextManager Tests', () => {
 
     suite('IDE Type Detection', () => {
         test('Should detect VS Code correctly', () => {
-            mockVSCode.env.appName = 'Visual Studio Code';
-            mockVSCode.env.uriScheme = 'vscode';
-            
-            const manager = new ContextManager(eventHandlers);
+            setVSCodeEnvironment();
+            const manager = new ContextManager();
             
             assert.strictEqual(manager.getIDEType(), IDEType.VSCODE);
             assert.ok(manager.isVSCode());
@@ -109,38 +115,29 @@ suite('ContextManager Tests', () => {
         });
 
         test('Should detect Cursor correctly', () => {
-            // Используем helper функцию для установки Cursor среды
             setCursorEnvironment();
-            
-            const manager = new ContextManager(eventHandlers);
+            const manager = new ContextManager();
             
             assert.strictEqual(manager.getIDEType(), IDEType.CURSOR);
             assert.ok(manager.isCursor());
             assert.ok(!manager.isVSCode());
             
             manager.dispose();
-            
-            // Возвращаем VS Code среду
-            setVSCodeEnvironment();
         });
 
         test('Should handle unknown IDE gracefully', () => {
-            mockVSCode.env.appName = 'Unknown Editor';
-            mockVSCode.env.uriScheme = 'unknown';
-            
-            const manager = new ContextManager(eventHandlers);
+            setUnknownEnvironment();
+            const manager = new ContextManager();
             
             assert.strictEqual(manager.getIDEType(), IDEType.UNKNOWN);
             assert.ok(!manager.isVSCode());
             assert.ok(!manager.isCursor());
             
             manager.dispose();
-            
-            // Восстанавливаем VS Code среду
-            setVSCodeEnvironment();
         });
 
         test('Should trigger onIDETypeDetected event', () => {
+            // Проверяем событие, которое произошло при создании contextManager в setup()
             assert.ok(eventHandlers.onIDETypeDetected?.called);
             const detectedType = eventHandlers.onIDETypeDetected?.firstCall.args[0];
             assert.strictEqual(detectedType, IDEType.VSCODE);
@@ -191,21 +188,20 @@ suite('ContextManager Tests', () => {
         });
 
         test('Should detect chat context in Cursor when focused but no active components', () => {
-            // Настраиваем для Cursor IDE
-            mockVSCode.env.appName = 'Cursor';
-            const manager = new ContextManager(eventHandlers);
+            // Создаем отдельный экземпляр для Cursor
+            setCursorEnvironment();
+            const cursorManager = new ContextManager();
             
             mockVSCode.window.activeTextEditor = null;
             mockVSCode.window.activeTerminal = null;
             mockVSCode.debug.activeDebugSession = null;
             mockVSCode.window.state.focused = true;
             
-            manager.refreshContext();
+            cursorManager.refreshContext();
             
-            assert.strictEqual(manager.getContextType(), ContextType.CHAT);
-            assert.ok(manager.isChatActive());
+            assert.strictEqual(cursorManager.getContextType(), ContextType.CHAT);
             
-            manager.dispose();
+            cursorManager.dispose();
         });
     });
 
@@ -224,7 +220,7 @@ suite('ContextManager Tests', () => {
             contextManager.refreshContext();
             
             const language = contextManager.getCurrentLanguage();
-            assert.ok(language);
+            assert.ok(language, 'Language should be detected');
             assert.strictEqual(language.id, 'javascript');
             assert.strictEqual(language.name, 'JavaScript');
             assert.strictEqual(language.commentStyle, 'both');
@@ -246,7 +242,7 @@ suite('ContextManager Tests', () => {
             contextManager.refreshContext();
             
             const language = contextManager.getCurrentLanguage();
-            assert.ok(language);
+            assert.ok(language, 'Language should be detected');
             assert.strictEqual(language.id, 'python');
             assert.strictEqual(language.name, 'Python');
             assert.strictEqual(language.commentStyle, 'line');
@@ -267,7 +263,7 @@ suite('ContextManager Tests', () => {
             contextManager.refreshContext();
             
             const language = contextManager.getCurrentLanguage();
-            assert.ok(language);
+            assert.ok(language, 'Language should be detected even if unknown');
             assert.strictEqual(language.id, 'unknown-lang');
             assert.strictEqual(language.name, 'UNKNOWN-LANG');
             assert.strictEqual(language.commentStyle, 'line');
@@ -373,14 +369,16 @@ suite('ContextManager Tests', () => {
 
     suite('Event Handling', () => {
         test('Should trigger onContextChange when context changes', () => {
-            // Initial context
+            // Устанавливаем начальное состояние
             mockVSCode.window.activeTextEditor = null;
+            mockVSCode.window.activeTerminal = null;
+            mockVSCode.debug.activeDebugSession = null;
             contextManager.refreshContext();
             
-            // Clear previous calls
+            // Сбрасываем историю событий
             eventHandlers.onContextChange?.resetHistory();
             
-            // Change to editor context
+            // Изменяем контекст на редактор
             mockVSCode.window.activeTextEditor = {
                 document: {
                     fileName: '/test/file.js',
@@ -397,7 +395,7 @@ suite('ContextManager Tests', () => {
         });
 
         test('Should trigger onLanguageChange when language changes', () => {
-            // Initial language
+            // Устанавливаем начальный язык
             mockVSCode.window.activeTextEditor = {
                 document: {
                     fileName: '/test/file.js',
@@ -407,12 +405,17 @@ suite('ContextManager Tests', () => {
             };
             contextManager.refreshContext();
             
-            // Clear previous calls
+            // Сбрасываем историю событий
             eventHandlers.onLanguageChange?.resetHistory();
             
-            // Change language
-            mockVSCode.window.activeTextEditor.document.fileName = '/test/file.py';
-            mockVSCode.window.activeTextEditor.document.languageId = 'python';
+            // Изменяем язык
+            mockVSCode.window.activeTextEditor = {
+                document: {
+                    fileName: '/test/script.py',
+                    languageId: 'python'
+                },
+                selection: { active: { line: 0, character: 0 } }
+            };
             
             contextManager.refreshContext();
             

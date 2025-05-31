@@ -82,7 +82,10 @@ export class RetryManager {
                 };
                 
             } catch (error) {
-                lastError = error as Error;
+                // Правильно обрабатываем non-Error объекты
+                lastError = error instanceof Error 
+                    ? error 
+                    : new Error(String(error));
                 
                 console.log(`❌ ${operationName} failed on attempt ${attempt}: ${lastError.message}`);
                 

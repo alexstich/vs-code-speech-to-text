@@ -90,8 +90,12 @@ export class WhisperClient {
                 const response = await this.makeRequest('/audio/transcriptions', formData);
                 return this.processTranscriptionResponse(response, options);
             } catch (error) {
-                if (attempt === this.maxRetries || !this.isRetryableError(error)) {
-                    throw this.enhanceError(error as Error);
+                // Проверяем retryable до enhance для правильной логики
+                const isRetryable = this.isRetryableError(error);
+                const enhancedError = this.enhanceError(error as Error);
+                
+                if (attempt === this.maxRetries || !isRetryable) {
+                    throw enhancedError;
                 }
                 
                 // Ждем перед повторной попыткой
@@ -365,10 +369,22 @@ export class WhisperClient {
      * Проверка возможности повтора запроса
      */
     private isRetryableError(error: any): boolean {
+        // Проверяем по типу ошибки
+        if (error.name === 'AbortError') {
+            return true; // TIMEOUT - retryable
+        }
+        
+        // Проверяем network errors по сообщению
+        if (error.message && error.message.includes('fetch')) {
+            return true; // NETWORK_ERROR - retryable
+        }
+        
+        // Проверяем по коду (если уже enhanced)
         if (error.code === 'TIMEOUT' || error.code === 'NETWORK_ERROR') {
             return true;
         }
 
+        // Проверяем по HTTP статусу
         const retryableStatuses = [429, 500, 502, 503, 504];
         return retryableStatuses.includes(error.statusCode);
     }
