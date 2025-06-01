@@ -182,13 +182,13 @@ suite('Extension Integration Tests', () => {
             assert.strictEqual(language, 'en');
         });
 
-        test('Should read insertMode configuration', () => {
-            mockConfig.get.withArgs('insertMode', 'cursor').returns('comment');
+        test('Should read recordingMode configuration', () => {
+            mockConfig.get.withArgs('recordingMode', 'chat').returns('clipboard');
             
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-            const insertMode = config.get('insertMode', 'cursor');
+            const recordingMode = config.get('recordingMode', 'chat');
             
-            assert.strictEqual(insertMode, 'comment');
+            assert.strictEqual(recordingMode, 'clipboard');
         });
     });
 
