@@ -146,6 +146,13 @@ class RecordingStateManager {
 		}
 		return Date.now() - recordingState.startTime;
 	}
+
+	/**
+	 * Получение состояния записи
+	 */
+	static getState(): RecordingState {
+		return recordingState;
+	}
 }
 
 /**
@@ -353,6 +360,12 @@ function registerCommands(context: vscode.ExtensionContext): void {
  * Обработка транскрибации
  */
 async function handleTranscription(audioBlob: Blob): Promise<void> {
+	console.log('🎯 [TRANSCRIPTION] handleTranscription called');
+	console.log('🎯 [TRANSCRIPTION] Audio blob size:', audioBlob.size);
+	console.log('🎯 [TRANSCRIPTION] Audio blob type:', audioBlob.type);
+	console.log('🎯 [TRANSCRIPTION] Current recording state:', RecordingStateManager.isRecording());
+	console.log('🎯 [TRANSCRIPTION] Current mode:', RecordingStateManager.getCurrentMode());
+	
 	const context: ErrorContext = {
 		operation: 'transcription',
 		isHoldToRecordMode: false,
@@ -361,61 +374,37 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 	};
 
 	try {
-		console.log('🔄 Starting transcription process...');
+		console.log('🎯 [TRANSCRIPTION] Step 1: Getting recording state...');
+		const recordingState = RecordingStateManager.getState();
+		console.log('🎯 [TRANSCRIPTION] Recording state:', JSON.stringify(recordingState, null, 2));
 		
-		// Показываем состояние обработки
-		statusBarManager.showProcessing();
-		
-		// Проверяем наличие WhisperClient
-		if (!whisperClient) {
-			initializeWhisperClient();
-			if (!whisperClient) {
-				await errorHandler.handleError(ErrorType.API_KEY_MISSING, context);
-				return;
-			}
-		}
-
-		// Переход к состоянию транскрибации
-		statusBarManager.showTranscribing();
-
-		// Получаем настройки
-		const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-		const language = config.get<string>('language', 'auto');
-		const prompt = config.get<string>('prompt', '');
-
-		// Опции для транскрибации
-		const transcriptionOptions = {
-			language: language === 'auto' ? undefined : language,
-			prompt: prompt || undefined,
-			temperature: config.get<number>('temperature', 0.1)
-		};
-
-		console.log('🎯 Sending audio to Whisper API...');
-		
-		// Используем retry для API запроса
-		const transcriptionResult = await retryManager.retryApiRequest(
-			() => whisperClient.transcribe(audioBlob, transcriptionOptions),
-			'whisper_transcription',
-			{
-				maxAttempts: config.get<number>('maxRetries', 3),
-				baseDelay: 1000
-			}
-		);
-
-		if (!transcriptionResult.success) {
-			// Если retry не помог, обрабатываем через ErrorHandler
-			const error = transcriptionResult.lastError || new Error('Transcription failed after retries');
-			await errorHandler.handleErrorFromException(error, context);
+		if (!recordingState.mode) {
+			console.log('❌ [TRANSCRIPTION] No recording mode set, aborting');
 			return;
 		}
 
-		const transcribedText = transcriptionResult.result;
-		
-		if (transcribedText && transcribedText.trim()) {
-			console.log('✅ Transcription successful:', transcribedText.substring(0, 100));
+		console.log('🎯 [TRANSCRIPTION] Step 2: Checking WhisperClient...');
+		if (!whisperClient) {
+			console.error('❌ [TRANSCRIPTION] WhisperClient not initialized');
+			throw new Error('WhisperClient not initialized');
+		}
+		console.log('🎯 [TRANSCRIPTION] WhisperClient is available');
+
+		console.log('🎯 [TRANSCRIPTION] Step 3: Starting transcription...');
+		console.time('whisper.transcription');
+		const transcriptionResult = await whisperClient.transcribe(audioBlob);
+		console.timeEnd('whisper.transcription');
+		console.log('🎯 [TRANSCRIPTION] Step 3: Transcription completed');
+		console.log('🎯 [TRANSCRIPTION] Transcription result length:', transcriptionResult.length);
+		console.log('🎯 [TRANSCRIPTION] Transcription preview:', transcriptionResult.substring(0, 100) + (transcriptionResult.length > 100 ? '...' : ''));
+
+		if (transcriptionResult && transcriptionResult.trim().length > 0) {
+			console.log('🎯 [TRANSCRIPTION] Step 4: Processing non-empty transcription...');
+			lastTranscribedText = transcriptionResult.trim();
+			console.log('🎯 [TRANSCRIPTION] lastTranscribedText set, length:', lastTranscribedText.length);
 			
 			// Сохраняем последнюю транскрибацию
-			lastTranscribedText = transcribedText.trim();
+			lastTranscribedText = transcriptionResult.trim();
 			
 			// Показываем состояние вставки
 			statusBarManager.showInserting();
@@ -462,69 +451,124 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					return;
 				}
 			} else if (recordingState.mode === RecordingMode.CURRENT_CHAT) {
-				console.log('🎯 Sending to Cursor chat (mode: currentChat)');
+				console.log('🎯 [CHAT] Starting CURRENT_CHAT mode processing');
+				console.log('🎯 [CHAT] Transcribed text length:', lastTranscribedText.length);
+				console.log('🎯 [CHAT] Transcribed text preview:', lastTranscribedText.substring(0, 100) + (lastTranscribedText.length > 100 ? '...' : ''));
 				
 				try {
 					// Последовательность команд для текущего чата
-					console.log('🎯 Executing composer:startComposerPrompt...');
-					await vscode.commands.executeCommand('composer:startComposerPrompt');
+					console.log('🎯 [CHAT] Step 1: Executing aichat.insertselectionintochat...');
+					console.time('aichat.insertselectionintochat');
+					await vscode.commands.executeCommand('aichat.insertselectionintochat');
+					console.timeEnd('aichat.insertselectionintochat');
+					console.log('🎯 [CHAT] Step 1: aichat.insertselectionintochat completed successfully');
 					
 					// Задержка 200ms
+					console.log('🎯 [CHAT] Step 2: Waiting 200ms...');
 					await new Promise(resolve => setTimeout(resolve, 200));
+					console.log('🎯 [CHAT] Step 2: Wait completed');
 					
-					console.log('🎯 Executing chat.action.focus...');
+					console.log('🎯 [CHAT] Step 3: Executing chat.action.focus...');
+					console.time('chat.action.focus');
 					await vscode.commands.executeCommand('chat.action.focus');
+					console.timeEnd('chat.action.focus');
+					console.log('🎯 [CHAT] Step 3: chat.action.focus completed successfully');
 					
 					// Задержка 200ms
+					console.log('🎯 [CHAT] Step 4: Waiting 200ms...');
 					await new Promise(resolve => setTimeout(resolve, 200));
+					console.log('🎯 [CHAT] Step 4: Wait completed');
 					
 					// Вставляем текст в чат
-					console.log('🎯 Inserting text into chat...');
+					console.log('🎯 [CHAT] Step 5: Copying text to clipboard...');
+					console.time('clipboard.writeText');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
+					console.timeEnd('clipboard.writeText');
+					console.log('🎯 [CHAT] Step 5: Text copied to clipboard successfully');
+					
+					console.log('🎯 [CHAT] Step 6: Executing paste action...');
+					console.time('editor.action.clipboardPasteAction');
 					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+					console.timeEnd('editor.action.clipboardPasteAction');
+					console.log('🎯 [CHAT] Step 6: Paste action completed successfully');
 					
 					// Показываем успех
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
+					console.log('🎯 [CHAT] Step 7: Showing success messages...');
 					statusBarManager.showSuccess(`Sent to chat: "${truncatedText}"`);
 					vscode.window.showInformationMessage(`✅ Transcribed and sent to chat: "${truncatedText}"`);
+					console.log('🎯 [CHAT] Step 7: Success messages shown');
 					
 					// Сбрасываем режим
+					console.log('🎯 [CHAT] Step 8: Resetting recording state...');
 					RecordingStateManager.resetState();
+					console.log('🎯 [CHAT] Step 8: Recording state reset');
+					console.log('🎯 [CHAT] CURRENT_CHAT mode processing completed successfully');
 					return;
 					
 				} catch (error) {
-					console.error('❌ Failed to send to chat:', error);
+					console.error('❌ [CHAT] Failed to send to chat:', error);
+					console.error('❌ [CHAT] Error details:', {
+						name: (error as Error).name,
+						message: (error as Error).message,
+						stack: (error as Error).stack
+					});
 					vscode.window.showErrorMessage(`Failed to send to chat: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
 				}
 			} else if (recordingState.mode === RecordingMode.NEW_CHAT) {
-				console.log('🎯 Opening new chat (mode: newChat)');
+				console.log('🎯 [CHAT] Starting NEW_CHAT mode processing');
+				console.log('🎯 [CHAT] Transcribed text length:', lastTranscribedText.length);
+				console.log('🎯 [CHAT] Transcribed text preview:', lastTranscribedText.substring(0, 100) + (lastTranscribedText.length > 100 ? '...' : ''));
 				
 				try {
 					// Выполняем команду открытия нового чата
-					console.log('🎯 Executing aichat.newfollowupaction...');
+					console.log('🎯 [CHAT] Step 1: Executing aichat.newfollowupaction...');
+					console.time('aichat.newfollowupaction');
 					await vscode.commands.executeCommand('aichat.newfollowupaction');
+					console.timeEnd('aichat.newfollowupaction');
+					console.log('🎯 [CHAT] Step 1: aichat.newfollowupaction completed successfully');
 					
 					// Задержка 300ms
+					console.log('🎯 [CHAT] Step 2: Waiting 300ms...');
 					await new Promise(resolve => setTimeout(resolve, 300));
+					console.log('🎯 [CHAT] Step 2: Wait completed');
 					
 					// Вставляем текст в новый чат
-					console.log('🎯 Inserting text into new chat...');
+					console.log('🎯 [CHAT] Step 3: Copying text to clipboard...');
+					console.time('clipboard.writeText');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
+					console.timeEnd('clipboard.writeText');
+					console.log('🎯 [CHAT] Step 3: Text copied to clipboard successfully');
+					
+					console.log('🎯 [CHAT] Step 4: Executing paste action...');
+					console.time('editor.action.clipboardPasteAction');
 					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+					console.timeEnd('editor.action.clipboardPasteAction');
+					console.log('🎯 [CHAT] Step 4: Paste action completed successfully');
 					
 					// Показываем успех
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
+					console.log('🎯 [CHAT] Step 5: Showing success messages...');
 					statusBarManager.showSuccess(`Opened new chat: "${truncatedText}"`);
 					vscode.window.showInformationMessage(`✅ Transcribed and opened new chat: "${truncatedText}"`);
+					console.log('🎯 [CHAT] Step 5: Success messages shown');
 					
 					// Сбрасываем режим
+					console.log('🎯 [CHAT] Step 6: Resetting recording state...');
 					RecordingStateManager.resetState();
+					console.log('🎯 [CHAT] Step 6: Recording state reset');
+					console.log('🎯 [CHAT] NEW_CHAT mode processing completed successfully');
 					return;
 					
 				} catch (error) {
-					console.error('❌ Failed to open new chat:', error);
+					console.error('❌ [CHAT] Failed to open new chat:', error);
+					console.error('❌ [CHAT] Error details:', {
+						name: (error as Error).name,
+						message: (error as Error).message,
+						stack: (error as Error).stack
+					});
 					vscode.window.showErrorMessage(`Failed to open new chat: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
@@ -810,7 +854,9 @@ async function recordAndInsertOrClipboard(): Promise<void> {
  * Команда записи с отправкой в текущий чат Cursor (Ctrl+Shift+N)
  */
 async function recordAndInsertToCurrentChat(): Promise<void> {
-	console.log('🎤 [DEBUG] recordAndInsertToCurrentChat called!');
+	console.log('🎤 [COMMAND] recordAndInsertToCurrentChat called!');
+	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
+	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
 	vscode.window.showInformationMessage('🎤 [DEBUG] Command recordAndInsertToCurrentChat executed!');
 	
 	const context: ErrorContext = {
@@ -823,44 +869,53 @@ async function recordAndInsertToCurrentChat(): Promise<void> {
 		// Проверяем, идет ли уже запись
 		if (RecordingStateManager.isRecording()) {
 			// Останавливаем запись
-			console.log('⏹️ Stopping recording (recordAndInsertToCurrentChat)');
+			console.log('⏹️ [COMMAND] Stopping recording (recordAndInsertToCurrentChat)');
 			stopRecording();
 			return;
 		}
 
 		// Проверяем минимальный интервал между попытками ЗДЕСЬ
 		const now = Date.now();
+		console.log('🎤 [COMMAND] Checking recording interval, now:', now, 'last:', lastRecordingStartTime);
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			console.log('⚠️ [DEBUG] Too frequent recording attempts in command, skipping');
+			console.log('⚠️ [COMMAND] Too frequent recording attempts in command, skipping');
 			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
 			return;
 		}
 
-		console.log('🎤 Starting record and insert to current chat...');
+		console.log('🎤 [COMMAND] Starting record and insert to current chat...');
 		
 		// Начинаем запись с режимом CURRENT_CHAT
+		console.log('🎤 [COMMAND] Attempting to start recording with CURRENT_CHAT mode');
 		if (RecordingStateManager.startRecording(RecordingMode.CURRENT_CHAT)) {
+			console.log('🎤 [COMMAND] Recording state started successfully');
+			
 			// Обновляем StatusBar сразу при начале попытки записи
 			if (statusBarManager) {
+				console.log('🎤 [COMMAND] Updating status bar to recording state');
 				statusBarManager.updateRecordingState(true);
 			}
 			
 			// Устанавливаем время попытки записи
 			lastRecordingStartTime = now;
+			console.log('🎤 [COMMAND] Set lastRecordingStartTime to:', lastRecordingStartTime);
 			
+			console.log('🎤 [COMMAND] Calling startRecording()...');
 			await startRecording();
+			console.log('🎤 [COMMAND] startRecording() completed');
 			vscode.window.showInformationMessage('🎤 Recording... Press Ctrl+Shift+N again to stop and send to chat');
 		} else {
+			console.log('❌ [COMMAND] Failed to start recording state');
 			vscode.window.showWarningMessage('Recording already in progress or too frequent attempts');
 		}
 		
 	} catch (error) {
-		console.error('❌ Record and insert to current chat failed:', error);
-		RecordingStateManager.resetState();
-		// Сбрасываем StatusBar при ошибке
-		if (statusBarManager) {
-			statusBarManager.updateRecordingState(false);
-		}
+		console.error('❌ [COMMAND] recordAndInsertToCurrentChat failed:', error);
+		console.error('❌ [COMMAND] Error details:', {
+			name: (error as Error).name,
+			message: (error as Error).message,
+			stack: (error as Error).stack
+		});
 		await errorHandler.handleErrorFromException(error as Error, context);
 	}
 }
@@ -869,7 +924,9 @@ async function recordAndInsertToCurrentChat(): Promise<void> {
  * Команда записи с открытием нового чата (F9)
  */
 async function recordAndOpenNewChat(): Promise<void> {
-	console.log('🎤 [DEBUG] recordAndOpenNewChat called!');
+	console.log('🎤 [COMMAND] recordAndOpenNewChat called!');
+	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
+	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
 	vscode.window.showInformationMessage('🎤 [DEBUG] Command recordAndOpenNewChat executed!');
 	
 	const context: ErrorContext = {
@@ -882,44 +939,53 @@ async function recordAndOpenNewChat(): Promise<void> {
 		// Проверяем, идет ли уже запись
 		if (RecordingStateManager.isRecording()) {
 			// Останавливаем запись
-			console.log('⏹️ Stopping recording (recordAndOpenNewChat)');
+			console.log('⏹️ [COMMAND] Stopping recording (recordAndOpenNewChat)');
 			stopRecording();
 			return;
 		}
 
 		// Проверяем минимальный интервал между попытками ЗДЕСЬ
 		const now = Date.now();
+		console.log('🎤 [COMMAND] Checking recording interval, now:', now, 'last:', lastRecordingStartTime);
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			console.log('⚠️ [DEBUG] Too frequent recording attempts in command, skipping');
+			console.log('⚠️ [COMMAND] Too frequent recording attempts in command, skipping');
 			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
 			return;
 		}
 
-		console.log('🎤 Starting record and open new chat...');
+		console.log('🎤 [COMMAND] Starting record and open new chat...');
 		
 		// Начинаем запись с режимом NEW_CHAT
+		console.log('🎤 [COMMAND] Attempting to start recording with NEW_CHAT mode');
 		if (RecordingStateManager.startRecording(RecordingMode.NEW_CHAT)) {
+			console.log('🎤 [COMMAND] Recording state started successfully');
+			
 			// Обновляем StatusBar сразу при начале попытки записи
 			if (statusBarManager) {
+				console.log('🎤 [COMMAND] Updating status bar to recording state');
 				statusBarManager.updateRecordingState(true);
 			}
 			
 			// Устанавливаем время попытки записи
 			lastRecordingStartTime = now;
+			console.log('🎤 [COMMAND] Set lastRecordingStartTime to:', lastRecordingStartTime);
 			
+			console.log('🎤 [COMMAND] Calling startRecording()...');
 			await startRecording();
+			console.log('🎤 [COMMAND] startRecording() completed');
 			vscode.window.showInformationMessage('🎤 Recording... Press F9 again to stop and open new chat');
 		} else {
+			console.log('❌ [COMMAND] Failed to start recording state');
 			vscode.window.showWarningMessage('Recording already in progress or too frequent attempts');
 		}
 		
 	} catch (error) {
-		console.error('❌ Record and open new chat failed:', error);
-		RecordingStateManager.resetState();
-		// Сбрасываем StatusBar при ошибке
-		if (statusBarManager) {
-			statusBarManager.updateRecordingState(false);
-		}
+		console.error('❌ [COMMAND] recordAndOpenNewChat failed:', error);
+		console.error('❌ [COMMAND] Error details:', {
+			name: (error as Error).name,
+			message: (error as Error).message,
+			stack: (error as Error).stack
+		});
 		await errorHandler.handleErrorFromException(error as Error, context);
 	}
 }
@@ -928,8 +994,10 @@ async function recordAndOpenNewChat(): Promise<void> {
  * Команды записи
  */
 async function startRecording(): Promise<void> {
-	console.log('▶️ [DEBUG] startRecording() called - UNIQUE MESSAGE 12345');
-	console.log('▶️ [DEBUG] startRecording() called - FINAL VERSION 2024');
+	console.log('▶️ [RECORDING] startRecording() called');
+	console.log('▶️ [RECORDING] Current recording state:', RecordingStateManager.isRecording());
+	console.log('▶️ [RECORDING] Current mode:', RecordingStateManager.getCurrentMode());
+	console.log('▶️ [RECORDING] audioRecorder initialized:', !!audioRecorder);
 	
 	const context: ErrorContext = {
 		operation: 'start_recording',
@@ -938,41 +1006,44 @@ async function startRecording(): Promise<void> {
 	};
 
 	try {
-		console.log('▶️ [DEBUG] Starting recording... NO INTERVAL CHECKS');
-		
-		// УБИРАЕМ ВСЕ ПРОВЕРКИ ИНТЕРВАЛА - они только в командах
+		console.log('▶️ [RECORDING] Starting recording process...');
 		
 		// Обеспечиваем инициализацию FFmpeg Audio Recorder
-		console.log('🔧 [DEBUG] Calling ensureFFmpegAudioRecorder...');
+		console.log('🔧 [RECORDING] Step 1: Ensuring FFmpeg Audio Recorder initialization...');
+		console.time('ensureFFmpegAudioRecorder');
 		await ensureFFmpegAudioRecorder();
-		console.log('🔧 [DEBUG] ensureFFmpegAudioRecorder completed successfully');
+		console.timeEnd('ensureFFmpegAudioRecorder');
+		console.log('🔧 [RECORDING] Step 1: ensureFFmpegAudioRecorder completed successfully');
 		
 		// Проверяем, что audioRecorder инициализирован
 		if (!audioRecorder) {
-			console.error('❌ [DEBUG] audioRecorder is null after ensureFFmpegAudioRecorder');
+			console.error('❌ [RECORDING] audioRecorder is null after ensureFFmpegAudioRecorder');
 			// Сбрасываем состояние записи если audioRecorder не инициализирован
 			RecordingStateManager.resetState();
 			vscode.window.showErrorMessage('❌ Failed to initialize audio recorder');
 			return;
 		}
 		
-		console.log('✅ [DEBUG] audioRecorder is initialized, checking if already recording...');
+		console.log('✅ [RECORDING] Step 2: audioRecorder is initialized, checking if already recording...');
 		
 		// Проверяем, не идет ли уже запись
-		if (audioRecorder.getIsRecording()) {
-			console.log('⚠️ [DEBUG] Recording already in progress, skipping start');
+		const isCurrentlyRecording = audioRecorder.getIsRecording();
+		console.log('✅ [RECORDING] audioRecorder.getIsRecording():', isCurrentlyRecording);
+		if (isCurrentlyRecording) {
+			console.log('⚠️ [RECORDING] Recording already in progress, skipping start');
 			return;
 		}
 		
-		console.log('🎤 [DEBUG] audioRecorder not recording, checking microphone...');
+		console.log('🎤 [RECORDING] Step 3: audioRecorder not recording, checking microphone...');
 		
 		// Проверяем состояние микрофона с retry
-		console.log('🔍 [DEBUG] Starting microphone permission check...');
+		console.log('🔍 [RECORDING] Step 3a: Starting microphone permission check...');
+		console.time('microphone.permission.check');
 		const microphoneResult = await retryManager.retryMicrophoneOperation(
 			async () => {
-				console.log('🔍 [DEBUG] Calling FFmpegAudioRecorder.checkMicrophonePermission...');
+				console.log('🔍 [RECORDING] Calling FFmpegAudioRecorder.checkMicrophonePermission...');
 				const hasPermission = await FFmpegAudioRecorder.checkMicrophonePermission();
-				console.log('🔍 [DEBUG] Microphone permission result:', JSON.stringify(hasPermission, null, 2));
+				console.log('🔍 [RECORDING] Microphone permission result:', JSON.stringify(hasPermission, null, 2));
 				if (hasPermission.state !== 'granted') {
 					throw new Error('Microphone permission not granted');
 				}
@@ -980,25 +1051,33 @@ async function startRecording(): Promise<void> {
 			},
 			'microphone_permission_check'
 		);
+		console.timeEnd('microphone.permission.check');
 
-		console.log('🔍 [DEBUG] Microphone operation result:', JSON.stringify(microphoneResult, null, 2));
+		console.log('🔍 [RECORDING] Step 3b: Microphone operation result:', JSON.stringify(microphoneResult, null, 2));
 
 		if (!microphoneResult.success) {
 			const error = microphoneResult.lastError || new Error('Microphone access failed');
-			console.error('❌ [DEBUG] Microphone check failed:', error);
+			console.error('❌ [RECORDING] Microphone check failed:', error);
 			// Сбрасываем состояние записи при ошибке микрофона
 			RecordingStateManager.resetState();
 			await errorHandler.handleErrorFromException(error, context);
 			return;
 		}
 		
-		console.log('✅ [DEBUG] Microphone check passed, calling audioRecorder.startRecording()...');
+		console.log('✅ [RECORDING] Step 4: Microphone check passed, calling audioRecorder.startRecording()...');
+		console.time('audioRecorder.startRecording');
 		await audioRecorder.startRecording();
-		console.log('✅ [DEBUG] audioRecorder.startRecording() completed successfully');
+		console.timeEnd('audioRecorder.startRecording');
+		console.log('✅ [RECORDING] Step 4: audioRecorder.startRecording() completed successfully');
+		console.log('✅ [RECORDING] Recording process completed successfully');
 		
 	} catch (error) {
-		console.error('❌ [DEBUG] Failed to start recording:', error);
-		console.error('❌ [DEBUG] Error stack:', (error as Error).stack);
+		console.error('❌ [RECORDING] Failed to start recording:', error);
+		console.error('❌ [RECORDING] Error details:', {
+			name: (error as Error).name,
+			message: (error as Error).message,
+			stack: (error as Error).stack
+		});
 		// Сбрасываем состояние записи при любой ошибке
 		RecordingStateManager.resetState();
 		await errorHandler.handleErrorFromException(error as Error, context);
@@ -1007,28 +1086,46 @@ async function startRecording(): Promise<void> {
 
 function stopRecording(): void {
 	try {
-		console.log('⏹️ [DEBUG] stopRecording() called');
+		console.log('⏹️ [RECORDING] stopRecording() called');
+		console.log('⏹️ [RECORDING] Current recording state:', RecordingStateManager.isRecording());
+		console.log('⏹️ [RECORDING] Current mode:', RecordingStateManager.getCurrentMode());
+		console.log('⏹️ [RECORDING] audioRecorder initialized:', !!audioRecorder);
 		
 		// Сбрасываем режим записи через RecordingStateManager в любом случае
+		console.log('⏹️ [RECORDING] Step 1: Stopping recording state...');
 		const previousMode = RecordingStateManager.stopRecording();
-		console.log(`⏹️ [DEBUG] Recording state reset, previous mode was: ${previousMode}`);
+		console.log(`⏹️ [RECORDING] Step 1: Recording state reset, previous mode was: ${previousMode}`);
 		
 		// Обновляем StatusBar сразу при остановке
+		console.log('⏹️ [RECORDING] Step 2: Updating status bar...');
 		if (statusBarManager) {
 			statusBarManager.updateRecordingState(false);
+			console.log('⏹️ [RECORDING] Step 2: Status bar updated to not recording');
+		} else {
+			console.log('⏹️ [RECORDING] Step 2: statusBarManager not available');
 		}
 		
 		if (!audioRecorder) {
-			console.warn('⚠️ [DEBUG] Audio recorder not initialized, but state was reset');
+			console.warn('⚠️ [RECORDING] Audio recorder not initialized, but state was reset');
 			return;
 		}
 		
-		console.log('⏹️ [DEBUG] Calling audioRecorder.stopRecording()...');
+		console.log('⏹️ [RECORDING] Step 3: Calling audioRecorder.stopRecording()...');
+		console.log('⏹️ [RECORDING] audioRecorder.getIsRecording() before stop:', audioRecorder.getIsRecording());
+		console.time('audioRecorder.stopRecording');
 		audioRecorder.stopRecording();
-		console.log('✅ [DEBUG] stopRecording completed');
+		console.timeEnd('audioRecorder.stopRecording');
+		console.log('⏹️ [RECORDING] Step 3: audioRecorder.stopRecording() completed');
+		console.log('⏹️ [RECORDING] audioRecorder.getIsRecording() after stop:', audioRecorder.getIsRecording());
+		console.log('✅ [RECORDING] stopRecording completed successfully');
 		
 	} catch (error) {
-		console.error('❌ [DEBUG] Failed to stop recording:', error);
+		console.error('❌ [RECORDING] Failed to stop recording:', error);
+		console.error('❌ [RECORDING] Error details:', {
+			name: (error as Error).name,
+			message: (error as Error).message,
+			stack: (error as Error).stack
+		});
 		// Убеждаемся что состояние сброшено даже при ошибке
 		RecordingStateManager.resetState();
 		// Обновляем StatusBar при ошибке
