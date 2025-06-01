@@ -78,6 +78,7 @@ export class ContextManager {
     private currentContext: IDEContext;
     private events: ContextManagerEvents;
     private disposables: vscode.Disposable[] = [];
+    private lastEditorActiveTime: number = 0;
     
     // Кэш языковых настроек
     private languageCache = new Map<string, LanguageInfo>();
@@ -151,6 +152,9 @@ export class ContextManager {
         this.disposables.push(
             vscode.window.onDidChangeActiveTextEditor((editor) => {
                 console.log('🔄 Active editor changed');
+                if (editor) {
+                    this.lastEditorActiveTime = Date.now();
+                }
                 this.updateContext();
             })
         );
@@ -269,13 +273,31 @@ export class ContextManager {
             return ContextType.EDITOR;
         }
         
-        // Для Cursor - попытка определить AI чат
+        // Для Cursor - улучшенное определение AI чата
         if (this.ideType === IDEType.CURSOR) {
-            // В Cursor пока нет прямого API для определения чата
-            // Используем эвристику: если нет активного редактора или терминала,
-            // но есть фокус в IDE - возможно это чат
+            // Проверяем состояние активности IDE
             if (vscode.window.state.focused) {
-                return ContextType.CHAT;
+                // Проверяем, есть ли открытые редакторы
+                const hasOpenEditors = vscode.window.visibleTextEditors.length > 0;
+                
+                // ОСНОВНАЯ ЛОГИКА: Если нет открытых редакторов и нет активного терминала - вероятно чат
+                if (!hasOpenEditors && !vscode.window.activeTerminal && !vscode.debug.activeDebugSession) {
+                    console.log('🎯 Cursor chat context detected (no editors, no terminal, no debugger - likely in chat)');
+                    return ContextType.CHAT;
+                }
+                
+                // ДОПОЛНИТЕЛЬНАЯ ЭВРИСТИКА: Если есть редакторы, но ни один не активен больше 3 секунд
+                const timeSinceLastEditor = Date.now() - (this.lastEditorActiveTime || 0);
+                if (hasOpenEditors && timeSinceLastEditor > 3000) { // 3 секунды без активного редактора
+                    console.log('🎯 Cursor chat context detected (editors open but none active for >3s)');
+                    return ContextType.CHAT;
+                }
+                
+                // НОВАЯ ЛОГИКА: Если IDE сфокусирован, но нет активного элемента UI - чат
+                if (!vscode.window.activeTextEditor && !vscode.window.activeTerminal && !vscode.debug.activeDebugSession) {
+                    console.log('🎯 Cursor chat context detected (IDE focused but no active UI elements)');
+                    return ContextType.CHAT;
+                }
             }
         }
         

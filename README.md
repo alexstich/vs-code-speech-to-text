@@ -1,118 +1,77 @@
-# SpeechToTextWhisper - Speech to Text Extension
+# 🎤 Speech to Text with Whisper
 
-Transform your voice into text effortlessly with OpenAI Whisper API integration for VS Code and Cursor IDE.
+> Превратите свой голос в код! Профессиональное расширение для голосового ввода в VS Code и Cursor IDE с интеграцией OpenAI Whisper API.
 
-## ✨ Features
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.74.0+-blue.svg)](https://code.visualstudio.com/)
+[![Cursor IDE](https://img.shields.io/badge/Cursor%20IDE-Supported-green.svg)](https://cursor.sh/)
+[![OpenAI Whisper](https://img.shields.io/badge/OpenAI-Whisper%20API-orange.svg)](https://openai.com/research/whisper)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-Required-red.svg)](https://ffmpeg.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-- **🎙️ Voice Recording**: High-quality audio recording using FFmpeg
-- **🤖 AI Transcription**: Powered by OpenAI Whisper API for accurate speech-to-text
-- **🎯 Smart Insertion**: Insert text at cursor, as comments, or replace selection
-- **🔄 Multiple Modes**: Hold-to-record or toggle recording modes
-- **🌐 Multi-language**: Support for auto-detection and 11+ languages
-- **💬 Cursor Integration**: Special integration with Cursor IDE AI chat
-- **⚡ Fast & Efficient**: Quick transcription with status bar indicators
-- **🖥️ Cross-platform**: Native audio recording on Windows, macOS, and Linux
+## ✨ Основные возможности
 
-## 🚀 Quick Start
+### 🎙️ **Профессиональная запись аудио**
+- **Высококачественная запись** с использованием FFmpeg
+- **Кроссплатформенная поддержка**: Windows, macOS, Linux
+- **Множественные форматы**: WAV (без сжатия), MP3, WebM, Opus
+- **Настраиваемое качество**: от 16kHz до 48kHz
+- **Автоматическое определение устройств**: микрофоны, линейные входы
 
-1. **Install FFmpeg** (required for audio recording):
-   - **Windows**: Download from [ffmpeg.org](https://ffmpeg.org/download.html) or use `winget install FFmpeg`
-   - **macOS**: `brew install ffmpeg`
-   - **Linux**: `sudo apt install ffmpeg` (Ubuntu/Debian) or `sudo dnf install ffmpeg` (Fedora)
+### 🤖 **ИИ-транскрибация**
+- **OpenAI Whisper API**: самая точная модель распознавания речи
+- **Автоопределение языка**: поддержка 40+ языков
+- **Контекстные подсказки**: улучшение точности для технических терминов
+- **Настраиваемая температура**: от детерминированного до креативного распознавания
 
-2. **Install the extension** from VS Code Marketplace
+### 🎯 **Умная вставка текста**
+- **Вставка в позицию курсора**: точно там, где вы работаете
+- **Комментарии**: автоматическое форматирование для любого языка программирования
+- **Замена выделения**: обновление существующего кода голосом
+- **Буфер обмена**: копирование для использования в других приложениях
 
-3. **Set your OpenAI API key**:
-   - Open VS Code settings (`Ctrl+,` / `Cmd+,`)
-   - Search for "SpeechToTextWhisper"
-   - Enter your OpenAI API key
+### 💬 **Интеграция с Cursor IDE** ⭐ *НОВОЕ*
+- **Прямая отправка в AI чат**: голосовое общение с ИИ-ассистентом
+- **Множественные стратегии**: автоматический fallback при сбоях
+- **Контекстное определение**: автоматическая отправка в чат или редактор
+- **Сохранение буфера обмена**: не нарушает ваш рабочий процесс
 
-4. **Start recording**: Press `F9` and start speaking!
+### ⚡ **Быстрый и эффективный**
+- **Мгновенная обратная связь**: индикаторы в статус-баре
+- **Режимы записи**: Hold-to-record (F9) или Toggle
+- **Автоматическое определение тишины**: умная остановка записи
+- **Retry-механизмы**: автоматические повторы при сбоях сети
 
-## ⌨️ Keyboard Shortcuts
+## 🚀 Быстрый старт
 
-| Shortcut | Action |
-|----------|--------|
-| `F9` | Toggle voice recording (hold mode) |
-| `Ctrl+Shift+V` / `Cmd+Shift+V` | Start recording |
-| `Ctrl+Shift+Alt+V` / `Cmd+Shift+Alt+V` | Record and send to AI chat |
+### 1️⃣ Установка FFmpeg (обязательно)
 
-## 🛠️ Configuration
+<details>
+<summary><strong>🪟 Windows</strong></summary>
 
-### Basic Settings
-
-- **API Key**: Your OpenAI API key for Whisper transcription
-- **Language**: Choose specific language or auto-detect (default)
-- **Recording Mode**: Hold or toggle recording
-- **Insert Mode**: How to insert transcribed text
-- **Audio Quality**: Standard or high quality recording (16kHz/44.1kHz)
-- **Audio Format**: WAV or MP3 output format
-- **Input Device**: Select specific microphone/audio input device
-
-### Advanced Settings
-
-- **Cursor Integration**: Enable special Cursor IDE features
-- **Status Bar**: Show/hide recording status indicator
-- **Context Detection**: Auto-detect active IDE context
-- **Max Duration**: Set maximum recording length (5-300 seconds)
-- **FFmpeg Path**: Custom FFmpeg executable path (auto-detected by default)
-- **Recording Device**: Platform-specific input device selection
-
-## 📋 Commands
-
-Access via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
-
-- `SpeechToTextWhisper: Start Voice Recording`
-- `SpeechToTextWhisper: Stop Voice Recording`
-- `SpeechToTextWhisper: Toggle Voice Recording`
-- `SpeechToTextWhisper: Record and Send to AI Chat`
-- `SpeechToTextWhisper: Record and Insert as Comment`
-- `SpeechToTextWhisper: Open SpeechToTextWhisper Settings`
-- `SpeechToTextWhisper: Run Diagnostics`
-
-## 🌍 Supported Languages
-
-- Auto-detect (recommended)
-- English, Russian, Spanish, French
-- German, Italian, Portuguese
-- Chinese, Japanese, Korean
-
-## 🔧 Requirements
-
-### System Requirements
-- VS Code 1.74.0 or later
-- **FFmpeg** (required for audio recording)
-- OpenAI API key with Whisper access
-- Audio input device (microphone)
-
-### Platform Support
-- **Windows 10/11**: DirectShow audio input
-- **macOS**: AVFoundation audio input
-- **Linux**: PulseAudio/ALSA audio input
-
-### FFmpeg Installation
-
-The extension requires FFmpeg for high-quality, cross-platform audio recording:
-
-#### Windows
 ```bash
-# Using winget (Windows 11/Windows 10 with App Installer)
+# Используя winget (рекомендуется)
 winget install FFmpeg
 
-# Or download from https://ffmpeg.org/download.html
-# Add FFmpeg to your PATH environment variable
+# Или скачайте с https://ffmpeg.org/download.html
+# Добавьте FFmpeg в переменную PATH
 ```
+</details>
 
-#### macOS
+<details>
+<summary><strong>🍎 macOS</strong></summary>
+
 ```bash
-# Using Homebrew (recommended)
+# Используя Homebrew (рекомендуется)
 brew install ffmpeg
 
-# Using MacPorts
+# Используя MacPorts
 sudo port install ffmpeg
 ```
+</details>
 
-#### Linux
+<details>
+<summary><strong>🐧 Linux</strong></summary>
+
 ```bash
 # Ubuntu/Debian
 sudo apt update && sudo apt install ffmpeg
@@ -122,144 +81,414 @@ sudo dnf install ffmpeg
 
 # Arch Linux
 sudo pacman -S ffmpeg
+```
+</details>
 
-# Alpine Linux
-sudo apk add ffmpeg
+### 2️⃣ Установка расширения
+
+1. Откройте VS Code или Cursor IDE
+2. Перейдите в Extensions (`Ctrl+Shift+X`)
+3. Найдите "Speech to Text with Whisper"
+4. Нажмите **Install**
+
+### 3️⃣ Настройка API ключа
+
+1. Получите API ключ на [platform.openai.com](https://platform.openai.com/api-keys)
+2. Откройте настройки (`Ctrl+,` / `Cmd+,`)
+3. Найдите "Speech to Text with Whisper"
+4. Введите ваш OpenAI API ключ
+
+### 4️⃣ Первая запись
+
+1. Нажмите и удерживайте **F9**
+2. Говорите четко в микрофон
+3. Отпустите **F9** для завершения
+4. Текст автоматически вставится в редактор!
+
+## ⌨️ Горячие клавиши
+
+| Комбинация | Действие | Режим |
+|------------|----------|-------|
+| **F9** | Hold-to-record | Удерживайте для записи |
+| **F9** | Toggle recording | Нажмите для старт/стоп |
+| **Ctrl+Shift+V** | Переключить запись | Любой редактор |
+| **Ctrl+Shift+Alt+V** | Записать и отправить в AI чат | Cursor IDE |
+| **Ctrl+Shift+C** | Записать как комментарий | Любой редактор |
+
+## 🎛️ Настройки
+
+### 🔧 Основные настройки
+
+| Параметр | Описание | По умолчанию |
+|----------|----------|--------------|
+| **API Key** | Ключ OpenAI для Whisper | *Обязательно* |
+| **Language** | Язык распознавания | Auto-detect |
+| **Recording Mode** | Режим записи | Hold (F9) |
+| **Insert Mode** | Способ вставки текста | At cursor |
+| **Audio Quality** | Качество записи | Standard (16kHz) |
+
+### 🎯 Cursor IDE интеграция
+
+| Параметр | Описание | Рекомендуется |
+|----------|----------|---------------|
+| **Cursor Strategy** | Способ отправки в чат | `aichat_command` ⭐ |
+| **Auto Send to Chat** | Автоотправка в чат | `false` |
+| **Prefix Text** | Текст перед сообщением | *Пусто* |
+| **Use Markdown** | Форматирование Markdown | `true` |
+
+### 🔊 Аудио настройки
+
+| Параметр | Варианты | Описание |
+|----------|----------|----------|
+| **Sample Rate** | 16kHz, 22kHz, 44.1kHz, 48kHz | Качество записи |
+| **Audio Format** | WAV, MP3, WebM, Opus | Формат файла |
+| **Channels** | Mono, Stereo | Mono для речи |
+| **Input Device** | Auto, Specific | Выбор микрофона |
+
+## 🌍 Поддерживаемые языки
+
+### Основные языки
+- 🇺🇸 **English** - Английский
+- 🇷🇺 **Russian** - Русский  
+- 🇪🇸 **Spanish** - Испанский
+- 🇫🇷 **French** - Французский
+- 🇩🇪 **German** - Немецкий
+- 🇮🇹 **Italian** - Итальянский
+- 🇵🇹 **Portuguese** - Португальский
+
+### Азиатские языки
+- 🇨🇳 **Chinese** - Китайский
+- 🇯🇵 **Japanese** - Японский
+- 🇰🇷 **Korean** - Корейский
+- 🇮🇳 **Hindi** - Хинди
+- 🇹🇭 **Thai** - Тайский
+
+### Другие языки
+- 🇦🇪 **Arabic** - Арабский
+- 🇳🇱 **Dutch** - Голландский
+- 🇸🇪 **Swedish** - Шведский
+- 🇳🇴 **Norwegian** - Норвежский
+- И еще 25+ языков!
+
+## 📋 Команды
+
+Доступ через Command Palette (`Ctrl+Shift+P`):
+
+### 🎤 Запись
+- `Speech to Text: Start Voice Recording`
+- `Speech to Text: Stop Voice Recording`
+- `Speech to Text: Toggle Voice Recording`
+- `Speech to Text: Start Hold-to-Record`
+
+### 📝 Вставка
+- `Speech to Text: Insert at Cursor`
+- `Speech to Text: Insert as Comment`
+- `Speech to Text: Replace Selection`
+- `Speech to Text: Copy to Clipboard`
+
+### 💬 Cursor IDE
+- `Speech to Text: Send to AI Chat`
+- `Speech to Text: Record and Send to Chat`
+- `Speech to Text: Force Send to Chat`
+
+### 🔧 Диагностика
+- `Speech to Text: Run Diagnostics`
+- `Speech to Text: Check Microphone`
+- `Speech to Text: Test API Key`
+- `Speech to Text: Show Context Info`
+
+## 🎯 Сценарии использования
+
+### 👨‍💻 **Разработка кода**
+```javascript
+// Скажите: "Создать функцию для валидации email адреса"
+function validateEmail(email) {
+    // Ваш голос превратится в комментарий
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 ```
 
-## 🐛 Troubleshooting
+### 💬 **AI-ассистент в Cursor**
+1. Откройте Cursor IDE
+2. Нажмите **F9** и скажите: "Объясни этот код"
+3. Текст автоматически отправится в AI чат
+4. Получите мгновенный ответ от ИИ!
 
-### FFmpeg Issues
+### 📝 **Документация**
+```python
+def complex_algorithm(data):
+    """
+    Скажите описание алгоритма, и оно станет docstring
+    """
+    pass
+```
 
-1. **FFmpeg not found**:
-   - Verify FFmpeg is installed: run `ffmpeg -version` in terminal
-   - On Windows, ensure FFmpeg is in your PATH environment variable
-   - Use the "Run Diagnostics" command to check FFmpeg availability
+### 🌐 **Многоязычная разработка**
+- Говорите на русском - получайте текст на русском
+- Переключитесь на английский для технических терминов
+- Автоопределение языка работает в реальном времени
 
-2. **No audio input devices detected**:
-   - **Windows**: Check if DirectShow devices are available
-   - **macOS**: Verify microphone permissions in System Preferences
-   - **Linux**: Ensure PulseAudio/ALSA is configured properly
+## 🔧 Системные требования
 
-3. **Recording permission denied**:
-   - **macOS**: Grant microphone access in System Preferences > Privacy & Security
-   - **Linux**: Add your user to the `audio` group: `sudo usermod -a -G audio $USER`
-   - **Windows**: Check microphone privacy settings
+### 💻 Минимальные требования
+- **VS Code**: 1.74.0 или новее
+- **Cursor IDE**: Любая версия (для AI интеграции)
+- **FFmpeg**: Установлен в системе
+- **OpenAI API**: Ключ с доступом к Whisper
+- **Микрофон**: Любое аудио устройство ввода
 
-### Common Issues
+### 🖥️ Поддержка платформ
 
-1. **Poor audio quality**: 
-   - Adjust audio quality settings (try 44.1kHz for better quality)
-   - Select correct input device in settings
-   - Check microphone levels in your OS
+| Платформа | Аудио система | Статус |
+|-----------|---------------|--------|
+| **Windows 10/11** | DirectShow | ✅ Полная поддержка |
+| **macOS** | AVFoundation | ✅ Полная поддержка |
+| **Linux** | PulseAudio/ALSA | ✅ Полная поддержка |
 
-2. **API errors**: 
-   - Verify your OpenAI API key and account credits
-   - Check internet connection for API requests
+## 🐛 Решение проблем
 
-3. **Recording not starting**: 
-   - Run diagnostics command to check system compatibility
-   - Verify FFmpeg installation and audio device access
-   - Check VS Code developer console for error messages
+### ❌ Частые проблемы и решения
 
-### Getting Help
+<details>
+<summary><strong>🔴 "FFmpeg not found"</strong></summary>
 
-- Use the **"Run Diagnostics"** command for automated troubleshooting
-- Check the extension settings for configuration options
-- Report issues on our GitHub repository with diagnostic output
-- Ensure your OpenAI API key has Whisper API access
+**Проблема**: FFmpeg не найден в системе
 
-## 📊 Audio Recording Details
+**Решения**:
+1. Проверьте установку: `ffmpeg -version`
+2. Windows: добавьте FFmpeg в PATH
+3. Используйте команду "Run Diagnostics"
+4. Укажите путь в настройках `ffmpegPath`
+</details>
 
-The extension uses FFmpeg for professional-grade audio recording:
+<details>
+<summary><strong>🔴 "Recording is already in progress"</strong></summary>
 
-- **Formats**: WAV (lossless) or MP3 (compressed)
-- **Sample Rates**: 16kHz (standard) or 44.1kHz (high quality)
-- **Channels**: Mono recording optimized for speech
-- **Bitrate**: 128kbps for MP3, PCM for WAV
-- **Platform Integration**: Native audio drivers for each OS
+**Проблема**: Множественные попытки записи
 
-## 🎯 Use Cases
+**Решения**:
+1. Подождите завершения текущей записи
+2. Не нажимайте F9 слишком часто (защита 200ms)
+3. Проверьте статус в Status Bar
+4. Перезапустите расширение при зависании
+</details>
 
-- **Code Documentation**: Quickly add voice comments to your code
-- **AI Chat Interaction**: Voice input for Cursor IDE AI conversations  
-- **Meeting Notes**: Transcribe discussions directly into your editor
-- **Accessibility**: Voice input for hands-free coding
-- **Multilingual Development**: Support for international teams
-- **Cross-platform Development**: Consistent audio recording across all platforms
+<details>
+<summary><strong>🔴 "No audio input devices"</strong></summary>
 
-## 🔒 Privacy & Security
+**Проблема**: Не найдены аудио устройства
 
-- Audio is only sent to OpenAI Whisper API for transcription
-- Temporary audio files are automatically cleaned up after processing
-- No audio data is stored permanently locally or elsewhere
-- Your API key is stored securely in VS Code settings
-- All communication uses HTTPS encryption
-- FFmpeg processes run locally with minimal system permissions
+**Решения**:
+- **Windows**: Проверьте DirectShow устройства
+- **macOS**: Разрешите доступ к микрофону в Privacy & Security
+- **Linux**: Добавьте пользователя в группу `audio`
+- Проверьте подключение микрофона
+</details>
 
-## 📝 License
+<details>
+<summary><strong>🔴 "API key invalid"</strong></summary>
 
-MIT License - see LICENSE file for details.
+**Проблема**: Проблемы с OpenAI API
 
-## 🤝 Contributing
+**Решения**:
+1. Проверьте формат ключа (начинается с `sk-`)
+2. Убедитесь в наличии кредитов на аккаунте
+3. Проверьте доступ к Whisper API
+4. Используйте команду "Test API Key"
+</details>
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+### 🛠️ Диагностика
 
-### Development Setup
+Используйте встроенную диагностику для автоматической проверки:
 
-1. Install FFmpeg development dependencies
-2. Run `npm install` to install Node.js dependencies
-3. Use the included FFmpeg mocks for testing
-4. Test across multiple platforms when possible
+1. Откройте Command Palette (`Ctrl+Shift+P`)
+2. Выполните `Speech to Text: Run Diagnostics`
+3. Просмотрите подробный отчет о системе
+4. Следуйте рекомендациям для исправления проблем
 
-## 🛠️ Решение проблем
+## 🆕 Что нового в версии 0.1.0
 
-### Исправленные проблемы в версии 0.1.0
+### 🎯 **Исправления интеграции с Cursor IDE**
 
-#### 1. \"Recording is already in progress\"
-**Проблема:** Множественные попытки запуска записи приводили к ошибке.
-**Решение:** 
-- Добавлена проверка состояния записи перед запуском
-- Введён минимальный интервал между попытками (200ms)
-- Улучшена логика hold-to-record режима с debouncing (150ms)
+#### ✅ Новая стратегия `aichat_command`
+- **Проблема**: Ошибка "Нет активного редактора" при работе в чате
+- **Решение**: Использование команды `aichat.show-ai-chat` для надежной отправки
+- **Преимущества**: 
+  - Автоматическое открытие нового чата
+  - Сохранение и восстановление буфера обмена
+  - Стабильная работа в любых условиях
 
-#### 2. \"Recording file is empty\"
-**Проблема:** Слишком короткие записи создавали пустые файлы.
-**Решение:**
-- Добавлено предупреждение о коротких записях (менее 500ms)
-- Улучшена диагностика с указанием продолжительности записи
-- Рекомендация держать кнопку записи минимум 1 секунду
-- Исправлена проблема с null tempFilePath
+#### 🔄 Улучшенные fallback стратегии
+- Автоматическое переключение на резервные методы
+- Информативные уведомления о используемой стратегии
+- Настраиваемый порядок fallback стратегий
 
-#### 3. Множественные уведомления об ошибках
-**Проблема:** При длительном удержании F9 показывались множественные popup-ы.
-**Решение:**
-- Добавлено предотвращение дублирующихся ошибок (интервал 3 секунды)
-- Hold-to-record ошибки теперь показываются только в Status Bar
-- Убраны неработающие кнопки из уведомлений
+### 🎤 **Исправления записи аудио**
 
-#### 4. Отображение устройств в Activity Bar
-**Проблема:** Показывалось только одно устройство \":0\" вместо списка с читаемыми именами.
-**Решение:**
-- Исправлен парсинг аудио устройств для macOS/Windows/Linux
-- Теперь показываются читаемые имена (например, \"MacBook Pro Microphone\")
-- Правильное отображение статуса устройств (Selected/Default)
+#### ✅ Устранение "Recording is already in progress"
+- Добавлена проверка состояния перед запуском
+- Минимальный интервал между попытками (200ms)
+- Debouncing для hold-to-record режима (150ms)
 
-### Рекомендации по использованию
+#### ✅ Решение проблемы пустых файлов
+- Предупреждение о слишком коротких записях
+- Рекомендация держать F9 минимум 1 секунду
+- Улучшенная диагностика продолжительности
 
-#### Hold-to-Record (F9)
-- **Удерживайте** клавишу F9 минимум 1 секунду для качественной записи
-- Не нажимайте F9 слишком часто - есть защита от множественных вызовов
-- При коротких записях увидите предупреждение в Status Bar вместо popup-а
+#### ✅ Предотвращение спама уведомлений
+- Фильтрация дублирующихся ошибок (интервал 3 сек)
+- Hold-to-record ошибки только в Status Bar
+- Убраны неработающие кнопки из popup-ов
 
-#### Выбор аудио устройства
-- Откройте Activity Bar (боковая панель VS Code)
-- Найдите секцию \"Speech to Text Whisper\"
-- Выберите нужное устройство из списка с читаемыми именами
-- Текущее устройство отмечено как \"✅ Selected\"
+### 🖥️ **Улучшения UI**
 
-## 🧪 Тестирование
+#### ✅ Исправление Activity Bar
+- Корректная иконка `$(unmute)` вместо `$(mic)`
+- Упрощенная структура панелей
+- Правильное отображение "Speech to Text" в боковой панели
+
+#### ✅ Улучшенное отображение устройств
+- Читаемые имена вместо ":0"
+- Правильный парсинг для macOS/Windows/Linux
+- Статус устройств (Selected/Default)
+
+## 📊 Технические детали
+
+### 🎵 **Аудио запись**
+- **Движок**: FFmpeg с нативными драйверами
+- **Форматы**: WAV (PCM), MP3 (128kbps), WebM (Opus), Opus
+- **Частоты**: 16kHz (речь), 22kHz, 44.1kHz (CD), 48kHz (профи)
+- **Каналы**: Mono (оптимально для речи), Stereo
+- **Кодеки**: PCM, AAC, MP3, Opus
+
+### 🤖 **ИИ обработка**
+- **Модель**: OpenAI Whisper-1 (самая точная)
+- **Форматы ответа**: Text, JSON, Verbose JSON
+- **Температура**: 0.0 (детерминированно) - 1.0 (креативно)
+- **Таймауты**: Настраиваемые (5-120 секунд)
+- **Retry**: Автоматические повторы с экспоненциальной задержкой
+
+### 🔒 **Безопасность и приватность**
+- **Шифрование**: HTTPS для всех API запросов
+- **Хранение**: API ключ только в настройках VS Code
+- **Временные файлы**: Автоматическое удаление после обработки
+- **Данные**: Аудио отправляется только в OpenAI Whisper API
+- **Разрешения**: Минимальные системные права для FFmpeg
+
+## 🎯 Продвинутые возможности
+
+### 🔧 **Кастомизация**
+
+#### Настройка контекстных подсказок
+```json
+{
+  "speechToTextWhisper.prompt": "Technical programming terms, JavaScript, React, Node.js"
+}
+```
+
+#### Настройка форматирования
+```json
+{
+  "speechToTextWhisper.formatText": true,
+  "speechToTextWhisper.addNewLine": true,
+  "speechToTextWhisper.indentToSelection": false
+}
+```
+
+#### Cursor интеграция
+```json
+{
+  "speechToTextWhisper.cursorStrategy": "aichat_command",
+  "speechToTextWhisper.cursorPrefixText": "Voice input: ",
+  "speechToTextWhisper.cursorUseMarkdown": true
+}
+```
+
+### 🎛️ **Профили качества**
+
+#### Быстрая речь (по умолчанию)
+- Sample Rate: 16kHz
+- Format: WAV
+- Codec: PCM
+- Channels: Mono
+
+#### Высокое качество
+- Sample Rate: 44.1kHz
+- Format: WAV
+- Codec: PCM
+- Channels: Mono
+
+#### Сжатие для медленного интернета
+- Sample Rate: 16kHz
+- Format: MP3
+- Codec: MP3
+- Bitrate: 64kbps
+
+## 🤝 Сообщество и поддержка
+
+### 📞 **Получить помощь**
+- 🐛 [GitHub Issues](https://github.com/alexstich/vs-code-speech-to-text/issues) - Сообщить о проблеме
+- 💡 [Feature Requests](https://github.com/alexstich/vs-code-speech-to-text/discussions) - Предложить улучшение
+- 📖 [Wiki](https://github.com/alexstich/vs-code-speech-to-text/wiki) - Подробная документация
+- 💬 [Discussions](https://github.com/alexstich/vs-code-speech-to-text/discussions) - Обсуждения
+
+### 🛠️ **Разработка**
+
+#### Настройка окружения
+```bash
+git clone https://github.com/alexstich/vs-code-speech-to-text.git
+cd vs-code-speech-to-text
+npm install
+npm run compile
+```
+
+#### Запуск тестов
+```bash
+npm run test:unit      # Юнит тесты
+npm run test:integration # Интеграционные тесты
+npm run test:cursor    # Тесты Cursor интеграции
+```
+
+#### Сборка расширения
+```bash
+npm run package       # Создать .vsix файл
+```
+
+### 🎖️ **Участие в проекте**
+- 🔧 Исправление багов
+- ✨ Новые функции
+- 📝 Улучшение документации
+- 🌐 Переводы на другие языки
+- 🧪 Тестирование на разных платформах
+
+## 📈 Статистика проекта
+
+- ⭐ **GitHub Stars**: Поставьте звезду, если проект полезен!
+- 🐛 **Issues**: Активно исправляем проблемы
+- 🔄 **Updates**: Регулярные обновления и улучшения
+- 🌍 **Users**: Разработчики по всему миру
+- 🏆 **Rating**: Высокие оценки в VS Code Marketplace
+
+## 📝 Лицензия
+
+MIT License - подробности в файле [LICENSE](LICENSE).
+
+## 🙏 Благодарности
+
+- **OpenAI** за потрясающий Whisper API
+- **FFmpeg** за кроссплатформенную аудио обработку
+- **VS Code Team** за отличную платформу расширений
+- **Cursor Team** за инновационную IDE с ИИ
+- **Сообщество разработчиков** за отзывы и предложения
 
 ---
 
-**Made with ❤️ for developers who want to code with their voice**
+<div align="center">
+
+**🎤 Сделано с ❤️ для разработчиков, которые хотят кодить голосом**
+
+[⭐ Поставить звезду на GitHub](https://github.com/alexstich/vs-code-speech-to-text) • 
+[📥 Скачать расширение](https://marketplace.visualstudio.com/items?itemName=speak-y.speech-to-text-whisper) • 
+[🐛 Сообщить о проблеме](https://github.com/alexstich/vs-code-speech-to-text/issues)
+
+</div>

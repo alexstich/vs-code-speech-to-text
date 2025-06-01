@@ -11,6 +11,7 @@ import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from
 import { RetryManager } from './utils/RetryManager';
 import { RecoveryActionHandler, RecoveryDependencies } from './utils/RecoveryActionHandler';
 import { ContextManager, IDEType, ContextType, IDEContext, ContextManagerEvents } from './core/ContextManager';
+import { CursorIntegration, CursorIntegrationStrategy } from './integrations/CursorIntegration';
 
 // Глобальные переменные для компонентов
 let audioRecorder: FFmpegAudioRecorder | null = null;
@@ -53,6 +54,9 @@ const HOLD_TO_RECORD_DEBOUNCE = 150; // 150ms debounce для hold-to-record
 let audioSettingsProvider: AudioSettingsProvider;
 let deviceManagerProvider: DeviceManagerProvider;
 let diagnosticsProvider: DiagnosticsProvider;
+
+// Интеграция с Cursor чатом
+let cursorIntegration: CursorIntegration;
 
 /**
  * Функция активации расширения
@@ -179,6 +183,9 @@ function initializeComponents(): void {
 	
 	// Инициализируем ContextManager
 	initializeContextManager();
+	
+	// Инициализируем CursorIntegration
+	initializeCursorIntegration();
 	
 	// Инициализируем TextInserter
 	textInserter = new TextInserter();
@@ -360,6 +367,8 @@ function registerCommands(context: vscode.ExtensionContext): void {
 			const recordingMode = config.get<string>('recordingMode', 'hold');
 			const isRecording = audioRecorder?.getIsRecording() || false;
 			const apiKey = config.get<string>('apiKey');
+			const enableCursorIntegration = config.get<boolean>('enableCursorIntegration', true);
+			const autoSendToChat = config.get<boolean>('autoSendToChat', false);
 			
 			// Проверяем context variables
 			const contextActive = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.active');
@@ -367,11 +376,17 @@ function registerCommands(context: vscode.ExtensionContext): void {
 			const contextHoldActive = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.holdToRecordActive');
 			const contextIsRecording = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.isRecording');
 			
+			// Проверяем контекст IDE
+			const currentContext = contextManager.getContext();
+			const cursorEnabled = cursorIntegration?.isIntegrationEnabled() || false;
+			
 			const message = `F9 Debug Информация:
 
 🔧 Конфигурация:
 • Recording Mode: ${recordingMode}
 • API Key: ${apiKey ? 'Настроен' : '❌ Не настроен'}
+• Cursor Integration: ${enableCursorIntegration ? 'Включена' : 'Отключена'}
+• Auto Send to Chat: ${autoSendToChat ? 'Включено' : 'Отключено'}
 
 📊 Состояние:
 • Hold-to-Record Active: ${isHoldToRecordActive}
@@ -384,6 +399,14 @@ function registerCommands(context: vscode.ExtensionContext): void {
 • speechToTextWhisper.holdToRecordActive: ${contextHoldActive}
 • speechToTextWhisper.isRecording: ${contextIsRecording}
 
+🎯 IDE Контекст:
+• IDE Type: ${currentContext.ideType}
+• Context Type: ${currentContext.contextType}
+• Cursor Integration Enabled: ${cursorEnabled}
+• Active Editor: ${currentContext.activeEditor ? currentContext.activeEditor.fileName : 'Нет'}
+• Visible Editors: ${vscode.window.visibleTextEditors.length}
+• Active Terminal: ${vscode.window.activeTerminal ? 'Есть' : 'Нет'}
+
 ⌨️ F9 должен:
 - В режиме "hold": удерживать F9 для записи
 - В режиме "toggle": нажать F9 для старт/стоп
@@ -391,13 +414,15 @@ function registerCommands(context: vscode.ExtensionContext): void {
 🔍 Следующие шаги:
 1. Откройте Developer Console (Help > Toggle Developer Tools)
 2. Попробуйте нажать F9 и проверьте логи
-3. Если логи не появляются - проблема с keybindings`;
+3. Если логи не появляются - проблема с keybindings
+4. Проверьте контекст чата - закройте все редакторы и проверьте Context Type`;
 			
 			const selection = await vscode.window.showInformationMessage(
 				message, 
 				{ modal: true },
 				'Open Console', 
 				'Test Command', 
+				'Test Chat',
 				'Copy Debug Info'
 			);
 			
@@ -411,6 +436,13 @@ function registerCommands(context: vscode.ExtensionContext): void {
 					console.log('🧪 Testing stopHoldToRecord command directly');
 					stopHoldToRecord();
 				}, 2000);
+			} else if (selection === 'Test Chat') {
+				// Тестируем отправку в чат
+				if (lastTranscribedText) {
+					await insertLastTranscription('chat');
+				} else {
+					vscode.window.showWarningMessage('Сначала сделайте запись для тестирования чата');
+				}
 			} else if (selection === 'Copy Debug Info') {
 				await vscode.env.clipboard.writeText(message);
 				vscode.window.showInformationMessage('Debug info copied to clipboard');
@@ -446,6 +478,54 @@ function registerCommands(context: vscode.ExtensionContext): void {
 			} catch (error) {
 				console.error('🧪 Test failed:', error);
 				vscode.window.showErrorMessage(`Test failed: ${(error as Error).message}`);
+			}
+		}),
+		
+		// Команда для тестирования чата
+		vscode.commands.registerCommand('speechToTextWhisper.testChat', async () => {
+			if (!lastTranscribedText) {
+				vscode.window.showWarningMessage('Сначала сделайте запись. Нажмите F9, скажите что-то, затем отпустите F9.');
+				return;
+			}
+			
+			try {
+				console.log('🧪 Testing chat integration...');
+				
+				// Показываем текущий контекст
+				const currentContext = contextManager.getContext();
+				console.log(`🔍 Current context: ${currentContext.contextType} in ${currentContext.ideType}`);
+				
+				// Проверяем интеграцию с чатом
+				if (!cursorIntegration || !cursorIntegration.isIntegrationEnabled()) {
+					throw new Error('Cursor integration не доступна. Проверьте что вы используете Cursor IDE.');
+				}
+				
+				// Отправляем в чат
+				vscode.window.showInformationMessage('Отправляем последнюю запись в чат...');
+				await insertLastTranscription('chat');
+				
+				vscode.window.showInformationMessage('✅ Успешно отправлено в чат!');
+				
+			} catch (error) {
+				console.error('🧪 Chat test failed:', error);
+				vscode.window.showErrorMessage(`Ошибка теста чата: ${(error as Error).message}`);
+			}
+		}),
+		
+		// Команда для принудительной отправки в чат
+		vscode.commands.registerCommand('speechToTextWhisper.forceToChat', async () => {
+			if (!lastTranscribedText) {
+				vscode.window.showWarningMessage('Нет записанного текста. Сначала сделайте запись.');
+				return;
+			}
+			
+			try {
+				console.log('🎯 Force sending to chat...');
+				await insertLastTranscription('chat');
+				vscode.window.showInformationMessage('✅ Принудительно отправлено в чат!');
+			} catch (error) {
+				console.error('❌ Force to chat failed:', error);
+				vscode.window.showErrorMessage(`Ошибка отправки в чат: ${(error as Error).message}`);
 			}
 		})
 	];
@@ -746,7 +826,59 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			// Показываем состояние вставки
 			statusBarManager.showInserting();
 			
-			// Вставляем текст с обработкой ошибок
+			// 🎯 НОВАЯ ЛОГИКА: Проверяем контекст и решаем куда отправлять текст
+			const currentContext = contextManager.getContext();
+			const enableCursorIntegration = config.get<boolean>('enableCursorIntegration', true);
+			const autoSendToChat = config.get<boolean>('autoSendToChat', false);
+			
+			console.log(`🔍 Context detected: ${currentContext.contextType} in ${currentContext.ideType}`);
+			console.log(`🔍 Active editor: ${currentContext.activeEditor ? 'YES' : 'NO'}`);
+			console.log(`🔍 Visible editors: ${vscode.window.visibleTextEditors.length}`);
+			console.log(`🔍 autoSendToChat: ${autoSendToChat}, enableCursorIntegration: ${enableCursorIntegration}`);
+			
+			// Проверяем, нужно ли отправить в Cursor чат
+			const shouldSendToChat = (
+				currentContext.ideType === 'cursor' &&
+				enableCursorIntegration &&
+				(
+					currentContext.contextType === 'chat' || // Прямо в чате
+					autoSendToChat || // Автоотправка включена
+					(
+						// Дополнительная проверка: нет активного редактора
+						!currentContext.activeEditor && 
+						vscode.window.visibleTextEditors.length === 0 &&
+						currentContext.contextType === 'unknown'
+					)
+				)
+			);
+			
+			console.log(`🎯 Should send to chat: ${shouldSendToChat}`);
+			
+			if (shouldSendToChat) {
+				console.log('🎯 Sending to Cursor chat instead of editor');
+				
+				try {
+					// Отправляем в чат через CursorIntegration
+					await insertLastTranscription('chat');
+					
+					// Показываем успех
+					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
+					statusBarManager.showSuccess(`Sent to chat: "${truncatedText}"`);
+					
+					// Показываем уведомление о завершении
+					if (!isHoldToRecordActive) {
+						vscode.window.showInformationMessage(`✅ Transcribed and sent to chat: "${truncatedText}"`);
+					}
+					
+					return; // Завершаем функцию, не вставляем в редактор
+					
+				} catch (error) {
+					console.warn('⚠️ Failed to send to chat, falling back to editor insertion:', error);
+					// Продолжаем с обычной логикой вставки в редактор
+				}
+			}
+			
+			// Вставляем текст в редактор (обычная логика)
 			await insertTranscribedTextWithErrorHandling(lastTranscribedText, insertMode, context);
 			
 			// Показываем успех с сообщением
@@ -851,6 +983,24 @@ async function insertLastTranscription(mode: string): Promise<void> {
 	}
 	
 	try {
+		// Специальная обработка режима чата
+		if (mode === 'chat') {
+			if (!cursorIntegration || !cursorIntegration.isIntegrationEnabled()) {
+				throw new Error('Cursor integration not available');
+			}
+			
+			console.log('📤 Sending text to Cursor chat...');
+			const result = await cursorIntegration.sendToChat(lastTranscribedText);
+			
+			if (!result.success) {
+				throw new Error(result.error || 'Failed to send to chat');
+			}
+			
+			console.log(`✅ Successfully sent to chat via ${result.strategy}`);
+			return;
+		}
+		
+		// Обычная логика для других режимов
 		await insertTranscribedTextWithErrorHandling(lastTranscribedText, mode, {
 			operation: 'text_insertion',
 			isHoldToRecordMode: isHoldToRecordActive,
@@ -863,7 +1013,16 @@ async function insertLastTranscription(mode: string): Promise<void> {
 		});
 		vscode.window.showInformationMessage(`Text inserted in ${mode} mode`);
 	} catch (error) {
-		// Ошибка уже обработана в insertTranscribedTextWithErrorHandling
+		console.error(`❌ Failed to insert text in ${mode} mode:`, error);
+		
+		// Показываем ошибку пользователю
+		if (mode === 'chat') {
+			vscode.window.showErrorMessage(`Failed to send to chat: ${(error as Error).message}`);
+		} else {
+			// Ошибка уже обработана в insertTranscribedTextWithErrorHandling для других режимов
+		}
+		
+		throw error; // Перебрасываем для обработки выше
 	}
 }
 
@@ -1547,4 +1706,68 @@ function shouldShowError(errorMessage: string): boolean {
 	lastErrorTime = now;
 	lastErrorMessage = errorMessage;
 	return true;
+}
+
+/**
+ * Инициализация CursorIntegration
+ */
+function initializeCursorIntegration(): void {
+	console.log('🔧 Initializing CursorIntegration...');
+	
+	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
+	
+	// Получаем строковое значение стратегии из настроек и конвертируем в enum
+	const strategyString = config.get<string>('cursorStrategy', 'aichat_command');
+	let primaryStrategy: CursorIntegrationStrategy;
+	
+	switch (strategyString) {
+		case 'aichat_command':
+			primaryStrategy = CursorIntegrationStrategy.AICHAT_COMMAND;
+			break;
+		case 'clipboard':
+			primaryStrategy = CursorIntegrationStrategy.CLIPBOARD;
+			break;
+		case 'command_palette':
+			primaryStrategy = CursorIntegrationStrategy.COMMAND_PALETTE;
+			break;
+		case 'focus_chat':
+			primaryStrategy = CursorIntegrationStrategy.FOCUS_CHAT;
+			break;
+		case 'send_to_chat':
+			primaryStrategy = CursorIntegrationStrategy.SEND_TO_CHAT;
+			break;
+		default:
+			console.log(`⚠️ Unknown strategy '${strategyString}', falling back to aichat_command`);
+			primaryStrategy = CursorIntegrationStrategy.AICHAT_COMMAND;
+	}
+	
+	console.log(`🎯 Using Cursor integration strategy: ${primaryStrategy}`);
+	
+	// Создаем экземпляр CursorIntegration
+	cursorIntegration = new CursorIntegration({
+		primaryStrategy: primaryStrategy,
+		fallbackStrategies: [
+			CursorIntegrationStrategy.CLIPBOARD,
+			CursorIntegrationStrategy.COMMAND_PALETTE,
+			CursorIntegrationStrategy.FOCUS_CHAT
+		],
+		autoFocusChat: true,
+		prefixText: config.get<string>('cursorPrefixText', ''),
+		suffixText: config.get<string>('cursorSuffixText', ''),
+		useMarkdownFormat: config.get<boolean>('cursorUseMarkdown', true),
+		timeout: 5000
+	}, {
+		onChatSent: (text: string, strategy: CursorIntegrationStrategy) => {
+			console.log(`✅ Text sent to chat via ${strategy}: "${text.substring(0, 50)}..."`);
+		},
+		onFallbackUsed: (primary: CursorIntegrationStrategy, fallback: CursorIntegrationStrategy) => {
+			console.log(`🔄 Fallback used: ${primary} -> ${fallback}`);
+			vscode.window.showWarningMessage(`Cursor chat: fell back to ${fallback} strategy`);
+		},
+		onError: (error: Error, strategy: CursorIntegrationStrategy) => {
+			console.error(`❌ CursorIntegration error with ${strategy}:`, error);
+		}
+	});
+	
+	console.log(`✅ CursorIntegration initialized, enabled: ${cursorIntegration.isIntegrationEnabled()}`);
 }

@@ -1,5 +1,21 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
+
+// Настраиваем мок для vscode до любых импортов
+import { setupVSCodeMocks, resetVSCodeMocks, mockVscode } from '../mocks/vscodeMocks';
+
+// Мокируем vscode модуль
+const Module = require('module');
+const originalRequire = Module.prototype.require;
+
+Module.prototype.require = function (id: string) {
+    if (id === 'vscode') {
+        return mockVscode;
+    }
+    return originalRequire.apply(this, arguments);
+};
+
+// Теперь можно импортировать классы, которые используют vscode
 import { 
     ErrorHandler, 
     ErrorType, 
@@ -9,26 +25,14 @@ import {
     VSCodeErrorDisplayHandler
 } from '../../utils/ErrorHandler';
 
-// Mock для vscode API
-const mockVSCode = {
-    window: {
-        showErrorMessage: sinon.stub().resolves('OK'),
-        showWarningMessage: sinon.stub().resolves('OK'),
-        showInformationMessage: sinon.stub().resolves('OK')
-    }
-};
-
-// Мокируем vscode модуль
-(global as any).vscode = mockVSCode;
-
 suite('ErrorHandler Tests', () => {
     let errorHandler: ErrorHandler;
     let mockDisplayHandler: any;
     let mockStatusBarManager: any;
+    let consoleErrorStub: sinon.SinonStub;
 
     setup(() => {
-        // Сбрасываем все моки
-        sinon.reset();
+        setupVSCodeMocks();
         
         // Создаем моки
         mockDisplayHandler = {
@@ -43,21 +47,18 @@ suite('ErrorHandler Tests', () => {
             showWarning: sinon.stub().resolves()
         };
 
-        // Мокируем vscode методы с правильными возвращаемыми значениями
-        mockVSCode.window.showErrorMessage.reset();
-        mockVSCode.window.showWarningMessage.reset();
-        mockVSCode.window.showInformationMessage.reset();
-        
-        mockVSCode.window.showErrorMessage.resolves('OK');
-        mockVSCode.window.showWarningMessage.resolves('OK');
-        mockVSCode.window.showInformationMessage.resolves('OK');
-
         // Создаем ErrorHandler с моками
         errorHandler = new ErrorHandler(mockDisplayHandler, mockStatusBarManager);
+        
+        // Мокируем console.error
+        consoleErrorStub = sinon.stub(console, 'error');
     });
 
     teardown(() => {
+        resetVSCodeMocks();
         sinon.restore();
+        // Восстанавливаем оригинальный require
+        Module.prototype.require = originalRequire;
     });
 
     suite('Error Classification', () => {
@@ -239,8 +240,8 @@ suite('ErrorHandler Tests', () => {
         test('Should call vscode.window.showErrorMessage for errors', async () => {
             const result = await displayHandler.showError('Test error', ErrorSeverity.ERROR, ['Action']);
 
-            assert.ok(mockVSCode.window.showErrorMessage.called);
-            const message = mockVSCode.window.showErrorMessage.firstCall.args[0];
+            assert.ok(mockVscode.window.showErrorMessage.called);
+            const message = mockVscode.window.showErrorMessage.firstCall.args[0];
             assert.ok(message.includes('❌'));
             assert.strictEqual(result, 'OK');
         });
@@ -248,8 +249,8 @@ suite('ErrorHandler Tests', () => {
         test('Should call vscode.window.showWarningMessage for warnings', async () => {
             const result = await displayHandler.showWarning('Test warning', ['Action']);
 
-            assert.ok(mockVSCode.window.showWarningMessage.called);
-            const message = mockVSCode.window.showWarningMessage.firstCall.args[0];
+            assert.ok(mockVscode.window.showWarningMessage.called);
+            const message = mockVscode.window.showWarningMessage.firstCall.args[0];
             assert.ok(message.includes('⚠️'));
             assert.strictEqual(result, 'OK');
         });
@@ -257,24 +258,14 @@ suite('ErrorHandler Tests', () => {
         test('Should call vscode.window.showInformationMessage for info', async () => {
             const result = await displayHandler.showInformation('Test info', ['Action']);
 
-            assert.ok(mockVSCode.window.showInformationMessage.called);
-            const message = mockVSCode.window.showInformationMessage.firstCall.args[0];
+            assert.ok(mockVscode.window.showInformationMessage.called);
+            const message = mockVscode.window.showInformationMessage.firstCall.args[0];
             assert.ok(message.includes('ℹ️'));
             assert.strictEqual(result, 'OK');
         });
     });
 
     suite('Error Logging', () => {
-        let consoleErrorStub: sinon.SinonStub;
-
-        setup(() => {
-            consoleErrorStub = sinon.stub(console, 'error');
-        });
-
-        teardown(() => {
-            consoleErrorStub.restore();
-        });
-
         test('Should log errors with proper format', async () => {
             const error = new Error('Test error');
             const context: ErrorContext = {

@@ -134,6 +134,7 @@
       {
         "command": "speechToTextWhisper.sendToChat",
         "title": "Record and Send to AI Chat",
+        "category": "Speech to Text with Whisper",
         "icon": "$(comment-discussion)"
       },
       {
@@ -215,6 +216,12 @@
         "icon": "$(play)"
       },
       {
+        "command": "speechToTextWhisper.testChat",
+        "title": "Test Chat Integration",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "speechToTextWhisper.showQualitySettings",
         "title": "Show Audio Quality Settings",
         "category": "Speech to Text with Whisper",
@@ -283,6 +290,12 @@
         "command": "speechToTextWhisper.diagnostics.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "speechToTextWhisper.forceToChat",
+        "title": "Force Send to Chat",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(arrow-right)"
       }
     ],
     "keybindings": [
@@ -676,14 +689,16 @@
         "speechToTextWhisper.cursorStrategy": {
           "type": "string",
           "enum": [
+            "aichat_command",
             "clipboard",
             "command_palette",
             "focus_chat",
             "send_to_chat"
           ],
-          "default": "clipboard",
+          "default": "aichat_command",
           "description": "Strategy for Cursor chat integration",
           "enumDescriptions": [
+            "Open new AI chat and paste text directly (RECOMMENDED)",
             "Copy to clipboard and paste in chat",
             "Use command palette to send",
             "Focus chat panel and insert",

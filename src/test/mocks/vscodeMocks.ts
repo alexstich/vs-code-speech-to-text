@@ -195,6 +195,7 @@ export const mockVscode = {
     window: {
         activeTextEditor: null as MockTextEditor | null,
         activeTerminal: null as any,
+        visibleTextEditors: [] as MockTextEditor[],
         showInformationMessage: sinon.stub().resolves('OK'),
         showWarningMessage: sinon.stub().resolves('OK'),
         showErrorMessage: sinon.stub().resolves('OK'),
@@ -275,8 +276,17 @@ export const mockVscode = {
 };
 
 export function setupVSCodeMocks(): void {
-    // Мокируем активный редактор
-    mockVscode.window.activeTextEditor = new MockTextEditor();
+    // НЕ устанавливаем активный редактор по умолчанию - тесты должны это делать явно
+    mockVscode.window.activeTextEditor = null;
+    mockVscode.window.activeTerminal = null;
+    mockVscode.window.visibleTextEditors = [];
+    
+    // Очищаем debug session
+    Object.defineProperty(mockVscode.debug, 'activeDebugSession', {
+        value: null,
+        writable: true,
+        configurable: true
+    });
     
     // Создаем новый экземпляр конфигурации для каждого теста
     mockVscode.workspace.getConfiguration = sinon.stub().returns(new MockWorkspaceConfiguration());

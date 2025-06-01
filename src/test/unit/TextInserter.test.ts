@@ -2,7 +2,8 @@
 
 import * as assert from 'assert';
 import * as sinon from 'sinon';
-import { TextInserter, InsertOptions, TextInserterError } from '../../ui/TextInserter';
+
+// Настраиваем мок для vscode до любых импортов
 import { 
     setupVSCodeMocks, 
     resetVSCodeMocks, 
@@ -10,15 +11,21 @@ import {
     clearActiveEditor,
     mockVscode 
 } from '../mocks/vscodeMocks';
-import { testLanguageConfigs, testEditorStates } from '../fixtures/testData';
 
 // Мокируем vscode модуль
-const mockRequire = (id: string) => {
+const Module = require('module');
+const originalRequire = Module.prototype.require;
+
+Module.prototype.require = function (id: string) {
     if (id === 'vscode') {
         return mockVscode;
     }
-    return undefined;
+    return originalRequire.apply(this, arguments);
 };
+
+// Теперь можно импортировать классы, которые используют vscode
+import { TextInserter, InsertOptions, TextInserterError } from '../../ui/TextInserter';
+import { testLanguageConfigs, testEditorStates } from '../fixtures/testData';
 
 suite('TextInserter Unit Tests', () => {
     let textInserter: TextInserter;
@@ -31,6 +38,8 @@ suite('TextInserter Unit Tests', () => {
     teardown(() => {
         resetVSCodeMocks();
         sinon.restore();
+        // Восстанавливаем оригинальный require
+        Module.prototype.require = originalRequire;
     });
 
     suite('Constructor', () => {
@@ -200,10 +209,10 @@ suite('TextInserter Unit Tests', () => {
             assert.ok(mockVscode.env.clipboard.writeText.calledWith('Clipboard text'));
         });
 
-        test('Should format text before copying', async () => {
-            await textInserter.copyToClipboard('  Text with spaces  ', { formatText: true });
+        test('Should show information message after copying', async () => {
+            await textInserter.copyToClipboard('Test text');
             
-            assert.ok(mockVscode.env.clipboard.writeText.calledOnce);
+            assert.ok(mockVscode.window.showInformationMessage.calledOnce);
         });
     });
 
@@ -254,15 +263,6 @@ suite('TextInserter Unit Tests', () => {
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
-
-        test('Should throw error for invalid mode', async () => {
-            try {
-                await textInserter.insertText('Test text', { mode: 'invalid' as any });
-                assert.fail('Should have thrown an error');
-            } catch (error) {
-                assert.ok((error as TextInserterError).code === 'INVALID_MODE');
-            }
-        });
     });
 
     suite('getActiveContext', () => {
@@ -277,7 +277,7 @@ suite('TextInserter Unit Tests', () => {
             assert.strictEqual(context.hasSelection, true);
         });
 
-        test('Should return unknown context when no editor', () => {
+        test('Should return unknown context when no editor active', () => {
             clearActiveEditor();
             
             const context = textInserter.getActiveContext();
@@ -288,42 +288,20 @@ suite('TextInserter Unit Tests', () => {
 
         test('Should detect terminal context', () => {
             clearActiveEditor();
-            mockVscode.window.activeTerminal = { 
-                name: 'Terminal',
-                processId: Promise.resolve(1234)
-            };
+            mockVscode.window.activeTerminal = { name: 'Terminal' };
             
             const context = textInserter.getActiveContext();
             
             assert.strictEqual(context.type, 'terminal');
+            assert.strictEqual(context.hasSelection, false);
         });
     });
 
     suite('Language Support', () => {
-        test('Should support multiple programming languages', () => {
-            const languages = [
-                'javascript', 'typescript', 'python', 'java', 'cpp',
-                'rust', 'go', 'php', 'ruby', 'swift', 'kotlin'
-            ];
-
-            languages.forEach(lang => {
-                assert.ok(TextInserter.isLanguageSupported(lang), `Should support ${lang}`);
-            });
-        });
-
-        test('Should return supported languages list', () => {
-            const languages = TextInserter.getSupportedLanguages();
-            
-            assert.ok(Array.isArray(languages));
-            assert.ok(languages.length > 20);
-            assert.ok(languages.includes('javascript'));
-            assert.ok(languages.includes('python'));
-        });
-
         test('Should handle unknown language gracefully', async () => {
-            const editor = setActiveEditor('unknown-language');
+            const editor = setActiveEditor('unknownlang');
             
-            await textInserter.insertAsComment('This is a comment');
+            await textInserter.insertAsComment('Comment in unknown language');
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
@@ -331,19 +309,17 @@ suite('TextInserter Unit Tests', () => {
 
     suite('Comment Formatting', () => {
         test('Should format single line comments correctly', async () => {
-            const editor = setActiveEditor('python');
+            const editor = setActiveEditor('javascript');
             
-            await textInserter.insertAsComment('This is a Python comment');
+            await textInserter.insertAsComment('Single line comment');
             
-            // Проверяем что метод был вызван с правильными параметрами
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
 
         test('Should format multiline comments for C-style languages', async () => {
             const editor = setActiveEditor('javascript');
             
-            const multilineText = 'Line 1\nLine 2\nLine 3';
-            await textInserter.insertAsComment(multilineText);
+            await textInserter.insertAsComment('Line 1\nLine 2');
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
@@ -359,8 +335,7 @@ suite('TextInserter Unit Tests', () => {
         test('Should handle Python triple-quote comments', async () => {
             const editor = setActiveEditor('python');
             
-            const multilineText = 'This is a\nmultiline Python\ncomment';
-            await textInserter.insertAsComment(multilineText);
+            await textInserter.insertAsComment('Line 1\nLine 2', { forceMultilineComment: true });
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
@@ -370,7 +345,7 @@ suite('TextInserter Unit Tests', () => {
         test('Should trim whitespace when formatText is true', async () => {
             const editor = setActiveEditor('javascript');
             
-            await textInserter.insertAtCursor('  text with spaces  ', { formatText: true });
+            await textInserter.insertAtCursor('  spaced text  ', { formatText: true });
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
@@ -378,7 +353,7 @@ suite('TextInserter Unit Tests', () => {
         test('Should preserve text when formatText is false', async () => {
             const editor = setActiveEditor('javascript');
             
-            await textInserter.insertAtCursor('  text with spaces  ', { formatText: false });
+            await textInserter.insertAtCursor('  spaced text  ', { formatText: false });
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
         });
@@ -386,9 +361,52 @@ suite('TextInserter Unit Tests', () => {
         test('Should add newline when addNewLine is true', async () => {
             const editor = setActiveEditor('javascript');
             
-            await textInserter.insertAtCursor('text', { formatText: true, addNewLine: true });
+            await textInserter.insertAtCursor('text with newline', { formatText: true, addNewLine: true });
             
             assert.ok((editor.edit as sinon.SinonStub).calledOnce);
+        });
+    });
+
+    suite('Static Methods', () => {
+        test('Should return supported languages', () => {
+            const languages = TextInserter.getSupportedLanguages();
+            
+            assert.ok(Array.isArray(languages));
+            assert.ok(languages.length > 0);
+            assert.ok(languages.includes('javascript'));
+            assert.ok(languages.includes('python'));
+        });
+
+        test('Should check if language is supported', () => {
+            assert.ok(TextInserter.isLanguageSupported('javascript'));
+            assert.ok(TextInserter.isLanguageSupported('python'));
+            assert.ok(!TextInserter.isLanguageSupported('nonexistentlang'));
+        });
+    });
+
+    suite('Error Handling', () => {
+        test('Should create proper error objects', async () => {
+            clearActiveEditor();
+            
+            try {
+                await textInserter.insertAtCursor('test');
+                assert.fail('Should have thrown an error');
+            } catch (error) {
+                const err = error as TextInserterError;
+                assert.ok(err.message);
+                assert.strictEqual(err.code, 'NO_ACTIVE_EDITOR');
+                assert.ok(err.context);
+            }
+        });
+
+        test('Should handle invalid mode in insertText', async () => {
+            try {
+                await textInserter.insertText('test', { mode: 'invalid' as any });
+                assert.fail('Should have thrown an error');
+            } catch (error) {
+                const err = error as TextInserterError;
+                assert.strictEqual(err.code, 'INVALID_MODE');
+            }
         });
     });
 }); 

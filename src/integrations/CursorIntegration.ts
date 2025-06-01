@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
  * Стратегии интеграции с Cursor чатом
  */
 export enum CursorIntegrationStrategy {
+    AICHAT_COMMAND = 'aichat_command',    // Через команду aichat.show-ai-chat (РЕКОМЕНДУЕТСЯ)
     CLIPBOARD = 'clipboard',           // Через буфер обмена
     COMMAND_PALETTE = 'command_palette', // Через палитру команд
     FOCUS_CHAT = 'focus_chat',         // Автоматический фокус на чат
@@ -95,8 +96,9 @@ export class CursorIntegration {
      */
     private mergeDefaultOptions(options: Partial<CursorIntegrationOptions>): CursorIntegrationOptions {
         return {
-            primaryStrategy: CursorIntegrationStrategy.CLIPBOARD,
+            primaryStrategy: CursorIntegrationStrategy.AICHAT_COMMAND,
             fallbackStrategies: [
+                CursorIntegrationStrategy.CLIPBOARD,
                 CursorIntegrationStrategy.COMMAND_PALETTE,
                 CursorIntegrationStrategy.FOCUS_CHAT
             ],
@@ -236,6 +238,9 @@ export class CursorIntegration {
      */
     private async executeStrategy(strategy: CursorIntegrationStrategy, text: string): Promise<CursorIntegrationResult> {
         switch (strategy) {
+            case CursorIntegrationStrategy.AICHAT_COMMAND:
+                return await this.useAIChatCommandStrategy(text);
+            
             case CursorIntegrationStrategy.CLIPBOARD:
                 return await this.useClipboardStrategy(text);
             
@@ -250,6 +255,52 @@ export class CursorIntegration {
             
             default:
                 throw new Error(`Unknown integration strategy: ${strategy}`);
+        }
+    }
+
+    /**
+     * Стратегия через команду aichat.show-ai-chat (РЕКОМЕНДУЕТСЯ для Cursor)
+     * Использует проверенный рабочий метод из сообщества Cursor
+     */
+    private async useAIChatCommandStrategy(text: string): Promise<CursorIntegrationResult> {
+        try {
+            console.log('🎯 Using aichat.show-ai-chat command strategy');
+            
+            // 1. Сохраняем оригинальный буфер обмена
+            const originalClipboard = await this.vscodeEnv.env.clipboard.readText();
+            console.log('📋 Original clipboard saved');
+            
+            // 2. Открываем новый чат с помощью команды aichat.show-ai-chat
+            console.log('💬 Opening new chat...');
+            await this.vscodeEnv.commands.executeCommand("aichat.show-ai-chat");
+            
+            // 3. Ждем, пока чат откроется (важно для стабильной работы)
+            console.log('⏳ Waiting for chat window...');
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            
+            // 4. Копируем наш текст в буфер обмена
+            console.log(`📝 Setting clipboard with transcribed text: "${text.substring(0, 50)}..."`);
+            await this.vscodeEnv.env.clipboard.writeText(text);
+            
+            // 5. Вставляем содержимое в чат
+            console.log('📤 Pasting content into chat...');
+            await this.vscodeEnv.commands.executeCommand("editor.action.clipboardPasteAction");
+            
+            // 6. Восстанавливаем оригинальный буфер обмена
+            console.log('🔄 Restoring original clipboard');
+            await this.vscodeEnv.env.clipboard.writeText(originalClipboard);
+            
+            console.log('✅ Successfully sent to chat via aichat.show-ai-chat command');
+            
+            return {
+                success: true,
+                strategy: CursorIntegrationStrategy.AICHAT_COMMAND,
+                message: 'Text sent to chat via aichat.show-ai-chat command'
+            };
+            
+        } catch (error) {
+            console.error('❌ AIChatCommand strategy failed:', error);
+            throw new Error(`AIChatCommand strategy failed: ${(error as Error).message}`);
         }
     }
 
@@ -569,6 +620,7 @@ export class CursorIntegration {
      */
     public static getAvailableStrategies(): CursorIntegrationStrategy[] {
         return [
+            CursorIntegrationStrategy.AICHAT_COMMAND,
             CursorIntegrationStrategy.CLIPBOARD,
             CursorIntegrationStrategy.COMMAND_PALETTE,
             CursorIntegrationStrategy.FOCUS_CHAT,
@@ -581,6 +633,7 @@ export class CursorIntegration {
      */
     public static getStrategyDescription(strategy: CursorIntegrationStrategy): string {
         const descriptions = {
+            [CursorIntegrationStrategy.AICHAT_COMMAND]: 'Open new AI chat and paste text directly (RECOMMENDED)',
             [CursorIntegrationStrategy.CLIPBOARD]: 'Copy text to clipboard and optionally focus chat',
             [CursorIntegrationStrategy.COMMAND_PALETTE]: 'Open command palette to access chat commands',
             [CursorIntegrationStrategy.FOCUS_CHAT]: 'Automatically focus on AI chat panel',
