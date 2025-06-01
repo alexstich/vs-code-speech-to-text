@@ -25,8 +25,9 @@ export interface AudioRecordingOptions {
     quality?: 'standard' | 'high' | 'ultra';
     maxDuration?: number;          // -t (в секундах)
     audioFormat?: 'wav' | 'mp3' | 'webm' | 'opus'; // формат выходного файла
-    silenceDetection?: boolean;    // игнорируется пока
-    silenceThreshold?: number;     // игнорируется пока
+    silenceDetection?: boolean;    // определение тишины
+    silenceThreshold?: number;     // порог тишины в dB (default: -50)
+    silenceDuration?: number;      // длительность тишины для автостопа в секундах (default: 3)
     inputDevice?: string;          // автоопределение или путь к устройству
     codec?: string;               // -acodec (default: pcm_s16le для WAV)
     outputPath?: string;          // временная папка для файлов
@@ -62,6 +63,11 @@ export class FFmpegAudioRecorder {
     private maxDurationTimer: NodeJS.Timeout | null = null;
     private tempFilePath: string | null = null;
     private tempFileCleanup: (() => void) | null = null;
+    
+    // Переменные для определения тишины
+    private silenceTimer: NodeJS.Timeout | null = null;
+    private lastAudioTime: number = 0;
+    private silenceDetectionEnabled: boolean = false;
 
     constructor(
         private events: AudioRecorderEvents,
@@ -391,6 +397,9 @@ export class FFmpegAudioRecorder {
 
             // Устанавливаем таймер максимальной продолжительности
             this.setupMaxDurationTimer();
+            
+            // Инициализируем определение тишины если включено
+            this.setupSilenceDetection();
 
             // Уведомляем о начале записи
             this.events.onRecordingStart();
@@ -533,6 +542,9 @@ export class FFmpegAudioRecorder {
         this.ffmpegProcess.stderr?.on('data', (data) => {
             const errorMessage = data.toString();
             console.log('FFmpeg stderr:', errorMessage);
+            
+            // Обновляем время последней аудио активности при получении данных от FFmpeg
+            this.updateLastAudioTime();
             
             // Ищем специфические ошибки, которые могут указывать на проблемы
             if (errorMessage.includes('No such file or directory')) {
@@ -722,6 +734,61 @@ export class FFmpegAudioRecorder {
     }
 
     /**
+     * Настройка определения тишины
+     */
+    private setupSilenceDetection(): void {
+        if (this.options.silenceDetection !== true) {
+            return;
+        }
+
+        this.silenceDetectionEnabled = true;
+        this.lastAudioTime = Date.now();
+
+        const silenceDuration = (this.options.silenceDuration || 3) * 1000; // Преобразуем в миллисекунды
+
+        // Запускаем таймер проверки тишины каждые 500ms
+        const checkSilence = () => {
+            if (!this.isRecording || !this.silenceDetectionEnabled) {
+                return;
+            }
+
+            const timeSinceLastAudio = Date.now() - this.lastAudioTime;
+            
+            if (timeSinceLastAudio >= silenceDuration) {
+                console.log(`🔇 Silence detected for ${timeSinceLastAudio}ms, stopping recording`);
+                this.stopRecording();
+                return;
+            }
+
+            // Планируем следующую проверку
+            this.silenceTimer = setTimeout(checkSilence, 500);
+        };
+
+        // Запускаем первую проверку
+        this.silenceTimer = setTimeout(checkSilence, 500);
+    }
+
+    /**
+     * Обновление времени последней активности аудио
+     */
+    private updateLastAudioTime(): void {
+        if (this.silenceDetectionEnabled) {
+            this.lastAudioTime = Date.now();
+        }
+    }
+
+    /**
+     * Очистка таймера определения тишины
+     */
+    private clearSilenceTimer(): void {
+        if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+            this.silenceTimer = null;
+        }
+        this.silenceDetectionEnabled = false;
+    }
+
+    /**
      * Очистка таймера максимальной продолжительности
      */
     private clearMaxDurationTimer(): void {
@@ -736,6 +803,7 @@ export class FFmpegAudioRecorder {
      */
     private cleanup(): void {
         this.clearMaxDurationTimer();
+        this.clearSilenceTimer();
         
         if (this.ffmpegProcess && !this.ffmpegProcess.killed) {
             this.ffmpegProcess.kill('SIGKILL');

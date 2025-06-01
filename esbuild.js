@@ -1,4 +1,6 @@
 const esbuild = require("esbuild");
+const fs = require("fs");
+const path = require("path");
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
@@ -24,6 +26,12 @@ const esbuildProblemMatcherPlugin = {
 };
 
 async function main() {
+	// Создаем папку dist если она не существует
+	const distDir = path.join(__dirname, 'dist');
+	if (!fs.existsSync(distDir)) {
+		fs.mkdirSync(distDir, { recursive: true });
+	}
+
 	const ctx = await esbuild.context({
 		entryPoints: [
 			'src/extension.ts'
@@ -36,7 +44,7 @@ async function main() {
 		platform: 'node',
 		outfile: 'dist/extension.js',
 		external: ['vscode'],
-		logLevel: 'silent',
+		logLevel: 'info',
 		plugins: [
 			/* add to the end of plugins array */
 			esbuildProblemMatcherPlugin,
