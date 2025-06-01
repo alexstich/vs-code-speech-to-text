@@ -27,10 +27,6 @@ let recoveryHandler: RecoveryActionHandler;
 // Менеджер контекста IDE
 let contextManager: ContextManager;
 
-// Состояние hold-to-record
-let isHoldToRecordActive = false;
-let holdToRecordDisposable: vscode.Disposable | null = null;
-
 // Контекст расширения для глобального доступа
 let extensionContext: vscode.ExtensionContext;
 
@@ -46,9 +42,8 @@ let lastErrorTime = 0;
 let lastErrorMessage = '';
 const MIN_ERROR_INTERVAL = 3000; // минимум 3 секунды между одинаковыми ошибками
 
-// Переменная для debouncing hold-to-record
-let holdToRecordDebounceTimer: NodeJS.Timeout | null = null;
-const HOLD_TO_RECORD_DEBOUNCE = 150; // 150ms debounce для hold-to-record
+// Переменная для отслеживания текущего режима записи
+let currentRecordingMode: 'chat' | 'clipboard' | null = null;
 
 // UI провайдеры для боковых панелей
 let audioSettingsProvider: AudioSettingsProvider;
@@ -108,11 +103,10 @@ function initializeContextVariables(): void {
 	// Устанавливаем начальные значения context variables
 	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.active', true);
 	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
-	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
 	
 	// Получаем режим записи из настроек
 	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-	const recordingMode = config.get<string>('recordingMode', 'hold');
+	const recordingMode = config.get<string>('recordingMode', 'chat');
 	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.recordingMode', recordingMode);
 	
 	console.log(`✅ Context variables initialized (recordingMode: ${recordingMode})`);
@@ -200,10 +194,8 @@ function initializeComponents(): void {
 			
 			statusBarManager.updateRecordingState(true);
 			
-			// Показываем уведомление только если не в hold-to-record режиме
-			if (!isHoldToRecordActive) {
-				vscode.window.showInformationMessage('🎤 Recording started...');
-			}
+			// Показываем уведомление
+			vscode.window.showInformationMessage('🎤 Recording started...');
 		},
 		onRecordingStop: async (audioBlob: Blob) => {
 			console.log('⏹️ Recording stopped');
@@ -219,8 +211,7 @@ function initializeComponents(): void {
 			
 			// Сбрасываем состояния при ошибке
 			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
-			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
-			isHoldToRecordActive = false;
+			currentRecordingMode = null;
 			
 			// Проверяем нужно ли показывать ошибку
 			const errorMessage = error.message;
@@ -231,21 +222,11 @@ function initializeComponents(): void {
 			// Используем новую систему обработки ошибок
 			const context: ErrorContext = {
 				operation: 'audio_recording',
-				isHoldToRecordMode: isHoldToRecordActive,
+				isHoldToRecordMode: false,
 				timestamp: new Date()
 			};
 			
-			// Для hold-to-record режима только логируем, не показываем popup
-			if (isHoldToRecordActive || errorMessage.includes('Recording too short') || errorMessage.includes('Recording is already in progress')) {
-				console.log(`🔇 Suppressing hold-to-record error: ${errorMessage}`);
-				// Только обновляем status bar
-				if (statusBarManager) {
-					statusBarManager.showWarning('Recording issue');
-				}
-				return;
-			}
-			
-			// Для обычных ошибок показываем через ErrorHandler
+			// Показываем ошибки через ErrorHandler
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
 			if (userAction && userAction !== 'ignore') {
@@ -257,10 +238,10 @@ function initializeComponents(): void {
 	// События для StatusBar
 	const statusBarEvents: StatusBarEvents = {
 		onRecordingToggle: () => {
-			// Запускаем асинхронную операцию, но не ждем ее завершения в этом контексте
-			toggleRecording().catch(error => {
-				console.error('❌ Error in toggleRecording from StatusBar:', error);
-				vscode.window.showErrorMessage(`Recording toggle failed: ${error.message}`);
+			// Запускаем команду записи в чат по умолчанию
+			recordAndSendToChat().catch(error => {
+				console.error('❌ Error in recordAndSendToChat from StatusBar:', error);
+				vscode.window.showErrorMessage(`Recording failed: ${error.message}`);
 			});
 		},
 		onSettings: () => {
@@ -295,239 +276,14 @@ function initializeComponents(): void {
 function registerCommands(context: vscode.ExtensionContext): void {
 	console.log('📝 Registering commands...');
 	
-	// Инициализируем провайдеры для боковых панелей
-	audioSettingsProvider = new AudioSettingsProvider();
-	deviceManagerProvider = new DeviceManagerProvider();
-	diagnosticsProvider = new DiagnosticsProvider();
-	
-	// Регистрируем провайдеры панелей
-	vscode.window.createTreeView('speechToTextWhisper.audioSettings', {
-		treeDataProvider: audioSettingsProvider
-	});
-	
-	vscode.window.createTreeView('speechToTextWhisper.deviceManager', {
-		treeDataProvider: deviceManagerProvider
-	});
-	
-	vscode.window.createTreeView('speechToTextWhisper.diagnostics', {
-		treeDataProvider: diagnosticsProvider
-	});
-	
 	const commands = [
 		// Основные команды записи
-		vscode.commands.registerCommand('speechToTextWhisper.startRecording', startRecording),
-		vscode.commands.registerCommand('speechToTextWhisper.stopRecording', stopRecording),
-		vscode.commands.registerCommand('speechToTextWhisper.toggleRecording', toggleRecording),
+		vscode.commands.registerCommand('speechToTextWhisper.recordAndSendToChat', recordAndSendToChat),
+		vscode.commands.registerCommand('speechToTextWhisper.recordToClipboard', recordToClipboard),
 		
-		// Hold-to-record команды
-		vscode.commands.registerCommand('speechToTextWhisper.startHoldToRecord', startHoldToRecord),
-		vscode.commands.registerCommand('speechToTextWhisper.stopHoldToRecord', stopHoldToRecord),
-		
-		// Команды режимов вставки
-		vscode.commands.registerCommand('speechToTextWhisper.insertAtCursor', () => insertLastTranscription('cursor')),
-		vscode.commands.registerCommand('speechToTextWhisper.insertAsComment', () => insertLastTranscription('comment')),
-		vscode.commands.registerCommand('speechToTextWhisper.replaceSelection', () => insertLastTranscription('replace')),
-		vscode.commands.registerCommand('speechToTextWhisper.copyToClipboard', () => insertLastTranscription('clipboard')),
-		
-		// Команды интеграции
-		vscode.commands.registerCommand('speechToTextWhisper.sendToChat', () => insertLastTranscription('chat')),
-		vscode.commands.registerCommand('speechToTextWhisper.recordAndSendToChat', async () => {
-			await toggleRecording();
-			// После записи автоматически отправляем в чат
-		}),
-		
-		// Команды для аудио панелей
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.refresh', () => audioSettingsProvider.refresh()),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.openFFmpegSettings', () => audioSettingsProvider.configureFFmpegPath()),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.selectDevice', (deviceName: string) => deviceManagerProvider.selectDevice(deviceName)),
-		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.testDevice', (deviceName: string) => deviceManagerProvider.testDevice(deviceName)),
-		vscode.commands.registerCommand('speechToTextWhisper.deviceManager.refresh', () => deviceManagerProvider.refresh()),
-		vscode.commands.registerCommand('speechToTextWhisper.diagnostics.runAll', () => diagnosticsProvider.runAllDiagnostics()),
-		vscode.commands.registerCommand('speechToTextWhisper.diagnostics.refresh', () => diagnosticsProvider.refresh()),
-		
-		// Утилитные команды
+		// Служебные команды
 		vscode.commands.registerCommand('speechToTextWhisper.openSettings', openSettings),
-		vscode.commands.registerCommand('speechToTextWhisper.showHelp', showHelp),
-		vscode.commands.registerCommand('speechToTextWhisper.showStatus', showStatus),
-		vscode.commands.registerCommand('speechToTextWhisper.checkMicrophone', checkMicrophone),
-		vscode.commands.registerCommand('speechToTextWhisper.testApiKey', testApiKey),
-		vscode.commands.registerCommand('speechToTextWhisper.showContext', showContextInfo),
-		vscode.commands.registerCommand('speechToTextWhisper.refreshContext', refreshContext),
-		
-		// Команды управления
-		vscode.commands.registerCommand('speechToTextWhisper.resetConfiguration', resetConfiguration),
-		vscode.commands.registerCommand('speechToTextWhisper.toggleStatusBar', toggleStatusBar),
-		
-		// Команда для тестирования
-		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', runDiagnostics),
-		
-		// Диагностическая команда для F9 
-		vscode.commands.registerCommand('speechToTextWhisper.debugF9', async () => {
-			const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-			const recordingMode = config.get<string>('recordingMode', 'hold');
-			const isRecording = audioRecorder?.getIsRecording() || false;
-			const apiKey = config.get<string>('apiKey');
-			const enableCursorIntegration = config.get<boolean>('enableCursorIntegration', true);
-			const autoSendToChat = config.get<boolean>('autoSendToChat', false);
-			
-			// Проверяем context variables
-			const contextActive = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.active');
-			const contextRecordingMode = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.recordingMode');
-			const contextHoldActive = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.holdToRecordActive');
-			const contextIsRecording = await vscode.commands.executeCommand('getContext', 'speechToTextWhisper.isRecording');
-			
-			// Проверяем контекст IDE
-			const currentContext = contextManager.getContext();
-			const cursorEnabled = cursorIntegration?.isIntegrationEnabled() || false;
-			
-			const message = `F9 Debug Информация:
-
-🔧 Конфигурация:
-• Recording Mode: ${recordingMode}
-• API Key: ${apiKey ? 'Настроен' : '❌ Не настроен'}
-• Cursor Integration: ${enableCursorIntegration ? 'Включена' : 'Отключена'}
-• Auto Send to Chat: ${autoSendToChat ? 'Включено' : 'Отключено'}
-
-📊 Состояние:
-• Hold-to-Record Active: ${isHoldToRecordActive}
-• Is Recording: ${isRecording}
-• Audio Recorder: ${audioRecorder ? 'инициализирован' : '❌ не инициализирован'}
-
-🎮 Context Variables:
-• speechToTextWhisper.active: ${contextActive}
-• speechToTextWhisper.recordingMode: ${contextRecordingMode}
-• speechToTextWhisper.holdToRecordActive: ${contextHoldActive}
-• speechToTextWhisper.isRecording: ${contextIsRecording}
-
-🎯 IDE Контекст:
-• IDE Type: ${currentContext.ideType}
-• Context Type: ${currentContext.contextType}
-• Cursor Integration Enabled: ${cursorEnabled}
-• Active Editor: ${currentContext.activeEditor ? currentContext.activeEditor.fileName : 'Нет'}
-• Visible Editors: ${vscode.window.visibleTextEditors.length}
-• Active Terminal: ${vscode.window.activeTerminal ? 'Есть' : 'Нет'}
-
-⌨️ F9 должен:
-- В режиме "hold": удерживать F9 для записи
-- В режиме "toggle": нажать F9 для старт/стоп
-
-🔍 Следующие шаги:
-1. Откройте Developer Console (Help > Toggle Developer Tools)
-2. Попробуйте нажать F9 и проверьте логи
-3. Если логи не появляются - проблема с keybindings
-4. Проверьте контекст чата - закройте все редакторы и проверьте Context Type`;
-			
-			const selection = await vscode.window.showInformationMessage(
-				message, 
-				{ modal: true },
-				'Open Console', 
-				'Test Command', 
-				'Test Chat',
-				'Copy Debug Info'
-			);
-			
-			if (selection === 'Open Console') {
-				vscode.commands.executeCommand('workbench.action.toggleDevTools');
-			} else if (selection === 'Test Command') {
-				// Тестируем команду напрямую
-				console.log('🧪 Testing startHoldToRecord command directly');
-				await startHoldToRecord();
-				setTimeout(() => {
-					console.log('🧪 Testing stopHoldToRecord command directly');
-					stopHoldToRecord();
-				}, 2000);
-			} else if (selection === 'Test Chat') {
-				// Тестируем отправку в чат
-				if (lastTranscribedText) {
-					await insertLastTranscription('chat');
-				} else {
-					vscode.window.showWarningMessage('Сначала сделайте запись для тестирования чата');
-				}
-			} else if (selection === 'Copy Debug Info') {
-				await vscode.env.clipboard.writeText(message);
-				vscode.window.showInformationMessage('Debug info copied to clipboard');
-			}
-		}),
-		
-		// Команда для прямого тестирования F9
-		vscode.commands.registerCommand('speechToTextWhisper.testF9Commands', async () => {
-			vscode.window.showInformationMessage('Тестируем F9 команды...');
-			
-			console.log('🧪 Testing F9 commands manually');
-			
-			// Тест 1: Прямой вызов startHoldToRecord
-			try {
-				console.log('🧪 Test 1: startHoldToRecord');
-				await vscode.commands.executeCommand('speechToTextWhisper.startHoldToRecord');
-				
-				setTimeout(async () => {
-					console.log('🧪 Test 2: stopHoldToRecord');
-					await vscode.commands.executeCommand('speechToTextWhisper.stopHoldToRecord');
-					
-					setTimeout(async () => {
-						console.log('🧪 Test 3: toggleRecording');
-						await vscode.commands.executeCommand('speechToTextWhisper.toggleRecording');
-						
-						setTimeout(async () => {
-							await vscode.commands.executeCommand('speechToTextWhisper.toggleRecording');
-							vscode.window.showInformationMessage('F9 команды протестированы. Проверьте логи в консоли.');
-						}, 2000);
-					}, 1000);
-				}, 2000);
-				
-			} catch (error) {
-				console.error('🧪 Test failed:', error);
-				vscode.window.showErrorMessage(`Test failed: ${(error as Error).message}`);
-			}
-		}),
-		
-		// Команда для тестирования чата
-		vscode.commands.registerCommand('speechToTextWhisper.testChat', async () => {
-			if (!lastTranscribedText) {
-				vscode.window.showWarningMessage('Сначала сделайте запись. Нажмите F9, скажите что-то, затем отпустите F9.');
-				return;
-			}
-			
-			try {
-				console.log('🧪 Testing chat integration...');
-				
-				// Показываем текущий контекст
-				const currentContext = contextManager.getContext();
-				console.log(`🔍 Current context: ${currentContext.contextType} in ${currentContext.ideType}`);
-				
-				// Проверяем интеграцию с чатом
-				if (!cursorIntegration || !cursorIntegration.isIntegrationEnabled()) {
-					throw new Error('Cursor integration не доступна. Проверьте что вы используете Cursor IDE.');
-				}
-				
-				// Отправляем в чат
-				vscode.window.showInformationMessage('Отправляем последнюю запись в чат...');
-				await insertLastTranscription('chat');
-				
-				vscode.window.showInformationMessage('✅ Успешно отправлено в чат!');
-				
-			} catch (error) {
-				console.error('🧪 Chat test failed:', error);
-				vscode.window.showErrorMessage(`Ошибка теста чата: ${(error as Error).message}`);
-			}
-		}),
-		
-		// Команда для принудительной отправки в чат
-		vscode.commands.registerCommand('speechToTextWhisper.forceToChat', async () => {
-			if (!lastTranscribedText) {
-				vscode.window.showWarningMessage('Нет записанного текста. Сначала сделайте запись.');
-				return;
-			}
-			
-			try {
-				console.log('🎯 Force sending to chat...');
-				await insertLastTranscription('chat');
-				vscode.window.showInformationMessage('✅ Принудительно отправлено в чат!');
-			} catch (error) {
-				console.error('❌ Force to chat failed:', error);
-				vscode.window.showErrorMessage(`Ошибка отправки в чат: ${(error as Error).message}`);
-			}
-		})
+		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', runDiagnostics)
 	];
 
 	// Добавляем все команды в подписки
@@ -550,208 +306,12 @@ function setupKeyBindings(context: vscode.ExtensionContext): void {
 }
 
 /**
- * Команды записи
- */
-async function startRecording(): Promise<void> {
-	const context: ErrorContext = {
-		operation: 'start_recording',
-		isHoldToRecordMode: isHoldToRecordActive,
-		timestamp: new Date()
-	};
-
-	try {
-		console.log('▶️ Starting recording...');
-		
-		// Проверяем минимальный интервал между попытками
-		const now = Date.now();
-		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			console.log('⚠️ Too frequent recording attempts, skipping');
-			return;
-		}
-		lastRecordingStartTime = now;
-		
-		// Обеспечиваем инициализацию FFmpeg Audio Recorder
-		await ensureFFmpegAudioRecorder();
-		
-		// Проверяем, не идет ли уже запись
-		if (audioRecorder && audioRecorder.getIsRecording()) {
-			console.log('⚠️ Recording already in progress, skipping start');
-			return;
-		}
-		
-		// Проверяем состояние микрофона с retry
-		const microphoneResult = await retryManager.retryMicrophoneOperation(
-			async () => {
-				const hasPermission = await FFmpegAudioRecorder.checkMicrophonePermission();
-				if (hasPermission.state !== 'granted') {
-					throw new Error('Microphone permission not granted');
-				}
-				return hasPermission;
-			},
-			'microphone_permission_check'
-		);
-
-		if (!microphoneResult.success) {
-			const error = microphoneResult.lastError || new Error('Microphone access failed');
-			const userAction = await errorHandler.handleErrorFromException(error, context);
-			
-			if (userAction && userAction !== 'ignore') {
-				await handleUserRecoveryAction(userAction, context);
-			}
-			return;
-		}
-		
-		if (!audioRecorder) {
-			throw new Error('Failed to initialize audio recorder');
-		}
-		
-		await audioRecorder.startRecording();
-		
-	} catch (error) {
-		console.error('❌ Failed to start recording:', error);
-		
-		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
-		
-		if (userAction && userAction !== 'ignore') {
-			await handleUserRecoveryAction(userAction, context);
-		}
-	}
-}
-
-function stopRecording(): void {
-	const context: ErrorContext = {
-		operation: 'stop_recording',
-		isHoldToRecordMode: isHoldToRecordActive,
-		timestamp: new Date()
-	};
-
-	try {
-		console.log('⏹️ Stopping recording...');
-		
-		if (!audioRecorder) {
-			console.warn('Audio recorder not initialized');
-			return;
-		}
-		
-		audioRecorder.stopRecording();
-		
-	} catch (error) {
-		console.error('❌ Failed to stop recording:', error);
-		
-		// Для stop recording используем синхронную обработку ошибок
-		errorHandler.handleErrorFromException(error as Error, context);
-	}
-}
-
-async function toggleRecording(): Promise<void> {
-	try {
-		// Обеспечиваем инициализацию FFmpeg Audio Recorder
-		await ensureFFmpegAudioRecorder();
-		
-		if (!audioRecorder) {
-			throw new Error('Failed to initialize audio recorder');
-		}
-		
-		if (audioRecorder.getIsRecording()) {
-			stopRecording();
-		} else {
-			await startRecording();
-		}
-	} catch (error) {
-		console.error('❌ Failed to toggle recording:', error);
-		vscode.window.showErrorMessage(`Recording toggle failed: ${(error as Error).message}`);
-	}
-}
-
-/**
- * Hold-to-record функции (F9)
- */
-async function startHoldToRecord(): Promise<void> {
-	console.log('🎯 startHoldToRecord called!'); // Добавляем лог
-	
-	// Очищаем предыдущий debounce timer
-	if (holdToRecordDebounceTimer) {
-		clearTimeout(holdToRecordDebounceTimer);
-		holdToRecordDebounceTimer = null;
-	}
-	
-	// Если уже активен или идет запись - игнорируем
-	if (isHoldToRecordActive) {
-		console.log('🎯 Hold-to-record already active, ignoring');
-		return;
-	}
-	
-	// Добавляем небольшой debounce для предотвращения множественных вызовов
-	holdToRecordDebounceTimer = setTimeout(async () => {
-		try {
-			console.log('🎯 Executing hold-to-record start after debounce');
-			
-			// Обеспечиваем инициализацию FFmpeg Audio Recorder
-			await ensureFFmpegAudioRecorder();
-			
-			// Проверяем, не идет ли уже запись
-			if (audioRecorder && audioRecorder.getIsRecording()) {
-				console.log('🎯 Recording already in progress, just switching to hold-to-record mode');
-				isHoldToRecordActive = true;
-				vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', true);
-				return;
-			}
-			
-			console.log('🎯 Starting hold-to-record mode');
-			isHoldToRecordActive = true;
-			
-			// Обновляем context variable
-			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', true);
-			
-			await startRecording();
-		} catch (error) {
-			console.error('❌ Hold-to-record failed:', error);
-			isHoldToRecordActive = false;
-			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
-			
-			// Показываем ошибку только если это не спам
-			const errorMessage = (error as Error).message;
-			if (shouldShowError(errorMessage)) {
-				console.error('❌ Hold-to-record failed:', error);
-				// Показываем уведомление для отладки
-				vscode.window.showErrorMessage(`Hold-to-record failed: ${errorMessage}`);
-			}
-		}
-	}, HOLD_TO_RECORD_DEBOUNCE);
-}
-
-function stopHoldToRecord(): void {
-	console.log('🎯 stopHoldToRecord called!'); // Добавляем лог
-	
-	// Очищаем debounce timer
-	if (holdToRecordDebounceTimer) {
-		clearTimeout(holdToRecordDebounceTimer);
-		holdToRecordDebounceTimer = null;
-	}
-	
-	if (!isHoldToRecordActive) {
-		console.log('🎯 Hold-to-record was not active, ignoring stop');
-		return; // Не активен
-	}
-	
-	console.log('🎯 Stopping hold-to-record mode');
-	isHoldToRecordActive = false;
-	
-	// Обновляем context variable
-	vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
-	
-	if (audioRecorder && audioRecorder.getIsRecording()) {
-		stopRecording();
-	}
-}
-
-/**
  * Обработка транскрибации
  */
 async function handleTranscription(audioBlob: Blob): Promise<void> {
 	const context: ErrorContext = {
 		operation: 'transcription',
-		isHoldToRecordMode: isHoldToRecordActive,
+		isHoldToRecordMode: false,
 		timestamp: new Date(),
 		additionalData: { audioBlobSize: audioBlob.size }
 	};
@@ -760,7 +320,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		console.log('🔄 Starting transcription process...');
 		
 		// Показываем уведомление о начале транскрибации
-		if (!isHoldToRecordActive) {
+		if (!currentRecordingMode) {
 			vscode.window.showInformationMessage('🔄 Transcribing audio...');
 		}
 		
@@ -826,36 +386,11 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			// Показываем состояние вставки
 			statusBarManager.showInserting();
 			
-			// 🎯 НОВАЯ ЛОГИКА: Проверяем контекст и решаем куда отправлять текст
-			const currentContext = contextManager.getContext();
-			const enableCursorIntegration = config.get<boolean>('enableCursorIntegration', true);
-			const autoSendToChat = config.get<boolean>('autoSendToChat', false);
+			// 🎯 НОВАЯ ЛОГИКА: Используем currentRecordingMode для определения действия
+			console.log(`🔍 Current recording mode: ${currentRecordingMode}`);
 			
-			console.log(`🔍 Context detected: ${currentContext.contextType} in ${currentContext.ideType}`);
-			console.log(`🔍 Active editor: ${currentContext.activeEditor ? 'YES' : 'NO'}`);
-			console.log(`🔍 Visible editors: ${vscode.window.visibleTextEditors.length}`);
-			console.log(`🔍 autoSendToChat: ${autoSendToChat}, enableCursorIntegration: ${enableCursorIntegration}`);
-			
-			// Проверяем, нужно ли отправить в Cursor чат
-			const shouldSendToChat = (
-				currentContext.ideType === 'cursor' &&
-				enableCursorIntegration &&
-				(
-					currentContext.contextType === 'chat' || // Прямо в чате
-					autoSendToChat || // Автоотправка включена
-					(
-						// Дополнительная проверка: нет активного редактора
-						!currentContext.activeEditor && 
-						vscode.window.visibleTextEditors.length === 0 &&
-						currentContext.contextType === 'unknown'
-					)
-				)
-			);
-			
-			console.log(`🎯 Should send to chat: ${shouldSendToChat}`);
-			
-			if (shouldSendToChat) {
-				console.log('🎯 Sending to Cursor chat instead of editor');
+			if (currentRecordingMode === 'chat') {
+				console.log('🎯 Sending to Cursor chat (mode: chat)');
 				
 				try {
 					// Отправляем в чат через CursorIntegration
@@ -866,19 +401,51 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					statusBarManager.showSuccess(`Sent to chat: "${truncatedText}"`);
 					
 					// Показываем уведомление о завершении
-					if (!isHoldToRecordActive) {
-						vscode.window.showInformationMessage(`✅ Transcribed and sent to chat: "${truncatedText}"`);
-					}
+					vscode.window.showInformationMessage(`✅ Transcribed and sent to chat: "${truncatedText}"`);
 					
-					return; // Завершаем функцию, не вставляем в редактор
+					// Сбрасываем режим
+					currentRecordingMode = null;
+					return; // Завершаем функцию
 					
 				} catch (error) {
-					console.warn('⚠️ Failed to send to chat, falling back to editor insertion:', error);
-					// Продолжаем с обычной логикой вставки в редактор
+					console.error('❌ Failed to send to chat:', error);
+					vscode.window.showErrorMessage(`Failed to send to chat: ${(error as Error).message}`);
+					// Сбрасываем режим и завершаем
+					currentRecordingMode = null;
+					return;
+				}
+			} else if (currentRecordingMode === 'clipboard') {
+				console.log('📋 Copying to clipboard (mode: clipboard)');
+				
+				try {
+					// Копируем в буфер обмена
+					await insertLastTranscription('clipboard');
+					
+					// Показываем успех
+					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
+					statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
+					
+					// Показываем уведомление о завершении
+					vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
+					
+					// Сбрасываем режим
+					currentRecordingMode = null;
+					return; // Завершаем функцию
+					
+				} catch (error) {
+					console.error('❌ Failed to copy to clipboard:', error);
+					vscode.window.showErrorMessage(`Failed to copy to clipboard: ${(error as Error).message}`);
+					// Сбрасываем режим и завершаем
+					currentRecordingMode = null;
+					return;
 				}
 			}
 			
+			// Если режим не установлен, используем настройки по умолчанию
+			console.log('📝 Using default insert mode (no specific recording mode set)');
+			
 			// Вставляем текст в редактор (обычная логика)
+			const insertMode = config.get<string>('insertMode', 'cursor');
 			await insertTranscribedTextWithErrorHandling(lastTranscribedText, insertMode, context);
 			
 			// Показываем успех с сообщением
@@ -886,9 +453,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			statusBarManager.showSuccess(`Inserted: "${truncatedText}"`);
 			
 			// Показываем уведомление о завершении
-			if (!isHoldToRecordActive) {
-				vscode.window.showInformationMessage(`✅ Transcribed and inserted: "${truncatedText}"`);
-			}
+			vscode.window.showInformationMessage(`✅ Transcribed and inserted: "${truncatedText}"`);
 			
 		} else {
 			// Обработка пустой транскрибации
@@ -916,7 +481,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 async function insertTranscribedTextWithErrorHandling(text: string, mode: string, parentContext: ErrorContext): Promise<void> {
 	const context: ErrorContext = {
 		operation: 'text_insertion',
-		isHoldToRecordMode: parentContext.isHoldToRecordMode,
+		isHoldToRecordMode: false,
 		timestamp: new Date(),
 		additionalData: { 
 			textLength: text.length,
@@ -1003,7 +568,7 @@ async function insertLastTranscription(mode: string): Promise<void> {
 		// Обычная логика для других режимов
 		await insertTranscribedTextWithErrorHandling(lastTranscribedText, mode, {
 			operation: 'text_insertion',
-			isHoldToRecordMode: isHoldToRecordActive,
+			isHoldToRecordMode: false,
 			timestamp: new Date(),
 			additionalData: { 
 				textLength: lastTranscribedText.length,
@@ -1300,16 +865,6 @@ export function deactivate() {
 			audioRecorder.stopRecording();
 		}
 		
-		// Очищаем hold-to-record состояние
-		if (isHoldToRecordActive) {
-			isHoldToRecordActive = false;
-		}
-		
-		// Очищаем диспозаблы
-		if (holdToRecordDisposable) {
-			holdToRecordDisposable.dispose();
-		}
-		
 		// Освобождаем ресурсы ContextManager
 		if (contextManager) {
 			console.log('🔌 Disposing ContextManager...');
@@ -1528,11 +1083,11 @@ async function runDiagnostics(): Promise<void> {
 	diagnosticsResults.push('');
 	diagnosticsResults.push('📊 Extension states:');
 	diagnosticsResults.push(`  Recording state: ${audioRecorder?.getIsRecording() ? 'active' : 'inactive'}`);
-	diagnosticsResults.push(`  Hold-to-record: ${isHoldToRecordActive ? 'active' : 'inactive'}`);
+	diagnosticsResults.push(`  Current mode: ${currentRecordingMode || 'none'}`);
 	diagnosticsResults.push(`  Last transcription: ${lastTranscribedText ? 'available' : 'none'}`);
 	
 	// Проверяем настройки
-	const recordingMode = config.get<string>('recordingMode', 'hold');
+	const recordingMode = config.get<string>('recordingMode', 'chat');
 	const language = config.get<string>('language', 'auto');
 	const insertMode = config.get<string>('insertMode', 'cursor');
 	const inputDevice = config.get<string>('inputDevice', 'auto');
@@ -1623,10 +1178,8 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			
 			statusBarManager.updateRecordingState(true);
 			
-			// Показываем уведомление только если не в hold-to-record режиме
-			if (!isHoldToRecordActive) {
-				vscode.window.showInformationMessage('🎤 Recording started...');
-			}
+			// Показываем уведомление
+			vscode.window.showInformationMessage('🎤 Recording started...');
 		},
 		onRecordingStop: async (audioBlob: Blob) => {
 			console.log('⏹️ Recording stopped');
@@ -1642,8 +1195,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			
 			// Сбрасываем состояния при ошибке
 			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
-			vscode.commands.executeCommand('setContext', 'speechToTextWhisper.holdToRecordActive', false);
-			isHoldToRecordActive = false;
+			currentRecordingMode = null;
 			
 			// Проверяем нужно ли показывать ошибку
 			const errorMessage = error.message;
@@ -1654,21 +1206,11 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			// Используем новую систему обработки ошибок
 			const context: ErrorContext = {
 				operation: 'audio_recording',
-				isHoldToRecordMode: isHoldToRecordActive,
+				isHoldToRecordMode: false,
 				timestamp: new Date()
 			};
 			
-			// Для hold-to-record режима только логируем, не показываем popup
-			if (isHoldToRecordActive || errorMessage.includes('Recording too short') || errorMessage.includes('Recording is already in progress')) {
-				console.log(`🔇 Suppressing hold-to-record error: ${errorMessage}`);
-				// Только обновляем status bar
-				if (statusBarManager) {
-					statusBarManager.showWarning('Recording issue');
-				}
-				return;
-			}
-			
-			// Для обычных ошибок показываем через ErrorHandler
+			// Показываем ошибки через ErrorHandler
 			const userAction = await errorHandler.handleErrorFromException(error, context);
 			
 			if (userAction && userAction !== 'ignore') {
@@ -1770,4 +1312,172 @@ function initializeCursorIntegration(): void {
 	});
 	
 	console.log(`✅ CursorIntegration initialized, enabled: ${cursorIntegration.isIntegrationEnabled()}`);
+}
+
+/**
+ * Команда записи с отправкой в чат
+ */
+async function recordAndSendToChat(): Promise<void> {
+	const context: ErrorContext = {
+		operation: 'record_and_send_to_chat',
+		isHoldToRecordMode: false,
+		timestamp: new Date()
+	};
+
+	try {
+		console.log('🎤 Starting record and send to chat...');
+		
+		// Проверяем интеграцию с Cursor
+		if (!cursorIntegration || !cursorIntegration.isIntegrationEnabled()) {
+			throw new Error('Cursor integration not available. Please use Cursor IDE.');
+		}
+		
+		// Устанавливаем режим записи
+		currentRecordingMode = 'chat';
+		
+		// Начинаем запись
+		await startRecording();
+		
+		// Показываем уведомление
+		vscode.window.showInformationMessage('🎤 Recording... Release F9 to send to chat');
+		
+	} catch (error) {
+		console.error('❌ Record and send to chat failed:', error);
+		currentRecordingMode = null; // Сбрасываем режим при ошибке
+		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
+		
+		if (userAction && userAction !== 'ignore') {
+			await handleUserRecoveryAction(userAction, context);
+		}
+	}
+}
+
+/**
+ * Команда записи в буфер обмена
+ */
+async function recordToClipboard(): Promise<void> {
+	const context: ErrorContext = {
+		operation: 'record_to_clipboard',
+		isHoldToRecordMode: false,
+		timestamp: new Date()
+	};
+
+	try {
+		console.log('📋 Starting record to clipboard...');
+		
+		// Устанавливаем режим записи
+		currentRecordingMode = 'clipboard';
+		
+		// Начинаем запись
+		await startRecording();
+		
+		// Показываем уведомление
+		vscode.window.showInformationMessage('🎤 Recording... Release Ctrl+Shift+V to copy to clipboard');
+		
+	} catch (error) {
+		console.error('❌ Record to clipboard failed:', error);
+		currentRecordingMode = null; // Сбрасываем режим при ошибке
+		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
+		
+		if (userAction && userAction !== 'ignore') {
+			await handleUserRecoveryAction(userAction, context);
+		}
+	}
+}
+
+/**
+ * Команды записи
+ */
+async function startRecording(): Promise<void> {
+	const context: ErrorContext = {
+		operation: 'start_recording',
+		isHoldToRecordMode: false,
+		timestamp: new Date()
+	};
+
+	try {
+		console.log('▶️ Starting recording...');
+		
+		// Проверяем минимальный интервал между попытками
+		const now = Date.now();
+		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
+			console.log('⚠️ Too frequent recording attempts, skipping');
+			return;
+		}
+		lastRecordingStartTime = now;
+		
+		// Обеспечиваем инициализацию FFmpeg Audio Recorder
+		await ensureFFmpegAudioRecorder();
+		
+		// Проверяем, не идет ли уже запись
+		if (audioRecorder && audioRecorder.getIsRecording()) {
+			console.log('⚠️ Recording already in progress, skipping start');
+			return;
+		}
+		
+		// Проверяем состояние микрофона с retry
+		const microphoneResult = await retryManager.retryMicrophoneOperation(
+			async () => {
+				const hasPermission = await FFmpegAudioRecorder.checkMicrophonePermission();
+				if (hasPermission.state !== 'granted') {
+					throw new Error('Microphone permission not granted');
+				}
+				return hasPermission;
+			},
+			'microphone_permission_check'
+		);
+
+		if (!microphoneResult.success) {
+			const error = microphoneResult.lastError || new Error('Microphone access failed');
+			const userAction = await errorHandler.handleErrorFromException(error, context);
+			
+			if (userAction && userAction !== 'ignore') {
+				await handleUserRecoveryAction(userAction, context);
+			}
+			return;
+		}
+		
+		if (!audioRecorder) {
+			throw new Error('Failed to initialize audio recorder');
+		}
+		
+		await audioRecorder.startRecording();
+		
+	} catch (error) {
+		console.error('❌ Failed to start recording:', error);
+		
+		const userAction = await errorHandler.handleErrorFromException(error as Error, context);
+		
+		if (userAction && userAction !== 'ignore') {
+			await handleUserRecoveryAction(userAction, context);
+		}
+	}
+}
+
+function stopRecording(): void {
+	const context: ErrorContext = {
+		operation: 'stop_recording',
+		isHoldToRecordMode: false,
+		timestamp: new Date()
+	};
+
+	try {
+		console.log('⏹️ Stopping recording...');
+		
+		if (!audioRecorder) {
+			console.warn('Audio recorder not initialized');
+			return;
+		}
+		
+		audioRecorder.stopRecording();
+		
+		// Сбрасываем режим записи
+		currentRecordingMode = null;
+		
+	} catch (error) {
+		console.error('❌ Failed to stop recording:', error);
+		
+		// Для stop recording используем синхронную обработку ошибок
+		errorHandler.handleErrorFromException(error as Error, context);
+	}
 }

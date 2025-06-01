@@ -105,42 +105,37 @@ export const testUserSettings = {
     default: {
         'speechToTextWhisper.apiKey': 'test-api-key',
         'speechToTextWhisper.language': 'auto',
-        'speechToTextWhisper.recordingMode': 'hold',
-        'speechToTextWhisper.insertMode': 'cursor'
+        'speechToTextWhisper.recordingMode': 'chat'
     },
     
     withRussianLanguage: {
         'speechToTextWhisper.apiKey': 'test-api-key',
         'speechToTextWhisper.language': 'ru',
-        'speechToTextWhisper.recordingMode': 'hold',
-        'speechToTextWhisper.insertMode': 'cursor'
+        'speechToTextWhisper.recordingMode': 'chat'
     },
     
-    toggleMode: {
+    clipboardMode: {
         'speechToTextWhisper.apiKey': 'test-api-key',
         'speechToTextWhisper.language': 'auto',
-        'speechToTextWhisper.recordingMode': 'toggle',
-        'speechToTextWhisper.insertMode': 'cursor'
+        'speechToTextWhisper.recordingMode': 'clipboard'
     },
     
-    commentMode: {
+    chatMode: {
         'speechToTextWhisper.apiKey': 'test-api-key',
         'speechToTextWhisper.language': 'auto',
-        'speechToTextWhisper.recordingMode': 'hold',
-        'speechToTextWhisper.insertMode': 'comment'
+        'speechToTextWhisper.recordingMode': 'chat'
     },
     
     noApiKey: {
         'speechToTextWhisper.language': 'auto',
-        'speechToTextWhisper.recordingMode': 'hold',
-        'speechToTextWhisper.insertMode': 'cursor'
+        'speechToTextWhisper.recordingMode': 'chat'
     }
 };
 
 export const testScenarios = {
     // Сценарии для integration тестов
-    basicRecordingFlow: {
-        description: 'Базовый сценарий: запись → транскрипция → вставка',
+    basicChatRecordingFlow: {
+        description: 'Базовый сценарий: запись → транскрипция → отправка в чат',
         steps: [
             'User presses F9',
             'Recording starts',
@@ -148,9 +143,23 @@ export const testScenarios = {
             'Recording stops',
             'Audio sent to API',
             'Text received from API',
-            'Text inserted at cursor'
+            'Text sent to Cursor chat'
         ],
-        expectedResult: 'Text should be inserted at cursor position'
+        expectedResult: 'Text should be sent to Cursor chat'
+    },
+    
+    basicClipboardRecordingFlow: {
+        description: 'Базовый сценарий: запись → транскрипция → копирование в буфер',
+        steps: [
+            'User presses Ctrl+Shift+V',
+            'Recording starts',
+            'User releases Ctrl+Shift+V',
+            'Recording stops',
+            'Audio sent to API',
+            'Text received from API',
+            'Text copied to clipboard'
+        ],
+        expectedResult: 'Text should be copied to clipboard'
     },
     
     recordingWithoutMicrophone: {
@@ -174,15 +183,15 @@ export const testScenarios = {
         expectedResult: 'User should see API key error'
     },
     
-    insertAsComment: {
-        description: 'Вставка как комментарий в код',
+    cursorIntegrationUnavailable: {
+        description: 'Сценарий когда Cursor интеграция недоступна',
         steps: [
-            'User opens JS file',
-            'User presses F9',
+            'User presses F9 in VS Code',
             'Recording completes',
-            'Text inserted as comment'
+            'Cursor integration fails',
+            'Error message shown'
         ],
-        expectedResult: 'Text should be inserted as // comment'
+        expectedResult: 'User should see Cursor integration error'
     }
 };
 

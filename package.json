@@ -78,64 +78,16 @@
     },
     "commands": [
       {
-        "command": "speechToTextWhisper.startRecording",
-        "title": "Start Voice Recording",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(record)"
-      },
-      {
-        "command": "speechToTextWhisper.stopRecording",
-        "title": "Stop Voice Recording",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(record)"
-      },
-      {
-        "command": "speechToTextWhisper.toggleRecording",
-        "title": "Toggle Voice Recording",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(mic)"
-      },
-      {
-        "command": "speechToTextWhisper.startHoldToRecord",
-        "title": "Start Hold-to-Record",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(mic)"
-      },
-      {
-        "command": "speechToTextWhisper.stopHoldToRecord",
-        "title": "Stop Hold-to-Record",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(mic-filled)"
-      },
-      {
-        "command": "speechToTextWhisper.insertAtCursor",
-        "title": "Insert Last Transcription at Cursor",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(edit)"
-      },
-      {
-        "command": "speechToTextWhisper.insertAsComment",
-        "title": "Insert Last Transcription as Comment",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(comment)"
-      },
-      {
-        "command": "speechToTextWhisper.replaceSelection",
-        "title": "Replace Selection with Last Transcription",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(replace)"
-      },
-      {
-        "command": "speechToTextWhisper.copyToClipboard",
-        "title": "Copy Last Transcription to Clipboard",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(clippy)"
-      },
-      {
-        "command": "speechToTextWhisper.sendToChat",
-        "title": "Record and Send to AI Chat",
+        "command": "speechToTextWhisper.recordAndSendToChat",
+        "title": "Record and Send to Chat",
         "category": "Speech to Text with Whisper",
         "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "speechToTextWhisper.recordToClipboard",
+        "title": "Record to Clipboard",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(clippy)"
       },
       {
         "command": "speechToTextWhisper.openSettings",
@@ -144,198 +96,23 @@
         "icon": "$(settings-gear)"
       },
       {
-        "command": "speechToTextWhisper.showHelp",
-        "title": "Show Speech to Text with Whisper Help",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(question)"
-      },
-      {
-        "command": "speechToTextWhisper.showStatus",
-        "title": "Show Speech to Text with Whisper Status",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(info)"
-      },
-      {
-        "command": "speechToTextWhisper.checkMicrophone",
-        "title": "Check Microphone",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(device-microphone)"
-      },
-      {
-        "command": "speechToTextWhisper.testApiKey",
-        "title": "Test OpenAI API Key",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(key)"
-      },
-      {
-        "command": "speechToTextWhisper.showContext",
-        "title": "Show Context Information",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(info)"
-      },
-      {
-        "command": "speechToTextWhisper.refreshContext",
-        "title": "Refresh Context",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "speechToTextWhisper.sendToChat",
-        "title": "Send Last Transcription to Cursor Chat",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "speechToTextWhisper.recordAndSendToChat",
-        "title": "Record and Send to Cursor Chat",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(microphone)"
-      },
-      {
-        "command": "speechToTextWhisper.resetConfiguration",
-        "title": "Reset Configuration",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "speechToTextWhisper.toggleStatusBar",
-        "title": "Toggle Status Bar",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(eye)"
-      },
-      {
-        "command": "speechToTextWhisper.debugF9",
-        "title": "Debug F9 Key Behavior",
+        "command": "speechToTextWhisper.runDiagnostics",
+        "title": "Run Diagnostics",
         "category": "Speech to Text with Whisper",
         "icon": "$(debug)"
-      },
-      {
-        "command": "speechToTextWhisper.testF9Commands",
-        "title": "Test F9 Commands Manually",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(play)"
-      },
-      {
-        "command": "speechToTextWhisper.testChat",
-        "title": "Test Chat Integration",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "speechToTextWhisper.showQualitySettings",
-        "title": "Show Audio Quality Settings",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(settings)"
-      },
-      {
-        "command": "speechToTextWhisper.applyQualityPreset",
-        "title": "Apply Audio Quality Preset",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(star)"
-      },
-      {
-        "command": "speechToTextWhisper.optimizeForContext",
-        "title": "Optimize Audio for Context",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(target)"
-      },
-      {
-        "command": "speechToTextWhisper.exportQualitySettings",
-        "title": "Export Audio Quality Settings",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(export)"
-      },
-      {
-        "command": "speechToTextWhisper.importQualitySettings",
-        "title": "Import Audio Quality Settings",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(import)"
-      },
-      {
-        "command": "speechToTextWhisper.audioSettings.refresh",
-        "title": "Refresh",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "speechToTextWhisper.audioSettings.detectDevices",
-        "title": "Detect Audio Devices",
-        "icon": "$(search)"
-      },
-      {
-        "command": "speechToTextWhisper.audioSettings.selectDevice",
-        "title": "Select Audio Device",
-        "icon": "$(device-microphone)"
-      },
-      {
-        "command": "speechToTextWhisper.audioSettings.testDevice",
-        "title": "Test Selected Device",
-        "icon": "$(play)"
-      },
-      {
-        "command": "speechToTextWhisper.audioSettings.openFFmpegSettings",
-        "title": "FFmpeg Settings",
-        "icon": "$(settings-gear)"
-      },
-      {
-        "command": "speechToTextWhisper.deviceManager.refresh",
-        "title": "Refresh Devices",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "speechToTextWhisper.diagnostics.runAll",
-        "title": "Run All Diagnostics",
-        "icon": "$(debug-start)"
-      },
-      {
-        "command": "speechToTextWhisper.diagnostics.refresh",
-        "title": "Refresh",
-        "icon": "$(refresh)"
-      },
-      {
-        "command": "speechToTextWhisper.forceToChat",
-        "title": "Force Send to Chat",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(arrow-right)"
       }
     ],
     "keybindings": [
       {
-        "command": "speechToTextWhisper.startHoldToRecord",
+        "command": "speechToTextWhisper.recordAndSendToChat",
         "key": "F9",
-        "when": "!speechToTextWhisper.holdToRecordActive && speechToTextWhisper.recordingMode == 'hold'"
-      },
-      {
-        "command": "speechToTextWhisper.stopHoldToRecord",
-        "key": "F9",
-        "when": "speechToTextWhisper.holdToRecordActive && speechToTextWhisper.recordingMode == 'hold'"
-      },
-      {
-        "command": "speechToTextWhisper.toggleRecording",
-        "key": "F9",
-        "when": "speechToTextWhisper.recordingMode == 'toggle'"
-      },
-      {
-        "command": "speechToTextWhisper.toggleRecording",
-        "key": "ctrl+shift+v",
-        "mac": "cmd+shift+v",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "speechToTextWhisper.sendToChat",
-        "key": "ctrl+shift+alt+v",
-        "mac": "cmd+shift+alt+v",
         "when": "true"
       },
       {
-        "command": "speechToTextWhisper.insertAsComment",
-        "key": "ctrl+shift+c",
-        "mac": "cmd+shift+c",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "speechToTextWhisper.showHelp",
-        "key": "F1",
-        "when": "speechToTextWhisper.active"
+        "command": "speechToTextWhisper.recordToClipboard",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "true"
       }
     ],
     "menus": {
@@ -390,27 +167,19 @@
       ],
       "commandPalette": [
         {
-          "command": "speechToTextWhisper.startRecording",
+          "command": "speechToTextWhisper.recordAndSendToChat",
           "when": "true"
         },
         {
-          "command": "speechToTextWhisper.stopRecording",
-          "when": "speechToTextWhisper.isRecording"
-        },
-        {
-          "command": "speechToTextWhisper.toggleRecording",
+          "command": "speechToTextWhisper.recordToClipboard",
           "when": "true"
-        },
-        {
-          "command": "speechToTextWhisper.sendToChat",
-          "when": "true"
-        },
-        {
-          "command": "speechToTextWhisper.insertAsComment",
-          "when": "editorTextFocus"
         },
         {
           "command": "speechToTextWhisper.openSettings",
+          "when": "true"
+        },
+        {
+          "command": "speechToTextWhisper.runDiagnostics",
           "when": "true"
         }
       ]
@@ -538,28 +307,12 @@
         "speechToTextWhisper.recordingMode": {
           "type": "string",
           "enum": [
-            "hold",
-            "toggle"
+            "chat",
+            "clipboard"
           ],
-          "default": "hold",
-          "description": "Recording mode: hold button or toggle on/off",
+          "default": "chat",
+          "description": "Recording mode: send to chat or copy to clipboard",
           "order": 3
-        },
-        "speechToTextWhisper.insertMode": {
-          "type": "string",
-          "enum": [
-            "cursor",
-            "comment",
-            "replace"
-          ],
-          "default": "cursor",
-          "description": "How to insert transcribed text",
-          "enumDescriptions": [
-            "Insert at cursor position",
-            "Insert as comment",
-            "Replace selected text"
-          ],
-          "order": 4
         },
         "speechToTextWhisper.audioQuality": {
           "type": "string",
