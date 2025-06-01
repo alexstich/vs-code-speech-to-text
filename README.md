@@ -323,15 +323,15 @@ function validateEmail(email) {
 ## 🤝 Сообщество и поддержка
 
 ### 📞 **Получить помощь**
-- 🐛 [GitHub Issues](https://github.com/alexstich/vs-code-speech-to-text/issues) - Сообщить о проблеме
-- 💡 [Feature Requests](https://github.com/alexstich/vs-code-speech-to-text/discussions) - Предложить улучшение
+- 🐛 [GitHub Issues](https://github.com/speak-y/vs-code-speech-to-text/issues) - Сообщить о проблеме
+- 💡 [Feature Requests](https://github.com/speak-y/vs-code-speech-to-text/discussions) - Предложить улучшение
 
 
 ### 🛠️ **Разработка**
 
 #### Настройка окружения
 ```bash
-git clone https://github.com/alexstich/vs-code-speech-to-text.git
+git clone https://github.com/speak-y/vs-code-speech-to-text.git
 cd vs-code-speech-to-text
 npm install
 npm run compile

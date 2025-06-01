@@ -3,7 +3,7 @@
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
   "version": "0.1.0",
-  "publisher": "speech-to-text-whisper",
+  "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e1e1e",
@@ -11,12 +11,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/alexstich/vs-code-speech-to-text"
+    "url": "https://github.com/speak-y/vs-code-speech-to-text"
   },
   "bugs": {
-    "url": "https://github.com/alexstich/vs-code-speech-to-text/issues"
+    "url": "https://github.com/speak-y/vs-code-speech-to-text/issues"
   },
-  "homepage": "https://github.com/alexstich/vs-code-speech-to-text#readme",
+  "homepage": "https://github.com/speak-y/vs-code-speech-to-text#readme",
   "license": "MIT",
   "engines": {
     "vscode": "^1.74.0"
@@ -43,8 +43,9 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:speechToTextWhisper.recordAndInsert",
-    "onCommand:speechToTextWhisper.recordToClipboard",
+    "onCommand:speechToTextWhisper.recordAndInsertOrClipboard",
+    "onCommand:speechToTextWhisper.recordAndInsertToCurrentChat",
+    "onCommand:speechToTextWhisper.recordAndOpenNewChat",
     "onCommand:speechToTextWhisper.runDiagnostics",
     "onCommand:speechToTextWhisper.openSettings",
     "onCommand:speechToTextWhisper.toggleMode"
@@ -86,22 +87,40 @@
     },
     "commands": [
       {
-        "command": "speechToTextWhisper.recordAndInsert",
-        "title": "Record and Insert Text",
+        "command": "speechToTextWhisper.recordAndInsertOrClipboard",
+        "title": "Record and Insert to Cursor or Clipboard",
         "category": "Speech to Text with Whisper",
         "icon": "$(edit)"
       },
       {
-        "command": "speechToTextWhisper.recordToClipboard",
-        "title": "Record to Clipboard",
+        "command": "speechToTextWhisper.recordAndInsertToCurrentChat",
+        "title": "Record and Insert to Current Chat",
         "category": "Speech to Text with Whisper",
-        "icon": "$(clippy)"
+        "icon": "$(comment)"
+      },
+      {
+        "command": "speechToTextWhisper.recordAndOpenNewChat",
+        "title": "Record and Open New Chat",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "speechToTextWhisper.runDiagnostics",
         "title": "Run Diagnostics",
         "category": "Speech to Text with Whisper",
         "icon": "$(debug-alt)"
+      },
+      {
+        "command": "speechToTextWhisper.testFFmpeg",
+        "title": "Test FFmpeg Availability",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "speechToTextWhisper.testAudioRecorder",
+        "title": "Test Audio Recorder Initialization",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(debug-console)"
       },
       {
         "command": "speechToTextWhisper.openSettings",
@@ -123,24 +142,34 @@
     ],
     "keybindings": [
       {
-        "command": "speechToTextWhisper.recordAndInsert",
+        "command": "speechToTextWhisper.recordAndOpenNewChat",
         "key": "F9"
       },
       {
-        "command": "speechToTextWhisper.recordToClipboard",
+        "command": "speechToTextWhisper.recordAndInsertOrClipboard",
         "key": "ctrl+shift+m",
         "mac": "cmd+shift+m"
+      },
+      {
+        "command": "speechToTextWhisper.recordAndInsertToCurrentChat",
+        "key": "ctrl+shift+n",
+        "mac": "cmd+shift+n"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "speechToTextWhisper.recordAndInsert",
+          "command": "speechToTextWhisper.recordAndInsertOrClipboard",
           "when": "view == speechToTextWhisper.diagnostics",
           "group": "navigation"
         },
         {
-          "command": "speechToTextWhisper.recordToClipboard",
+          "command": "speechToTextWhisper.recordAndInsertToCurrentChat",
+          "when": "view == speechToTextWhisper.diagnostics",
+          "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.recordAndOpenNewChat",
           "when": "view == speechToTextWhisper.diagnostics",
           "group": "navigation"
         },
@@ -354,20 +383,20 @@
           "description": "Duration of silence in seconds before automatically stopping recording",
           "order": 13
         },
-        "speechToTextWhisper.silenceThreshold": {
-          "type": "number",
-          "default": -50,
-          "minimum": -80,
-          "maximum": -20,
-          "description": "Silence threshold in decibels (lower values are more sensitive)",
-          "order": 14
-        },
         "speechToTextWhisper.inputDevice": {
           "type": "string",
           "default": "auto",
           "description": "Audio input device for recording (auto for automatic detection)",
           "scope": "application",
           "order": 15
+        },
+        "speechToTextWhisper.silenceThreshold": {
+          "type": "number",
+          "default": 50,
+          "minimum": 20,
+          "maximum": 80,
+          "description": "Silence threshold value (20-80). Higher values are more sensitive to silence.",
+          "order": 14
         }
       }
     }
@@ -375,7 +404,7 @@
   "scripts": {
     "vscode:prepublish": "node esbuild.js --production",
     "compile": "node esbuild.js",
-    "compile:tsc": "tsc -p ./",
+    "compile:tsc": "tsc -p ./tsconfig.test.json",
     "watch": "node esbuild.js --watch",
     "pretest": "npm run compile:tsc && npm run lint",
     "lint": "eslint src",

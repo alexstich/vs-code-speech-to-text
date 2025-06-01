@@ -517,7 +517,9 @@ export class FFmpegAudioRecorder {
      * Настройка обработчиков событий FFmpeg процесса
      */
     private setupFFmpegEvents(): void {
-        if (!this.ffmpegProcess) return;
+        if (!this.ffmpegProcess) {
+            return;
+        }
 
         this.ffmpegProcess.on('close', (code) => {
             console.log(`FFmpeg process closed with code: ${code}`);

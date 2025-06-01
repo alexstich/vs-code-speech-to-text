@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
  * Стратегии интеграции с Cursor чатом
  */
 export enum CursorIntegrationStrategy {
-    AICHAT_COMMAND = 'aichat_command',    // Через команду aichat.show-ai-chat (РЕКОМЕНДУЕТСЯ)
+    AICHAT_COMMAND = 'aichat_command',    // Через команду aichat.newfollowupaction (РЕКОМЕНДУЕТСЯ)
     CLIPBOARD = 'clipboard',           // Через буфер обмена
     COMMAND_PALETTE = 'command_palette', // Через палитру команд
     FOCUS_CHAT = 'focus_chat',         // Автоматический фокус на чат
@@ -52,17 +52,17 @@ export interface VSCodeEnvironment {
         appName: string;
         uriScheme: string;
         clipboard: {
-            writeText(text: string): Promise<void>;
-            readText(): Promise<string>;
+            writeText(text: string): Thenable<void>;
+            readText(): Thenable<string>;
         };
     };
     window: {
-        showInformationMessage(message: string): Promise<any>;
-        showWarningMessage(message: string): Promise<any>;
-        showErrorMessage(message: string): Promise<any>;
+        showInformationMessage(message: string): Thenable<any>;
+        showWarningMessage(message: string): Thenable<any>;
+        showErrorMessage(message: string): Thenable<any>;
     };
     commands: {
-        executeCommand(command: string, ...args: any[]): Promise<any>;
+        executeCommand(command: string, ...args: any[]): Thenable<any>;
     };
 }
 
@@ -83,7 +83,18 @@ export class CursorIntegration {
     ) {
         this.options = this.mergeDefaultOptions(options);
         this.events = events;
-        this.vscodeEnv = vscodeEnvironment || (global as any).vscode;
+        
+        // Безопасная инициализация vscode environment
+        if (vscodeEnvironment) {
+            this.vscodeEnv = vscodeEnvironment;
+        } else {
+            // Используем реальный vscode API если он доступен
+            this.vscodeEnv = {
+                env: vscode.env,
+                window: vscode.window,
+                commands: vscode.commands
+            };
+        }
         
         // Проверяем доступность интеграции
         this.checkAvailability();
@@ -116,16 +127,23 @@ export class CursorIntegration {
      */
     private checkAvailability(): void {
         try {
-            // Проверяем, что мы действительно в Cursor IDE
-            const appName = this.vscodeEnv.env.appName.toLowerCase();
-            const uriScheme = this.vscodeEnv.env.uriScheme;
+            // Проверяем, что vscodeEnv и его свойства доступны
+            if (!this.vscodeEnv || !this.vscodeEnv.env) {
+                console.warn('⚠️ VS Code environment not available');
+                this.isEnabled = false;
+                return;
+            }
             
-            this.isEnabled = appName.includes('cursor') || uriScheme === 'cursor';
+            // Проверяем, что мы действительно в Cursor IDE
+            const appName = this.vscodeEnv.env.appName?.toLowerCase() || '';
+            const uriScheme = this.vscodeEnv.env.uriScheme || '';
+            
+            this.isEnabled = appName.includes('cursor') || uriScheme === 'cursor' || appName.includes('code');
             
             if (this.isEnabled) {
-                console.log('✅ Cursor IDE detected - integration enabled');
+                console.log(`✅ IDE detected (${appName}) - integration enabled`);
             } else {
-                console.log('ℹ️ Not in Cursor IDE - integration disabled');
+                console.log(`ℹ️ Unknown IDE (${appName}) - integration disabled`);
             }
             
         } catch (error) {
@@ -259,20 +277,20 @@ export class CursorIntegration {
     }
 
     /**
-     * Стратегия через команду aichat.show-ai-chat (РЕКОМЕНДУЕТСЯ для Cursor)
+     * Стратегия через команду aichat.newfollowupaction (РЕКОМЕНДУЕТСЯ для Cursor)
      * Использует проверенный рабочий метод из сообщества Cursor
      */
     private async useAIChatCommandStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
-            console.log('🎯 Using aichat.show-ai-chat command strategy');
+            console.log('🎯 Using aichat.newfollowupaction command strategy');
             
             // 1. Сохраняем оригинальный буфер обмена
             const originalClipboard = await this.vscodeEnv.env.clipboard.readText();
             console.log('📋 Original clipboard saved');
             
-            // 2. Открываем новый чат с помощью команды aichat.show-ai-chat
+            // 2. Открываем новый чат с помощью команды aichat.newfollowupaction
             console.log('💬 Opening new chat...');
-            await this.vscodeEnv.commands.executeCommand("aichat.show-ai-chat");
+            await this.vscodeEnv.commands.executeCommand("aichat.newfollowupaction");
             
             // 3. Ждем, пока чат откроется (важно для стабильной работы)
             console.log('⏳ Waiting for chat window...');
@@ -290,12 +308,12 @@ export class CursorIntegration {
             console.log('🔄 Restoring original clipboard');
             await this.vscodeEnv.env.clipboard.writeText(originalClipboard);
             
-            console.log('✅ Successfully sent to chat via aichat.show-ai-chat command');
+            console.log('✅ Successfully sent to chat via aichat.newfollowupaction command');
             
             return {
                 success: true,
                 strategy: CursorIntegrationStrategy.AICHAT_COMMAND,
-                message: 'Text sent to chat via aichat.show-ai-chat command'
+                message: 'Text sent to chat via aichat.newfollowupaction command'
             };
             
         } catch (error) {
