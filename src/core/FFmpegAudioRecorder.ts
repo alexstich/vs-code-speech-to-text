@@ -427,6 +427,10 @@ export class FFmpegAudioRecorder {
             // Но все равно попробуем остановить запись
         }
 
+        // Очищаем таймеры при остановке записи
+        this.clearMaxDurationTimer();
+        this.clearSilenceTimer();
+
         try {
             // Отправляем SIGTERM для graceful shutdown
             this.ffmpegProcess.kill('SIGTERM');
