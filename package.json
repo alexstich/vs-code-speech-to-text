@@ -333,9 +333,9 @@
         },
         "speechToTextWhisper.maxRecordingDuration": {
           "type": "number",
-          "default": 60,
+          "default": 3600,
           "minimum": 5,
-          "maximum": 300,
+          "maximum": 7200,
           "description": "Maximum recording duration in seconds",
           "order": 7
         },

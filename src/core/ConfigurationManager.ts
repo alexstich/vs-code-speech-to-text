@@ -182,7 +182,7 @@ export class ConfigurationManager {
             audio: {
                 audioQuality: 'standard',
                 ffmpegPath: '',
-                maxRecordingDuration: 60,
+                maxRecordingDuration: 3600,
                 silenceDetection: true,
                 silenceDuration: 3,
                 silenceThreshold: 50,
