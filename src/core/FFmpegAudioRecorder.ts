@@ -605,6 +605,7 @@ export class FFmpegAudioRecorder {
     private async handleRecordingComplete(exitCode: number | null): Promise<void> {
         this.isRecording = false;
         this.clearMaxDurationTimer();
+        this.clearSilenceTimer();
 
         try {
             // На macOS FFmpeg может завершиться с кодом 255 при SIGTERM, что нормально
@@ -770,12 +771,9 @@ export class FFmpegAudioRecorder {
             
             // Не проверяем тишину в первые minRecordingTime миллисекунд
             if (recordingDuration < minRecordingTime) {
-                console.log(`🔇 Silence check skipped: recording too short (${recordingDuration}ms < ${minRecordingTime}ms)`);
                 this.silenceTimer = setTimeout(checkSilence, 500);
                 return;
             }
-            
-            console.log(`🔇 Silence check: ${timeSinceLastAudio}ms since last audio activity (threshold: ${silenceDuration}ms)`);
             
             if (timeSinceLastAudio >= silenceDuration) {
                 console.log(`🔇 Silence detected for ${timeSinceLastAudio}ms, stopping recording (recording duration: ${recordingDuration}ms)`);
@@ -796,10 +794,7 @@ export class FFmpegAudioRecorder {
      */
     private updateLastAudioTime(): void {
         if (this.silenceDetectionEnabled) {
-            const previousTime = this.lastAudioTime;
             this.lastAudioTime = Date.now();
-            const timeSinceUpdate = this.lastAudioTime - previousTime;
-            console.log(`🔇 Audio activity detected (${timeSinceUpdate}ms since last update)`);
         }
     }
 

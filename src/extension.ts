@@ -164,35 +164,35 @@ class RecordingStateManager {
  * Вызывается при первом использовании команды расширения
  */
 export function activate(context: vscode.ExtensionContext) {
-	console.log('🎤 [DEBUG] SpeechToTextWhisper extension activation started! NEW VERSION 2024');
-	vscode.window.showInformationMessage('🎤 [DEBUG] SpeechToTextWhisper extension is activating...');
+	console.log('🎤 SpeechToTextWhisper extension activation started! NEW VERSION 2024');
+	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
 	
 	// Сохраняем контекст для глобального использования
 	extensionContext = context;
 
 	try {
 		// Инициализируем систему обработки ошибок
-		console.log('🎤 [DEBUG] Initializing error handling...');
+		console.log('🎤 Initializing error handling...');
 		initializeErrorHandling();
 		
 		// Инициализируем компоненты
-		console.log('🎤 [DEBUG] Initializing components...');
+		console.log('🎤 Initializing components...');
 		initializeComponents();
 		
 		// Регистрируем все команды
-		console.log('🎤 [DEBUG] Registering commands...');
+		console.log('🎤 Registering commands...');
 		registerCommands(context);
 		
 		// Инициализируем WhisperClient при первом использовании
-		console.log('🎤 [DEBUG] Initializing Whisper client...');
+		console.log('🎤 Initializing Whisper client...');
 		initializeWhisperClient();
 		
 		// Показываем приветственное сообщение и StatusBar
-		console.log('🎤 [DEBUG] Showing welcome message...');
+		console.log('🎤 Showing welcome message...');
 		showWelcomeMessage();
 		
 		// Добавляем слушатель изменений конфигурации
-		console.log('🎤 [DEBUG] Setting up configuration change listener...');
+		console.log('🎤 Setting up configuration change listener...');
 		configurationManager.addChangeListener((config) => {
 			console.log('🔧 Configuration changed, reinitializing components...');
 			
@@ -212,12 +212,12 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		});
 		
-		console.log('✅ [DEBUG] SpeechToTextWhisper extension successfully activated');
-		vscode.window.showInformationMessage('✅ [DEBUG] SpeechToTextWhisper extension successfully activated!');
+		console.log('✅ SpeechToTextWhisper extension successfully activated');
+		vscode.window.showInformationMessage('✅ SpeechToTextWhisper extension successfully activated!');
 		
 	} catch (error) {
 		const errorMessage = `Failed to activate SpeechToTextWhisper: ${(error as Error).message}`;
-		console.error('❌ [DEBUG] Activation error:', errorMessage);
+		console.error('❌ Activation error:', errorMessage);
 		vscode.window.showErrorMessage(errorMessage);
 	}
 }
@@ -291,7 +291,7 @@ function initializeComponents(): void {
  * Регистрация команд расширения
  */
 function registerCommands(context: vscode.ExtensionContext): void {
-	console.log('📝 [DEBUG] Registering commands...');
+	console.log('📝 Registering commands...');
 	
 	const commands = [
 		// Основные команды записи
@@ -303,11 +303,11 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		// Команда тестирования FFmpeg
 		vscode.commands.registerCommand('speechToTextWhisper.testFFmpeg', async () => {
 			try {
-				console.log('🔍 [DEBUG] Testing FFmpeg availability...');
+				console.log('🔍 Testing FFmpeg availability...');
 				vscode.window.showInformationMessage('🔍 Testing FFmpeg...');
 				
 				const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
-				console.log('🔍 [DEBUG] FFmpeg check result:', ffmpegCheck);
+				console.log('🔍 FFmpeg check result:', ffmpegCheck);
 				
 				if (ffmpegCheck.available) {
 					vscode.window.showInformationMessage(`✅ FFmpeg is available! Version: ${ffmpegCheck.version}`);
@@ -317,7 +317,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				
 				// Пробуем диагностику
 				const diagnostics = await FFmpegAudioRecorder.runDiagnostics();
-				console.log('🔍 [DEBUG] FFmpeg diagnostics:', diagnostics);
+				console.log('🔍 FFmpeg diagnostics:', diagnostics);
 				
 				const deviceCount = diagnostics.inputDevices.length;
 				const errorCount = diagnostics.errors.length;
@@ -327,14 +327,14 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				
 			} catch (error) {
 				const errorMsg = `FFmpeg test failed: ${(error as Error).message}`;
-				console.error('❌ [DEBUG] FFmpeg test error:', errorMsg);
+				console.error('❌ FFmpeg test error:', errorMsg);
 				vscode.window.showErrorMessage(errorMsg);
 			}
 		}),
 		// Команда тестирования инициализации audioRecorder
 		vscode.commands.registerCommand('speechToTextWhisper.testAudioRecorder', async () => {
 			try {
-				console.log('🔍 [DEBUG] Testing audioRecorder initialization...');
+				console.log('🔍 Testing audioRecorder initialization...');
 				vscode.window.showInformationMessage('🔍 Testing Audio Recorder...');
 				
 				// Сбрасываем текущий audioRecorder
@@ -345,15 +345,15 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				
 				if (audioRecorder) {
 					vscode.window.showInformationMessage('✅ Audio Recorder initialized successfully!');
-					console.log('✅ [DEBUG] Audio Recorder test passed');
+					console.log('✅ Audio Recorder test passed');
 				} else {
 					vscode.window.showErrorMessage('❌ Audio Recorder is still null after initialization');
-					console.error('❌ [DEBUG] Audio Recorder test failed - still null');
+					console.error('❌ Audio Recorder test failed - still null');
 				}
 				
 			} catch (error) {
 				const errorMsg = `Audio Recorder test failed: ${(error as Error).message}`;
-				console.error('❌ [DEBUG] Audio Recorder test error:', errorMsg);
+				console.error('❌ Audio Recorder test error:', errorMsg);
 				vscode.window.showErrorMessage(errorMsg);
 			}
 		}),
@@ -365,7 +365,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('speechToTextWhisper.toggleMode', () => modeSelectorProvider.toggleMode())
 	];
 
-	console.log(`📝 [DEBUG] Created ${commands.length} command registrations`);
+	console.log(`📝 Created ${commands.length} command registrations`);
 
 	// Регистрируем DiagnosticsProvider как TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.diagnostics', diagnosticsProvider);
@@ -382,7 +382,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 	// Добавляем все команды в подписки
 	context.subscriptions.push(...commands, statusBarManager);
 	
-	console.log(`✅ [DEBUG] Registered ${commands.length} commands and added to subscriptions`);
+	console.log(`✅ Registered ${commands.length} commands and added to subscriptions`);
 }
 
 /**
@@ -838,9 +838,9 @@ function initializeCursorIntegration(): void {
  * Команда записи с вставкой в курсор или буфер обмена (Ctrl+Shift+M)
  */
 async function recordAndInsertOrClipboard(): Promise<void> {
-	console.log('🎤 [DEBUG] recordAndInsertOrClipboard called! UNIQUE COMMAND MESSAGE 67890');
-	console.log('🎤 [DEBUG] recordAndInsertOrClipboard called! MODIFIED MESSAGE 99999');
-	vscode.window.showInformationMessage('🎤 [DEBUG] Command recordAndInsertOrClipboard executed!');
+	console.log('🎤 recordAndInsertOrClipboard called! UNIQUE COMMAND MESSAGE 67890');
+	console.log('🎤 recordAndInsertOrClipboard called! MODIFIED MESSAGE 99999');
+	vscode.window.showInformationMessage('🎤 Command recordAndInsertOrClipboard executed!');
 	
 	const context: ErrorContext = {
 		operation: 'record_and_insert_or_clipboard',
@@ -860,7 +860,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 		// Проверяем минимальный интервал между попытками ЗДЕСЬ
 		const now = Date.now();
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			console.log('⚠️ [DEBUG] Too frequent recording attempts in command, skipping');
+			console.log('⚠️ Too frequent recording attempts in command, skipping');
 			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
 			return;
 		}
@@ -901,7 +901,7 @@ async function recordAndInsertToCurrentChat(): Promise<void> {
 	console.log('🎤 [COMMAND] recordAndInsertToCurrentChat called!');
 	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
 	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
-	vscode.window.showInformationMessage('🎤 [DEBUG] Command recordAndInsertToCurrentChat executed!');
+	vscode.window.showInformationMessage('🎤 Command recordAndInsertToCurrentChat executed!');
 	
 	const context: ErrorContext = {
 		operation: 'record_and_insert_to_current_chat',
@@ -971,7 +971,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 	console.log('🎤 [COMMAND] recordAndOpenNewChat called!');
 	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
 	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
-	vscode.window.showInformationMessage('🎤 [DEBUG] Command recordAndOpenNewChat executed!');
+	vscode.window.showInformationMessage('🎤 Command recordAndOpenNewChat executed!');
 	
 	const context: ErrorContext = {
 		operation: 'record_and_open_new_chat',
@@ -1184,34 +1184,34 @@ function stopRecording(): void {
  * Обеспечение инициализации FFmpeg Audio Recorder
  */
 async function ensureFFmpegAudioRecorder(): Promise<void> {
-	console.log('🔧 [DEBUG] ensureFFmpegAudioRecorder() called');
+	console.log('🔧 ensureFFmpegAudioRecorder() called');
 	
 	if (audioRecorder) {
-		console.log('✅ [DEBUG] audioRecorder already initialized');
+		console.log('✅ audioRecorder already initialized');
 		return; // Уже инициализирован
 	}
 
-	console.log('🔧 [DEBUG] Initializing FFmpeg Audio Recorder...');
+	console.log('🔧 Initializing FFmpeg Audio Recorder...');
 	
 	try {
 		// Проверяем доступность FFmpeg
-		console.log('🔍 [DEBUG] Checking FFmpeg availability...');
+		console.log('🔍 Checking FFmpeg availability...');
 		const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
-		console.log('🔍 [DEBUG] FFmpeg check result:', JSON.stringify(ffmpegCheck, null, 2));
+		console.log('🔍 FFmpeg check result:', JSON.stringify(ffmpegCheck, null, 2));
 		
 		if (!ffmpegCheck.available) {
 			const errorMsg = `FFmpeg not available: ${ffmpegCheck.error || 'Unknown error'}`;
-			console.error('❌ [DEBUG] FFmpeg check failed:', errorMsg);
+			console.error('❌ FFmpeg check failed:', errorMsg);
 			vscode.window.showErrorMessage(`❌ FFmpeg Error: ${errorMsg}`);
 			throw new Error(errorMsg);
 		}
 		
-		console.log('✅ [DEBUG] FFmpeg is available, version:', ffmpegCheck.version);
+		console.log('✅ FFmpeg is available, version:', ffmpegCheck.version);
 		
 		// Получаем настройки аудио
-		console.log('⚙️ [DEBUG] Reading audio configuration...');
+		console.log('⚙️ Reading audio configuration...');
 		const audioConfig = configurationManager.getAudioConfiguration();
-		console.log('⚙️ [DEBUG] Audio quality setting:', audioConfig.audioQuality);
+		console.log('⚙️ Audio quality setting:', audioConfig.audioQuality);
 		
 		// Определяем параметры качества
 		let sampleRate = 16000;
@@ -1232,12 +1232,12 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				break;
 		}
 		
-		console.log(`⚙️ [DEBUG] Audio settings: ${audioConfig.audioQuality} quality, ${sampleRate}Hz sample rate`);
+		console.log(`⚙️ Audio settings: ${audioConfig.audioQuality} quality, ${sampleRate}Hz sample rate`);
 		
 		// События для AudioRecorder - создаем здесь для правильной работы с StatusBar
 		const audioRecorderEvents: AudioRecorderEvents = {
 			onRecordingStart: () => {
-				console.log('🎤 [DEBUG] AudioRecorder event: onRecordingStart');
+				console.log('🎤 AudioRecorder event: onRecordingStart');
 				// Обновляем StatusBar
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(true);
@@ -1245,7 +1245,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				vscode.window.showInformationMessage('🎤 Recording started...');
 			},
 			onRecordingStop: async (audioBlob: Blob) => {
-				console.log('⏹️ [DEBUG] AudioRecorder event: onRecordingStop, blob size:', audioBlob.size);
+				console.log('⏹️ AudioRecorder event: onRecordingStop, blob size:', audioBlob.size);
 				// Обновляем StatusBar
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(false);
@@ -1255,7 +1255,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				await handleTranscription(audioBlob);
 			},
 			onError: (error: Error) => {
-				console.error('❌ [DEBUG] AudioRecorder event: onError:', error);
+				console.error('❌ AudioRecorder event: onError:', error);
 				// Обновляем StatusBar
 				if (statusBarManager) {
 					statusBarManager.showError(`Recording error: ${error.message}`);
@@ -1266,7 +1266,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			}
 		};
 		
-		console.log('🔧 [DEBUG] Creating FFmpegAudioRecorder instance...');
+		console.log('🔧 Creating FFmpegAudioRecorder instance...');
 		
 		// Создаем экземпляр FFmpegAudioRecorder
 		const recorderOptions = {
@@ -1281,15 +1281,15 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			silenceThreshold: -(audioConfig.silenceThreshold) // Применяем минус автоматически
 		};
 		
-		console.log('🔧 [DEBUG] Recorder options:', JSON.stringify(recorderOptions, null, 2));
+		console.log('🔧 Recorder options:', JSON.stringify(recorderOptions, null, 2));
 		
 		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions);
 		
-		console.log(`✅ [DEBUG] FFmpeg Audio Recorder initialized successfully (quality: ${audioConfig.audioQuality}, sample rate: ${sampleRate}Hz)`);
+		console.log(`✅ FFmpeg Audio Recorder initialized successfully (quality: ${audioConfig.audioQuality}, sample rate: ${sampleRate}Hz)`);
 		vscode.window.showInformationMessage(`✅ FFmpeg Audio Recorder initialized (${audioConfig.audioQuality} quality)`);
 		
 	} catch (error) {
-		console.error('❌ [DEBUG] Failed to initialize FFmpeg Audio Recorder:', error);
+		console.error('❌ Failed to initialize FFmpeg Audio Recorder:', error);
 		audioRecorder = null; // Убеждаемся что он null при ошибке
 		
 		// Показываем подробную ошибку пользователю
