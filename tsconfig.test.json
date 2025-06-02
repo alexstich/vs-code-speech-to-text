@@ -10,6 +10,8 @@
     "outDir": "out",
     "strict": true,
     "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "types": ["mocha", "node", "vscode", "sinon"]
   },
   "include": [

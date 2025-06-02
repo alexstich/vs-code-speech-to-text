@@ -75,38 +75,45 @@ export class MockStatusBarItem {
 
 export class MockWorkspaceConfiguration {
     private config: Map<string, any> = new Map();
+    public get: sinon.SinonStub;
 
     constructor() {
-        // Настройки по умолчанию для расширения
-        this.config.set('speechToTextWhisper.apiKey', 'test-api-key');
-        this.config.set('speechToTextWhisper.language', 'en');
-        this.config.set('speechToTextWhisper.quality', 'standard');
-        this.config.set('speechToTextWhisper.toggleMode', false);
-        this.config.set('speechToTextWhisper.maxRecordingDuration', 60);
-        this.config.set('speechToTextWhisper.insertMode', 'cursor');
+        // Создаем стаб для метода get
+        this.get = sinon.stub();
         
-        // Настройки аудио качества
-        this.config.set('speechToTextWhisper.audioQuality.format', 'webm');
-        this.config.set('speechToTextWhisper.audioQuality.sampleRate', 16000);
-        this.config.set('speechToTextWhisper.audioQuality.channelCount', 1);
-        this.config.set('speechToTextWhisper.audioQuality.bitRate', 128000);
-        this.config.set('speechToTextWhisper.audioQuality.enableAudioProcessing', true);
-        this.config.set('speechToTextWhisper.audioQuality.noiseSuppression', true);
-        this.config.set('speechToTextWhisper.audioQuality.autoGainControl', true);
-        this.config.set('speechToTextWhisper.audioQuality.echoCancellation', true);
-    }
-
-    get<T>(key: string, defaultValue?: T): T {
-        return this.config.get(key) || defaultValue;
+        // Настройки по умолчанию для расширения с правильным префиксом speechToTextWhisper
+        this.config.set('speechToTextWhisper.apiKey', '');
+        this.config.set('speechToTextWhisper.language', 'auto');
+        this.config.set('speechToTextWhisper.whisperModel', 'whisper-1');
+        this.config.set('speechToTextWhisper.audioQuality', 'standard');
+        this.config.set('speechToTextWhisper.ffmpegPath', '');
+        this.config.set('speechToTextWhisper.showStatusBar', true);
+        this.config.set('speechToTextWhisper.maxRecordingDuration', 60);
+        this.config.set('speechToTextWhisper.prompt', '');
+        this.config.set('speechToTextWhisper.temperature', 0.1);
+        this.config.set('speechToTextWhisper.timeout', 30000);
+        this.config.set('speechToTextWhisper.maxRetries', 3);
+        this.config.set('speechToTextWhisper.silenceDetection', true);
+        this.config.set('speechToTextWhisper.silenceDuration', 3);
+        this.config.set('speechToTextWhisper.silenceThreshold', 50);
+        this.config.set('speechToTextWhisper.inputDevice', 'auto');
+        
+        // Настраиваем стаб для возврата значений по умолчанию
+        this.get.callsFake((key: string, defaultValue?: any) => {
+            const fullKey = `speechToTextWhisper.${key}`;
+            return this.config.get(fullKey) ?? defaultValue;
+        });
     }
 
     update(key: string, value: any): Promise<void> {
-        this.config.set(key, value);
+        const fullKey = `speechToTextWhisper.${key}`;
+        this.config.set(fullKey, value);
         return Promise.resolve();
     }
 
     has(key: string): boolean {
-        return this.config.has(key);
+        const fullKey = `speechToTextWhisper.${key}`;
+        return this.config.has(fullKey);
     }
 }
 
@@ -215,7 +222,17 @@ export const mockVscode = {
     },
 
     workspace: {
-        getConfiguration: sinon.stub().returns(new MockWorkspaceConfiguration()),
+        getConfiguration: sinon.stub().callsFake((section?: string) => {
+            // Возвращаем разные конфигурации в зависимости от секции
+            if (section === 'speechToText') {
+                return new MockWorkspaceConfiguration();
+            } else if (section === 'speechToTextWhisper') {
+                return new MockWorkspaceConfiguration();
+            } else {
+                return new MockWorkspaceConfiguration();
+            }
+        }),
+        onDidChangeConfiguration: sinon.stub().returns(new MockDisposable()),
         onDidChangeWorkspaceFolders: (listener: (e: any) => void) => {
             return new MockDisposable();
         }
@@ -288,8 +305,17 @@ export function setupVSCodeMocks(): void {
         configurable: true
     });
     
-    // Создаем новый экземпляр конфигурации для каждого теста
-    mockVscode.workspace.getConfiguration = sinon.stub().returns(new MockWorkspaceConfiguration());
+    // Создаем новый стаб для getConfiguration
+    mockVscode.workspace.getConfiguration = sinon.stub().callsFake((section?: string) => {
+        // Возвращаем разные конфигурации в зависимости от секции
+        if (section === 'speechToText') {
+            return new MockWorkspaceConfiguration();
+        } else if (section === 'speechToTextWhisper') {
+            return new MockWorkspaceConfiguration();
+        } else {
+            return new MockWorkspaceConfiguration();
+        }
+    });
     
     // Сброс всех стабов
     resetVSCodeMocks();
@@ -304,6 +330,7 @@ export function resetVSCodeMocks(): void {
 
     // Сброс стабов в workspace
     (mockVscode.workspace.getConfiguration as sinon.SinonStub).resetHistory();
+    (mockVscode.workspace.onDidChangeConfiguration as sinon.SinonStub).resetHistory();
 
     // Сброс стабов в commands
     (mockVscode.commands.registerCommand as sinon.SinonStub).resetHistory();

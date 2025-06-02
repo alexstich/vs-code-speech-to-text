@@ -545,8 +545,15 @@ export class FFmpegAudioRecorder {
             const errorMessage = data.toString();
             console.log('FFmpeg stderr:', errorMessage);
             
-            // Обновляем время последней аудио активности при получении данных от FFmpeg
-            this.updateLastAudioTime();
+            // Обновляем время последней аудио активности только при получении данных о прогрессе записи
+            // Ищем индикаторы реальной аудио активности
+            if (errorMessage.includes('size=') && errorMessage.includes('time=') && errorMessage.includes('bitrate=')) {
+                // Это сообщение о прогрессе записи - означает аудио активность
+                this.updateLastAudioTime();
+            } else if (errorMessage.includes('Stream #') && errorMessage.includes('Audio:')) {
+                // Информация о аудио потоке - тоже считаем активностью
+                this.updateLastAudioTime();
+            }
             
             // Ищем специфические ошибки, которые могут указывать на проблемы
             if (errorMessage.includes('No such file or directory')) {
@@ -642,8 +649,8 @@ export class FFmpegAudioRecorder {
                 if (newStats.size === 0) {
                     console.error(`❌ Recording file is empty after ${recordingDuration}ms recording`);
                     
-                    if (recordingDuration < 1000) {
-                        throw new Error('Recording too short. Hold the record button for at least 1 second.');
+                    if (recordingDuration < 500) {
+                        throw new Error('Recording too short. Hold the record button for at least 0.5 seconds.');
                     } else {
                         throw new Error('Recording file is empty. Please check your microphone permissions and ensure your microphone is working.');
                     }
@@ -651,7 +658,7 @@ export class FFmpegAudioRecorder {
             } else if (stats.size < MIN_FILE_SIZE) {
                 console.warn(`⚠️ Recording file is very small: ${stats.size} bytes (duration: ${recordingDuration}ms)`);
                 
-                if (recordingDuration < 1000) {
+                if (recordingDuration < 500) {
                     throw new Error(`Recording too short (${recordingDuration}ms). Hold the record button longer to capture audio.`);
                 } else {
                     throw new Error(`Recording file too small (${stats.size} bytes). Please check your microphone and try again.`);
@@ -740,6 +747,7 @@ export class FFmpegAudioRecorder {
      */
     private setupSilenceDetection(): void {
         if (this.options.silenceDetection !== true) {
+            console.log('🔇 Silence detection disabled');
             return;
         }
 
@@ -747,6 +755,9 @@ export class FFmpegAudioRecorder {
         this.lastAudioTime = Date.now();
 
         const silenceDuration = (this.options.silenceDuration || 3) * 1000; // Преобразуем в миллисекунды
+        const minRecordingTime = 2000; // Минимум 2 секунды записи перед включением определения тишины
+
+        console.log(`🔇 Silence detection enabled: ${silenceDuration}ms silence threshold, ${minRecordingTime}ms minimum recording time`);
 
         // Запускаем таймер проверки тишины каждые 500ms
         const checkSilence = () => {
@@ -754,10 +765,20 @@ export class FFmpegAudioRecorder {
                 return;
             }
 
+            const recordingDuration = Date.now() - this.recordingStartTime;
             const timeSinceLastAudio = Date.now() - this.lastAudioTime;
             
+            // Не проверяем тишину в первые minRecordingTime миллисекунд
+            if (recordingDuration < minRecordingTime) {
+                console.log(`🔇 Silence check skipped: recording too short (${recordingDuration}ms < ${minRecordingTime}ms)`);
+                this.silenceTimer = setTimeout(checkSilence, 500);
+                return;
+            }
+            
+            console.log(`🔇 Silence check: ${timeSinceLastAudio}ms since last audio activity (threshold: ${silenceDuration}ms)`);
+            
             if (timeSinceLastAudio >= silenceDuration) {
-                console.log(`🔇 Silence detected for ${timeSinceLastAudio}ms, stopping recording`);
+                console.log(`🔇 Silence detected for ${timeSinceLastAudio}ms, stopping recording (recording duration: ${recordingDuration}ms)`);
                 this.stopRecording();
                 return;
             }
@@ -766,8 +787,8 @@ export class FFmpegAudioRecorder {
             this.silenceTimer = setTimeout(checkSilence, 500);
         };
 
-        // Запускаем первую проверку
-        this.silenceTimer = setTimeout(checkSilence, 500);
+        // Запускаем первую проверку через 1 секунду после начала записи
+        this.silenceTimer = setTimeout(checkSilence, 1000);
     }
 
     /**
@@ -775,7 +796,10 @@ export class FFmpegAudioRecorder {
      */
     private updateLastAudioTime(): void {
         if (this.silenceDetectionEnabled) {
+            const previousTime = this.lastAudioTime;
             this.lastAudioTime = Date.now();
+            const timeSinceUpdate = this.lastAudioTime - previousTime;
+            console.log(`🔇 Audio activity detected (${timeSinceUpdate}ms since last update)`);
         }
     }
 

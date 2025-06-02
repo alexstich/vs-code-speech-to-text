@@ -12,6 +12,7 @@ import { ModeSelectorProvider } from './ui/ModeSelectorProvider';
 import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from './utils/ErrorHandler';
 import { RetryManager } from './utils/RetryManager';
 import { CursorIntegration, CursorIntegrationStrategy } from './integrations/CursorIntegration';
+import { ConfigurationManager } from './core/ConfigurationManager';
 
 /**
  * Режимы записи для новой архитектуры команд
@@ -44,6 +45,9 @@ let modeSelectorProvider: ModeSelectorProvider;
 // Система обработки ошибок
 let errorHandler: ErrorHandler;
 let retryManager: RetryManager;
+
+// Менеджер конфигурации
+let configurationManager: ConfigurationManager;
 
 // Контекст расширения для глобального доступа
 let extensionContext: vscode.ExtensionContext;
@@ -187,6 +191,27 @@ export function activate(context: vscode.ExtensionContext) {
 		console.log('🎤 [DEBUG] Showing welcome message...');
 		showWelcomeMessage();
 		
+		// Добавляем слушатель изменений конфигурации
+		console.log('🎤 [DEBUG] Setting up configuration change listener...');
+		configurationManager.addChangeListener((config) => {
+			console.log('🔧 Configuration changed, reinitializing components...');
+			
+			// Переинициализируем WhisperClient при изменении настроек
+			console.log('🔄 Reinitializing WhisperClient due to configuration change...');
+			initializeWhisperClient();
+			
+			// Сбрасываем audioRecorder при изменении аудио настроек
+			console.log('🔄 Resetting audioRecorder due to configuration change...');
+			audioRecorder = null;
+			
+			// Обновляем видимость StatusBar
+			if (config.ui.showStatusBar) {
+				statusBarManager.show();
+			} else {
+				statusBarManager.hide();
+			}
+		});
+		
 		console.log('✅ [DEBUG] SpeechToTextWhisper extension successfully activated');
 		vscode.window.showInformationMessage('✅ [DEBUG] SpeechToTextWhisper extension successfully activated!');
 		
@@ -217,6 +242,10 @@ function initializeErrorHandling(): void {
  */
 function initializeComponents(): void {
 	console.log('🔧 Initializing SpeechToTextWhisper components...');
+	
+	// Инициализируем ConfigurationManager
+	configurationManager = ConfigurationManager.getInstance();
+	console.log('✅ ConfigurationManager initialized');
 	
 	// Инициализируем CursorIntegration
 	initializeCursorIntegration();
@@ -390,9 +419,26 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		}
 		console.log('🎯 [TRANSCRIPTION] WhisperClient is available');
 
+		// Получаем настройки из конфигурации VS Code через ConfigurationManager
+		console.log('🎯 [TRANSCRIPTION] Step 2.5: Getting configuration settings...');
+		const whisperConfig = configurationManager.getWhisperConfiguration();
+		
+		console.log('🎯 [TRANSCRIPTION] Configuration settings:', {
+			language: whisperConfig.language,
+			prompt: whisperConfig.prompt ? `"${whisperConfig.prompt.substring(0, 50)}..."` : '(empty)',
+			temperature: whisperConfig.temperature,
+			whisperModel: whisperConfig.whisperModel
+		});
+
 		console.log('🎯 [TRANSCRIPTION] Step 3: Starting transcription...');
 		console.time('whisper.transcription');
-		const transcriptionResult = await whisperClient.transcribe(audioBlob);
+		const transcriptionResult = await whisperClient.transcribe(audioBlob, {
+			language: whisperConfig.language === 'auto' ? undefined : whisperConfig.language,
+			prompt: whisperConfig.prompt || undefined,
+			temperature: whisperConfig.temperature,
+			model: whisperConfig.whisperModel,
+			response_format: 'json'
+		});
 		console.timeEnd('whisper.transcription');
 		console.log('🎯 [TRANSCRIPTION] Step 3: Transcription completed');
 		console.log('🎯 [TRANSCRIPTION] Transcription result length:', transcriptionResult.length);
@@ -671,10 +717,9 @@ async function insertLastTranscription(mode: string): Promise<void> {
 function initializeWhisperClient(): void {
 	console.log('🔧 Initializing WhisperClient...');
 	
-	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-	const apiKey = config.get<string>('apiKey');
+	const whisperConfig = configurationManager.getWhisperConfiguration();
 	
-	if (!apiKey) {
+	if (!whisperConfig.apiKey) {
 		console.warn('⚠️ OpenAI API key not configured');
 		vscode.window.showWarningMessage(
 			'OpenAI API key not configured. Please set it in settings.',
@@ -689,8 +734,8 @@ function initializeWhisperClient(): void {
 	
 	try {
 		whisperClient = new WhisperClient({
-			apiKey: apiKey,
-			timeout: config.get<number>('timeout', 30000)
+			apiKey: whisperConfig.apiKey,
+			timeout: whisperConfig.timeout
 		});
 		
 		console.log('✅ WhisperClient initialized');
@@ -705,10 +750,9 @@ function showWelcomeMessage(): void {
 	// Принудительно показываем StatusBar
 	statusBarManager.show();
 	
-	const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-	const showStatusBar = config.get<boolean>('showStatusBar', true);
+	const uiConfig = configurationManager.getUIConfiguration();
 	
-	if (!showStatusBar) {
+	if (!uiConfig.showStatusBar) {
 		statusBarManager.hide();
 	}
 	
@@ -1166,15 +1210,14 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		
 		// Получаем настройки аудио
 		console.log('⚙️ [DEBUG] Reading audio configuration...');
-		const config = vscode.workspace.getConfiguration('speechToTextWhisper');
-		const audioQuality = config.get<string>('audioQuality', 'standard');
-		console.log('⚙️ [DEBUG] Audio quality setting:', audioQuality);
+		const audioConfig = configurationManager.getAudioConfiguration();
+		console.log('⚙️ [DEBUG] Audio quality setting:', audioConfig.audioQuality);
 		
 		// Определяем параметры качества
 		let sampleRate = 16000;
 		let bitrate = '64k';
 		
-		switch (audioQuality) {
+		switch (audioConfig.audioQuality) {
 			case 'high':
 				sampleRate = 44100;
 				bitrate = '128k';
@@ -1189,7 +1232,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				break;
 		}
 		
-		console.log(`⚙️ [DEBUG] Audio settings: ${audioQuality} quality, ${sampleRate}Hz sample rate`);
+		console.log(`⚙️ [DEBUG] Audio settings: ${audioConfig.audioQuality} quality, ${sampleRate}Hz sample rate`);
 		
 		// События для AudioRecorder - создаем здесь для правильной работы с StatusBar
 		const audioRecorderEvents: AudioRecorderEvents = {
@@ -1231,19 +1274,19 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			channelCount: 1, // Моно для речи
 			audioFormat: 'wav' as const,
 			codec: 'pcm_s16le',
-			maxDuration: config.get<number>('maxRecordingDuration', 60),
-			ffmpegPath: config.get<string>('ffmpegPath', '') || undefined,
-			silenceDetection: config.get<boolean>('silenceDetection', true),
-			silenceDuration: config.get<number>('silenceDuration', 3),
-			silenceThreshold: -(config.get<number>('silenceThreshold', 50)) // Применяем минус автоматически
+			maxDuration: audioConfig.maxRecordingDuration,
+			ffmpegPath: audioConfig.ffmpegPath || undefined,
+			silenceDetection: audioConfig.silenceDetection,
+			silenceDuration: audioConfig.silenceDuration,
+			silenceThreshold: -(audioConfig.silenceThreshold) // Применяем минус автоматически
 		};
 		
 		console.log('🔧 [DEBUG] Recorder options:', JSON.stringify(recorderOptions, null, 2));
 		
 		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions);
 		
-		console.log(`✅ [DEBUG] FFmpeg Audio Recorder initialized successfully (quality: ${audioQuality}, sample rate: ${sampleRate}Hz)`);
-		vscode.window.showInformationMessage(`✅ FFmpeg Audio Recorder initialized (${audioQuality} quality)`);
+		console.log(`✅ [DEBUG] FFmpeg Audio Recorder initialized successfully (quality: ${audioConfig.audioQuality}, sample rate: ${sampleRate}Hz)`);
+		vscode.window.showInformationMessage(`✅ FFmpeg Audio Recorder initialized (${audioConfig.audioQuality} quality)`);
 		
 	} catch (error) {
 		console.error('❌ [DEBUG] Failed to initialize FFmpeg Audio Recorder:', error);

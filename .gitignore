@@ -38,6 +38,11 @@ tasks/
 scripts
 .cursor
 .cursorignore
+.roo
+.windsurfrules
+.roomodes
+.taskmaster
+
 
 # Some docs
 docs/prd
