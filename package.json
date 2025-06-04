@@ -23,8 +23,8 @@
   },
   "categories": [
     "Other",
-    "Machine Learning",
-    "Productivity"
+    "Chat",
+    "AI"
   ],
   "keywords": [
     "speech",
@@ -286,6 +286,20 @@
           "description": "OpenAI Whisper model to use for transcription",
           "order": 3
         },
+        "speechToTextWhisper.prompt": {
+          "type": "string",
+          "default": "",
+          "description": "Optional context prompt to improve transcription accuracy",
+          "order": 4
+        },
+        "speechToTextWhisper.temperature": {
+          "type": "number",
+          "default": 0.1,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "OpenAI temperature (0 = deterministic, 1 = creative)",
+          "order": 5
+        },
         "speechToTextWhisper.audioQuality": {
           "type": "string",
           "enum": [
@@ -300,20 +314,20 @@
             "High quality (44.1kHz, better accuracy)",
             "Ultra quality (48kHz, maximum accuracy)"
           ],
-          "order": 4
+          "order": 6
         },
         "speechToTextWhisper.ffmpegPath": {
           "type": "string",
           "default": "",
           "description": "Path to FFmpeg executable (leave empty for auto-detection)",
           "scope": "application",
-          "order": 5
+          "order": 7  
         },
         "speechToTextWhisper.showStatusBar": {
           "type": "boolean",
           "default": true,
           "description": "Show recording status in status bar",
-          "order": 6
+          "order": 8
         },
         "speechToTextWhisper.maxRecordingDuration": {
           "type": "number",
@@ -321,20 +335,6 @@
           "minimum": 5,
           "maximum": 7200,
           "description": "Maximum recording duration in seconds",
-          "order": 7
-        },
-        "speechToTextWhisper.prompt": {
-          "type": "string",
-          "default": "",
-          "description": "Optional context prompt to improve transcription accuracy",
-          "order": 8
-        },
-        "speechToTextWhisper.temperature": {
-          "type": "number",
-          "default": 0.1,
-          "minimum": 0,
-          "maximum": 1,
-          "description": "OpenAI temperature (0 = deterministic, 1 = creative)",
           "order": 9
         },
         "speechToTextWhisper.timeout": {
@@ -366,13 +366,6 @@
           "maximum": 10,
           "description": "Duration of silence in seconds before automatically stopping recording",
           "order": 13
-        },
-        "speechToTextWhisper.inputDevice": {
-          "type": "string",
-          "default": "auto",
-          "description": "Audio input device for recording (auto for automatic detection)",
-          "scope": "application",
-          "order": 15
         },
         "speechToTextWhisper.silenceThreshold": {
           "type": "number",

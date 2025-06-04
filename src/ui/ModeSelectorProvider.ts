@@ -38,7 +38,7 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
             'Insert transcribed text at cursor position',
             vscode.TreeItemCollapsibleState.None
         );
-        insertModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'insert' ? 'check' : 'circle-outline');
+        insertModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'insert' ? 'check' : '');
         insertModeItem.command = {
             command: 'speechToTextWhisper.setMode',
             title: 'Set Insert Mode',
@@ -52,7 +52,7 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
             'Copy transcribed text to clipboard',
             vscode.TreeItemCollapsibleState.None
         );
-        clipboardModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'clipboard' ? 'check' : 'circle-outline');
+        clipboardModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'clipboard' ? 'check' : '');
         clipboardModeItem.command = {
             command: 'speechToTextWhisper.setMode',
             title: 'Set Clipboard Mode',
