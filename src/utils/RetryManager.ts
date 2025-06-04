@@ -1,4 +1,5 @@
 import { ErrorType, ErrorHandler } from './ErrorHandler';
+import { RetryManagerLog } from './GlobalOutput';
 
 /**
  * Стратегии повторных попыток
@@ -67,12 +68,12 @@ export class RetryManager {
         
         for (let attempt = 1; attempt <= finalConfig.maxAttempts; attempt++) {
             try {
-                console.log(`🔄 Attempting ${operationName} (${attempt}/${finalConfig.maxAttempts})`);
+                RetryManagerLog.info(`🔄 Attempting ${operationName} (${attempt}/${finalConfig.maxAttempts})`);
                 
                 const result = await operation();
                 
                 const totalTime = Date.now() - startTime;
-                console.log(`✅ ${operationName} succeeded on attempt ${attempt} (${totalTime}ms)`);
+                RetryManagerLog.info(`✅ ${operationName} succeeded on attempt ${attempt} (${totalTime}ms)`);
                 
                 return {
                     success: true,
@@ -87,7 +88,7 @@ export class RetryManager {
                     ? error 
                     : new Error(String(error));
                 
-                console.log(`❌ ${operationName} failed on attempt ${attempt}: ${lastError.message}`);
+                RetryManagerLog.warn(`❌ ${operationName} failed on attempt ${attempt}: ${lastError.message}`);
                 
                 // Если это последняя попытка, не делаем задержку
                 if (attempt === finalConfig.maxAttempts) {
@@ -97,19 +98,19 @@ export class RetryManager {
                 // Проверяем, можно ли повторить эту ошибку
                 const errorType = this.classifyError(lastError);
                 if (!this.errorHandler.isRetryable(errorType)) {
-                    console.log(`🚫 Error type ${errorType} is not retryable, stopping attempts`);
+                    RetryManagerLog.warn(`🚫 Error type ${errorType} is not retryable, stopping attempts`);
                     break;
                 }
                 
                 // Вычисляем задержку и ждем
                 const delay = this.calculateDelay(attempt, finalConfig);
-                console.log(`⏳ Waiting ${delay}ms before next attempt...`);
+                RetryManagerLog.info(`⏳ Waiting ${delay}ms before next attempt...`);
                 await this.sleep(delay);
             }
         }
         
         const totalTime = Date.now() - startTime;
-        console.log(`💥 ${operationName} failed after ${finalConfig.maxAttempts} attempts (${totalTime}ms)`);
+        RetryManagerLog.error(`💥 ${operationName} failed after ${finalConfig.maxAttempts} attempts (${totalTime}ms)`);
         
         return {
             success: false,

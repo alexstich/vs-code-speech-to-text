@@ -13,6 +13,7 @@ import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from
 import { RetryManager } from './utils/RetryManager';
 import { CursorIntegration, CursorIntegrationStrategy } from './integrations/CursorIntegration';
 import { ConfigurationManager } from './core/ConfigurationManager';
+import { initializeGlobalOutput, ExtensionLog, disposeGlobalOutput } from './utils/GlobalOutput';
 
 /**
  * Режимы записи для новой архитектуры команд
@@ -184,19 +185,19 @@ class RecordingStateManager {
  * Вызывается при первом использовании команды расширения
  */
 export function activate(context: vscode.ExtensionContext) {
-	// САМОЕ РАННЕЕ логирование
-	console.log('🚀 SpeechToTextWhisper extension activation started! NEW VERSION 2024');
-	console.log('🚀 Context:', context);
-	console.log('🚀 VS Code version:', vscode.version);
-	console.log('🚀 Extension folder:', context.extensionPath);
-	
-	// Также попробуем window.showInformationMessage для проверки
-	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
-	
 	// Создаем output channel для логирования
 	outputChannel = vscode.window.createOutputChannel('Speech to Text Whisper');
 	outputChannel.appendLine('🚀 Extension activation started');
 	outputChannel.show(); // Автоматически показываем в Output panel
+	
+	// Инициализируем глобальную систему логирования
+	initializeGlobalOutput(outputChannel);
+	ExtensionLog.info('SpeechToTextWhisper extension activation started! NEW VERSION 2024');
+	ExtensionLog.info(`VS Code version: ${vscode.version}`);
+	ExtensionLog.info(`Extension folder: ${context.extensionPath}`);
+	
+	// Также попробуем window.showInformationMessage для проверки
+	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
 	
 	console.log('🎤 SpeechToTextWhisper extension activation started! NEW VERSION 2024');
 	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
@@ -810,23 +811,30 @@ function showWelcomeMessage(): void {
  * Функция деактивации расширения
  */
 export function deactivate() {
-	console.log('🔌 Deactivating SpeechToTextWhisper extension...');
+	ExtensionLog.info('Extension deactivating...');
 	
-	// Останавливаем запись если она идет
+	// Останавливаем запись если активна
 	if (audioRecorder && audioRecorder.getIsRecording()) {
 		audioRecorder.stopRecording();
 	}
-	
+
 	// Очищаем ресурсы
-	audioRecorder = null;
-	lastTranscribedText = null;
-	recordingState = {
-		isRecording: false,
-		mode: null,
-		startTime: null
-	};
+	if (statusBarManager) {
+		statusBarManager.dispose();
+	}
 	
-	console.log('✅ SpeechToTextWhisper extension deactivated');
+	if (configurationManager) {
+		configurationManager.dispose();
+	}
+	
+	if (cursorIntegration) {
+		cursorIntegration.dispose();
+	}
+	
+	// Освобождаем ресурсы глобального логирования
+	disposeGlobalOutput();
+	
+	ExtensionLog.info('Extension deactivated');
 }
 
 /**

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { CursorIntegrationLog } from '../utils/GlobalOutput';
 
 /**
  * Стратегии интеграции с Cursor чатом
@@ -99,7 +100,7 @@ export class CursorIntegration {
         // Проверяем доступность интеграции
         this.checkAvailability();
         
-        console.log(`🎯 CursorIntegration initialized, enabled: ${this.isEnabled}`);
+        CursorIntegrationLog.info(`🎯 CursorIntegration initialized, enabled: ${this.isEnabled}`);
     }
 
     /**
@@ -129,7 +130,7 @@ export class CursorIntegration {
         try {
             // Проверяем, что vscodeEnv и его свойства доступны
             if (!this.vscodeEnv || !this.vscodeEnv.env) {
-                console.warn('⚠️ VS Code environment not available');
+                CursorIntegrationLog.warn('⚠️ VS Code environment not available');
                 this.isEnabled = false;
                 return;
             }
@@ -141,13 +142,13 @@ export class CursorIntegration {
             this.isEnabled = appName.includes('cursor') || uriScheme === 'cursor' || appName.includes('code');
             
             if (this.isEnabled) {
-                console.log(`✅ IDE detected (${appName}) - integration enabled`);
+                CursorIntegrationLog.info(`✅ IDE detected (${appName}) - integration enabled`);
             } else {
-                console.log(`ℹ️ Unknown IDE (${appName}) - integration disabled`);
+                CursorIntegrationLog.info(`ℹ️ Unknown IDE (${appName}) - integration disabled`);
             }
             
         } catch (error) {
-            console.error('❌ Failed to check Cursor availability:', error);
+            CursorIntegrationLog.error('❌ Failed to check Cursor availability:', error as Error);
             this.isEnabled = false;
         }
     }
@@ -163,13 +164,13 @@ export class CursorIntegration {
      * Отправка текста в Cursor AI чат
      */
     public async sendToChat(text: string): Promise<CursorIntegrationResult> {
-        console.log('🎯 [CURSOR_INTEGRATION] sendToChat method called');
-        console.log('🎯 [CURSOR_INTEGRATION] Integration enabled:', this.isEnabled);
-        console.log('🎯 [CURSOR_INTEGRATION] Primary strategy:', this.options.primaryStrategy);
-        console.log('🎯 [CURSOR_INTEGRATION] Fallback strategies:', this.options.fallbackStrategies);
+        CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] sendToChat method called');
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Integration enabled: ${this.isEnabled}`);
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Primary strategy: ${this.options.primaryStrategy}`);
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Fallback strategies: ${JSON.stringify(this.options.fallbackStrategies)}`);
         
         if (!this.isEnabled) {
-            console.log('❌ [CURSOR_INTEGRATION] Integration not available in this IDE');
+            CursorIntegrationLog.info('❌ [CURSOR_INTEGRATION] Integration not available in this IDE');
             return {
                 success: false,
                 strategy: this.options.primaryStrategy,
@@ -178,7 +179,7 @@ export class CursorIntegration {
         }
 
         if (!text || text.trim().length === 0) {
-            console.log('❌ [CURSOR_INTEGRATION] No text provided');
+            CursorIntegrationLog.info('❌ [CURSOR_INTEGRATION] No text provided');
             return {
                 success: false,
                 strategy: this.options.primaryStrategy,
@@ -186,71 +187,63 @@ export class CursorIntegration {
             };
         }
 
-        console.log(`🎯 [CURSOR_INTEGRATION] Sending text to Cursor chat, length: ${text.length}`);
-        console.log(`🎯 [CURSOR_INTEGRATION] Text preview: "${text.substring(0, 50)}..."`);
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Sending text to Cursor chat, length: ${text.length}`);
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text preview: "${text.substring(0, 50)}..."`);
 
         // Форматируем текст
-        console.log('🎯 [CURSOR_INTEGRATION] Formatting text for chat...');
+        CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Formatting text for chat...');
         const formattedText = this.formatTextForChat(text);
-        console.log('🎯 [CURSOR_INTEGRATION] Text formatted, new length:', formattedText.length);
+        CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Text formatted, new length:', formattedText.length);
 
         // Пробуем основную стратегию
         try {
-            console.log(`🎯 [CURSOR_INTEGRATION] Trying primary strategy: ${this.options.primaryStrategy}`);
-            console.time('primary.strategy.execution');
+            CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Trying primary strategy: ${this.options.primaryStrategy}`);
             const result = await this.executeStrategy(this.options.primaryStrategy, formattedText);
-            console.timeEnd('primary.strategy.execution');
             
             if (result.success) {
-                console.log(`✅ [CURSOR_INTEGRATION] Successfully sent via ${result.strategy}`);
+                CursorIntegrationLog.info(`✅ [CURSOR_INTEGRATION] Successfully sent via ${result.strategy}`);
                 
                 // Уведомляем о успешной отправке
                 if (this.events.onChatSent) {
-                    console.log('🎯 [CURSOR_INTEGRATION] Calling onChatSent event handler');
+                    CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onChatSent event handler`);
                     this.events.onChatSent(text, result.strategy);
                 }
                 
                 return result;
             } else {
-                console.log(`❌ [CURSOR_INTEGRATION] Primary strategy failed with result:`, result);
+                CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Primary strategy failed with result: ${JSON.stringify(result)}`);
             }
         } catch (error) {
-            console.error(`❌ [CURSOR_INTEGRATION] Primary strategy ${this.options.primaryStrategy} failed:`, error);
-            console.error('❌ [CURSOR_INTEGRATION] Primary strategy error details:', {
-                name: (error as Error).name,
-                message: (error as Error).message,
-                stack: (error as Error).stack
-            });
+            CursorIntegrationLog.error(`❌ [CURSOR_INTEGRATION] Primary strategy ${this.options.primaryStrategy} failed:`, error as Error);
+            CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Error name: ${(error as Error).name}, message: ${(error as Error).message}`);
             
             // Уведомляем об ошибке
             if (this.events.onError) {
-                console.log('🎯 [CURSOR_INTEGRATION] Calling onError event handler for primary strategy');
+                CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onError event handler for primary strategy`);
                 this.events.onError(error as Error, this.options.primaryStrategy);
             }
         }
 
         // Пробуем fallback стратегии
-        console.log(`🎯 [CURSOR_INTEGRATION] Trying ${this.options.fallbackStrategies.length} fallback strategies`);
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Trying ${this.options.fallbackStrategies.length} fallback strategies`);
         for (let i = 0; i < this.options.fallbackStrategies.length; i++) {
             const fallbackStrategy = this.options.fallbackStrategies[i];
             try {
-                console.log(`🔄 [CURSOR_INTEGRATION] Trying fallback strategy ${i + 1}/${this.options.fallbackStrategies.length}: ${fallbackStrategy}`);
-                console.time(`fallback.${i}.execution`);
+                CursorIntegrationLog.info(`🔄 [CURSOR_INTEGRATION] Trying fallback strategy ${i + 1}/${this.options.fallbackStrategies.length}: ${fallbackStrategy}`);
                 const result = await this.executeStrategy(fallbackStrategy, formattedText);
-                console.timeEnd(`fallback.${i}.execution`);
                 
                 if (result.success) {
-                    console.log(`✅ [CURSOR_INTEGRATION] Fallback successful via ${fallbackStrategy}`);
+                    CursorIntegrationLog.info(`✅ [CURSOR_INTEGRATION] Fallback successful via ${fallbackStrategy}`);
                     
                     // Уведомляем о использовании fallback
                     if (this.events.onFallbackUsed) {
-                        console.log('🎯 [CURSOR_INTEGRATION] Calling onFallbackUsed event handler');
+                        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onFallbackUsed event handler`);
                         this.events.onFallbackUsed(this.options.primaryStrategy, fallbackStrategy);
                     }
                     
                     // Уведомляем о успешной отправке
                     if (this.events.onChatSent) {
-                        console.log('🎯 [CURSOR_INTEGRATION] Calling onChatSent event handler for fallback');
+                        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onChatSent event handler for fallback`);
                         this.events.onChatSent(text, fallbackStrategy);
                     }
                     
@@ -259,27 +252,23 @@ export class CursorIntegration {
                         fallbackUsed: true
                     };
                 } else {
-                    console.log(`❌ [CURSOR_INTEGRATION] Fallback strategy ${fallbackStrategy} failed with result:`, result);
+                    CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Fallback strategy ${fallbackStrategy} failed with result: ${JSON.stringify(result)}`);
                 }
                 
             } catch (error) {
-                console.error(`❌ [CURSOR_INTEGRATION] Fallback strategy ${fallbackStrategy} failed:`, error);
-                console.error(`❌ [CURSOR_INTEGRATION] Fallback strategy ${fallbackStrategy} error details:`, {
-                    name: (error as Error).name,
-                    message: (error as Error).message,
-                    stack: (error as Error).stack
-                });
+                CursorIntegrationLog.error(`❌ [CURSOR_INTEGRATION] Fallback strategy ${fallbackStrategy} failed:`, error as Error);
+                CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Error name: ${(error as Error).name}, message: ${(error as Error).message}`);
                 
                 // Уведомляем об ошибке fallback стратегии
                 if (this.events.onError) {
-                    console.log(`🎯 [CURSOR_INTEGRATION] Calling onError event handler for fallback strategy ${fallbackStrategy}`);
+                    CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onError event handler for fallback strategy ${fallbackStrategy}`);
                     this.events.onError(error as Error, fallbackStrategy);
                 }
             }
         }
 
         // Все стратегии провалились
-        console.error('❌ [CURSOR_INTEGRATION] All integration strategies failed');
+        CursorIntegrationLog.error('❌ [CURSOR_INTEGRATION] All integration strategies failed');
         return {
             success: false,
             strategy: this.options.primaryStrategy,
@@ -318,53 +307,41 @@ export class CursorIntegration {
      */
     private async useAIChatCommandStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
-            console.log('🎯 [CURSOR_INTEGRATION] Starting aichat.newfollowupaction command strategy');
-            console.log('🎯 [CURSOR_INTEGRATION] Text to send length:', text.length);
-            console.log('🎯 [CURSOR_INTEGRATION] Text preview:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Starting aichat.newfollowupaction command strategy');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Text to send length:', text.length);
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Text preview:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
             
             // 1. Сохраняем оригинальный буфер обмена
-            console.log('🎯 [CURSOR_INTEGRATION] Step 1: Reading original clipboard...');
-            console.time('clipboard.readText');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 1: Reading original clipboard...');
             const originalClipboard = await this.vscodeEnv.env.clipboard.readText();
-            console.timeEnd('clipboard.readText');
-            console.log('🎯 [CURSOR_INTEGRATION] Step 1: Original clipboard saved, length:', originalClipboard.length);
+            CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Step 1: Original clipboard saved, length: ${originalClipboard.length}`);
             
             // 2. Открываем новый чат с помощью команды aichat.newfollowupaction
-            console.log('🎯 [CURSOR_INTEGRATION] Step 2: Opening new chat...');
-            console.time('aichat.newfollowupaction');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: Opening new chat...');
             await this.vscodeEnv.commands.executeCommand("aichat.newfollowupaction");
-            console.timeEnd('aichat.newfollowupaction');
-            console.log('🎯 [CURSOR_INTEGRATION] Step 2: aichat.newfollowupaction command executed successfully');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: aichat.newfollowupaction command executed successfully');
             
             // 3. Ждем, пока чат откроется (важно для стабильной работы)
-            console.log('🎯 [CURSOR_INTEGRATION] Step 3: Waiting for chat window (500ms)...');
-            console.time('chat.window.wait');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 3: Waiting for chat window (500ms)...');
             await new Promise((resolve) => setTimeout(resolve, 500));
-            console.timeEnd('chat.window.wait');
-            console.log('🎯 [CURSOR_INTEGRATION] Step 3: Chat window wait completed');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 3: Chat window wait completed');
             
             // 4. Копируем наш текст в буфер обмена
-            console.log('🎯 [CURSOR_INTEGRATION] Step 4: Setting clipboard with transcribed text...');
-            console.time('clipboard.writeText');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 4: Setting clipboard with transcribed text...');
             await this.vscodeEnv.env.clipboard.writeText(text);
-            console.timeEnd('clipboard.writeText');
-            console.log('🎯 [CURSOR_INTEGRATION] Step 4: Clipboard updated with transcribed text');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 4: Clipboard updated with transcribed text');
             
             // 5. Вставляем содержимое в чат
-            console.log('🎯 [CURSOR_INTEGRATION] Step 5: Pasting content into chat...');
-            console.time('editor.action.clipboardPasteAction');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 5: Pasting content into chat...');
             await this.vscodeEnv.commands.executeCommand("editor.action.clipboardPasteAction");
-            console.timeEnd('editor.action.clipboardPasteAction');
-            console.log('🎯 [CURSOR_INTEGRATION] Step 5: Paste action completed successfully');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 5: Paste action completed successfully');
             
             // 6. Восстанавливаем оригинальный буфер обмена
-            console.log('🎯 [CURSOR_INTEGRATION] Step 6: Restoring original clipboard...');
-            console.time('clipboard.restore');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 6: Restoring original clipboard...');
             await this.vscodeEnv.env.clipboard.writeText(originalClipboard);
-            console.timeEnd('clipboard.restore');
-            console.log('🎯 [CURSOR_INTEGRATION] Step 6: Original clipboard restored');
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 6: Original clipboard restored');
             
-            console.log('✅ [CURSOR_INTEGRATION] Successfully sent to chat via aichat.newfollowupaction command');
+            CursorIntegrationLog.info('✅ [CURSOR_INTEGRATION] Successfully sent to chat via aichat.newfollowupaction command');
             
             return {
                 success: true,
@@ -373,12 +350,8 @@ export class CursorIntegration {
             };
             
         } catch (error) {
-            console.error('❌ [CURSOR_INTEGRATION] AIChatCommand strategy failed:', error);
-            console.error('❌ [CURSOR_INTEGRATION] Error details:', {
-                name: (error as Error).name,
-                message: (error as Error).message,
-                stack: (error as Error).stack
-            });
+            CursorIntegrationLog.error('❌ [CURSOR_INTEGRATION] AIChatCommand strategy failed:', error as Error);
+            CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Error name: ${(error as Error).name}, message: ${(error as Error).message}`);
             throw new Error(`AIChatCommand strategy failed: ${(error as Error).message}`);
         }
     }
@@ -407,7 +380,7 @@ export class CursorIntegration {
                     )
                 ]);
             } catch (error) {
-                console.log('Information message timed out or failed');
+                CursorIntegrationLog.info('Information message timed out or failed');
             }
 
             return {
@@ -450,7 +423,7 @@ export class CursorIntegration {
                     
                 } catch (commandError) {
                     // Команда не существует, пробуем следующую
-                    console.log(`Command ${command} not available`);
+                    CursorIntegrationLog.info(`Command ${command} not available`);
                 }
             }
             
@@ -467,7 +440,7 @@ export class CursorIntegration {
                     )
                 ]);
             } catch (error) {
-                console.log('Information message timed out or failed');
+                CursorIntegrationLog.info('Information message timed out or failed');
             }
 
             return {
@@ -503,7 +476,7 @@ export class CursorIntegration {
                         )
                     ]);
                 } catch (error) {
-                    console.log('Information message timed out or failed');
+                    CursorIntegrationLog.info('Information message timed out or failed');
                 }
                 
                 return {
@@ -547,7 +520,7 @@ export class CursorIntegration {
                     
                 } catch (commandError) {
                     // Команда не существует, пробуем следующую
-                    console.log(`Direct send command ${command} not available`);
+                    CursorIntegrationLog.info(`Direct send command ${command} not available`);
                 }
             }
             
@@ -576,12 +549,12 @@ export class CursorIntegration {
             for (const command of focusCommands) {
                 try {
                     await this.vscodeEnv.commands.executeCommand(command);
-                    console.log(`✅ Successfully focused chat via ${command}`);
+                    CursorIntegrationLog.info(`✅ Successfully focused chat via ${command}`);
                     return true;
                     
                 } catch (commandError) {
                     // Команда не существует, пробуем следующую
-                    console.log(`Focus command ${command} not available`);
+                    CursorIntegrationLog.info(`Focus command ${command} not available`);
                 }
             }
             
@@ -601,7 +574,7 @@ export class CursorIntegration {
                 try {
                     await executeWithTimeout('workbench.action.toggleSidebarVisibility', 500);
                 } catch (error) {
-                    console.log('Sidebar toggle timed out or failed');
+                    CursorIntegrationLog.warn('Sidebar toggle timed out or failed');
                 }
                 
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -609,19 +582,19 @@ export class CursorIntegration {
                 try {
                     await executeWithTimeout('workbench.action.togglePanel', 500);
                 } catch (error) {
-                    console.log('Panel toggle timed out or failed');
+                    CursorIntegrationLog.warn('Panel toggle timed out or failed');
                 }
                 
-                console.log('ℹ️ Opened panels - user needs to manually focus chat');
+                CursorIntegrationLog.info('ℹ️ Opened panels - user needs to manually focus chat');
                 return true;
                 
             } catch (error) {
-                console.error('❌ Failed to open panels:', error);
+                CursorIntegrationLog.error('❌ Failed to open panels:', error as Error);
                 return false;
             }
             
         } catch (error) {
-            console.error('❌ Failed to focus on chat:', error);
+            CursorIntegrationLog.error('❌ Failed to focus on chat:', error as Error);
             return false;
         }
     }
@@ -684,7 +657,7 @@ export class CursorIntegration {
      */
     public updateOptions(newOptions: Partial<CursorIntegrationOptions>): void {
         this.options = { ...this.options, ...newOptions };
-        console.log('🔧 CursorIntegration options updated');
+        CursorIntegrationLog.info('🔧 CursorIntegration options updated');
     }
 
     /**
@@ -726,11 +699,11 @@ export class CursorIntegration {
      * Освобождение ресурсов
      */
     dispose(): void {
-        console.log('🔌 Disposing CursorIntegration resources...');
+        CursorIntegrationLog.info('🔌 Disposing CursorIntegration resources...');
         
         // Здесь можно добавить очистку подписок, таймеров и других ресурсов
         // В данной реализации специальных ресурсов для очистки нет
         
-        console.log('✅ CursorIntegration disposed successfully');
+        CursorIntegrationLog.info('✅ CursorIntegration disposed successfully');
     }
 } 

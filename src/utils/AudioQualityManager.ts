@@ -1,6 +1,7 @@
 // AudioQualityManager.ts - Менеджер настроек качества аудио
 
 import * as vscode from 'vscode';
+import { AudioQualityManagerLog } from './GlobalOutput';
 
 export interface AudioQualitySettings {
     quality: 'standard' | 'high' | 'ultra';
@@ -107,7 +108,7 @@ export class AudioQualityManager {
             }
         }
 
-        console.log(`Applied audio quality preset: ${preset.name}`);
+        AudioQualityManagerLog.info(`Applied audio quality preset: ${preset.name}`);
     }
 
     /**
@@ -261,7 +262,7 @@ export class AudioQualityManager {
                 }
             }
 
-            console.log('Audio quality settings imported successfully');
+            AudioQualityManagerLog.info('Audio quality settings imported successfully');
             
         } catch (error) {
             throw new Error(`Failed to import settings: ${(error as Error).message}`);

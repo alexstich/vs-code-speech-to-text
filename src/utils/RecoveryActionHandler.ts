@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { RecoveryAction } from './ErrorHandler';
+import { RecoveryActionHandlerLog } from './GlobalOutput';
 
 /**
  * Результат выполнения recovery action
@@ -35,7 +36,7 @@ export class RecoveryActionHandler {
      * Выполнение recovery action
      */
     async executeRecoveryAction(action: RecoveryAction, context?: any): Promise<RecoveryResult> {
-        console.log(`🔧 Executing recovery action: ${action}`);
+        RecoveryActionHandlerLog.info(`🔧 Executing recovery action: ${action}`);
 
         try {
             switch (action) {
@@ -68,7 +69,7 @@ export class RecoveryActionHandler {
             }
         } catch (error) {
             const errorMessage = (error as Error).message;
-            console.error(`❌ Recovery action ${action} failed:`, errorMessage);
+            RecoveryActionHandlerLog.error(`❌ Recovery action ${action} failed: ${errorMessage}`);
             return {
                 success: false,
                 message: `Recovery action failed: ${errorMessage}`
@@ -123,7 +124,7 @@ After setting the API key, try using SpeechToTextWhisper again.
                     };
                 }
             } catch (error) {
-                console.log('Microphone check failed:', error);
+                RecoveryActionHandlerLog.warn(`Microphone check failed: ${(error as Error).message}`);
             }
         }
 
@@ -190,7 +191,7 @@ After fixing the microphone, try SpeechToTextWhisper again.
     private async checkNetwork(): Promise<RecoveryResult> {
         // Простая проверка подключения к интернету
         try {
-            console.log('🌐 Checking network connectivity...');
+            RecoveryActionHandlerLog.info('🌐 Checking network connectivity...');
             
             // Проверяем доступность OpenAI API
             const controller = new AbortController();
@@ -223,7 +224,7 @@ After fixing the microphone, try SpeechToTextWhisper again.
                 };
             }
             
-            console.error('Network check failed:', error);
+            RecoveryActionHandlerLog.error('Network check failed:', error as Error);
             
             const action = await vscode.window.showWarningMessage(
                 'Network connectivity issue detected. Please check your internet connection.',

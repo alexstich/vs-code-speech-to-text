@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ErrorHandlerLog } from './GlobalOutput';
 
 /**
  * Типы ошибок в системе SpeechToTextWhisper
@@ -110,7 +111,7 @@ export class VSCodeErrorDisplayHandler implements ErrorDisplayHandler {
 
     updateStatusBar(message: string, severity: ErrorSeverity): void {
         // Эта функция будет интегрирована с StatusBarManager
-        console.log(`[StatusBar] ${severity.toUpperCase()}: ${message}`);
+        ErrorHandlerLog.info(`[StatusBar] ${severity.toUpperCase()}: ${message}`);
     }
 }
 
@@ -402,22 +403,31 @@ export class ErrorHandler {
      * Логирование ошибки
      */
     private logError(config: ErrorConfig, context: ErrorContext, originalError?: Error): void {
-        const logPrefix = `[SpeechToTextWhisper][${config.severity.toUpperCase()}]`;
-        const logMessage = `${logPrefix} ${config.type}: ${config.message}`;
-        const contextInfo = `Operation: ${context.operation}, Timestamp: ${context.timestamp.toISOString()}`;
-        
-        console.error(logMessage);
-        console.error(`Context: ${contextInfo}`);
-        
-        if (originalError) {
-            console.error('Original error:', originalError);
-            if (config.technicalDetails) {
-                console.error('Technical details:', config.technicalDetails);
-            }
+        const timestamp = context.timestamp.toISOString();
+        const contextInfo = `Operation: ${context.operation}, Attempt: ${context.attemptNumber || 1}`;
+        const logMessage = `[${config.type}] ${config.message}`;
+
+        // Логируем в зависимости от серьезности
+        if (config.severity === ErrorSeverity.CRITICAL) {
+            ErrorHandlerLog.error(`[SpeechToTextWhisper] ${config.message}`);
+        } else if (config.severity === ErrorSeverity.ERROR) {
+            ErrorHandlerLog.error(logMessage);
+            ErrorHandlerLog.error(`Context: ${contextInfo}`);
+        } else {
+            ErrorHandlerLog.warn(logMessage);
         }
 
+        if (originalError) {
+            ErrorHandlerLog.error('Original error:', originalError);
+        }
+
+        if (config.technicalDetails) {
+            ErrorHandlerLog.warn(`Technical details: ${config.technicalDetails}`);
+        }
+
+        // Дополнительная информация
         if (context.additionalData) {
-            console.error('Additional data:', context.additionalData);
+            ErrorHandlerLog.warn(`Additional data: ${JSON.stringify(context.additionalData)}`);
         }
     }
 
