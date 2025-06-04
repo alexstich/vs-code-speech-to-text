@@ -291,5 +291,156 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             
             console.log('✅ Test passed: compatibility and microphone checks work correctly');
         });
+
+        it('должен корректно обрабатывать silence detection при нажатии F9 (recordAndOpenNewChat)', async () => {
+            console.log('🧪 Starting test: F9 silence detection bug reproduction');
+            
+            // Мокируем fs для эмуляции создания файла
+            const fs = require('fs');
+            const fsExistsSync = sandbox.stub(fs, 'existsSync').returns(true);
+            const fsStatSync = sandbox.stub(fs, 'statSync').returns({ size: 2048 }); // Нормальный размер файла
+            const fsReadFileSync = sandbox.stub(fs, 'readFileSync').returns(Buffer.from('fake audio data'));
+            
+            // Мокируем tmp для создания временного файла
+            const tmp = require('tmp');
+            const tmpFileSync = sandbox.stub(tmp, 'fileSync').returns({
+                name: '/tmp/test-recording.wav',
+                removeCallback: () => {}
+            });
+            
+            const options: AudioRecordingOptions = {
+                silenceDetection: true,
+                silenceDuration: 3,  // 3 секунды тишины
+                maxDuration: 30      // Максимум 30 секунд
+            };
+
+            recorder = new FFmpegAudioRecorder(mockEvents, options);
+            
+            // Spy на все важные методы
+            const recorderAny = recorder as any;
+            const setupSilenceDetectionSpy = sandbox.spy(recorderAny, 'setupSilenceDetection');
+            const updateLastAudioTimeSpy = sandbox.spy(recorderAny, 'updateLastAudioTime');
+            const clearSilenceTimerSpy = sandbox.spy(recorderAny, 'clearSilenceTimer');
+
+            console.log('🧪 Starting recording (симуляция F9)...');
+            
+            // Начинаем запись
+            await recorder.startRecording();
+            
+            console.log('🧪 Recording started, проверяем настройку silence detection...');
+            
+            // Проверяем что silence detection был настроен
+            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection должен быть вызван');
+            assert.strictEqual(recorderAny.silenceDetectionEnabled, true, 'silenceDetectionEnabled должен быть true');
+            
+            // Проверяем что lastAudioTime был установлен в recordingStartTime
+            assert.ok(recorderAny.lastAudioTime > 0, 'lastAudioTime должен быть установлен');
+            assert.strictEqual(recorderAny.lastAudioTime, recorderAny.recordingStartTime, 'lastAudioTime должен равняться recordingStartTime');
+            
+            console.log(`📊 Initial lastAudioTime: ${recorderAny.lastAudioTime}`);
+            console.log(`📊 recordingStartTime: ${recorderAny.recordingStartTime}`);
+            
+            // Симулируем сообщения FFmpeg (типичные для режима тишины)
+            console.log('🧪 Симулируем FFmpeg сообщения в режиме тишины...');
+            
+            // Эмулируем FFmpeg инициализацию (это должно обновить lastAudioTime)
+            mockChildProcess.stderr.emit('data', 'Input #0, avfoundation, from \':0\':\n');
+            mockChildProcess.stderr.emit('data', '  Duration: N/A, start: 0.000000, bitrate: N/A\n');
+            mockChildProcess.stderr.emit('data', '    Stream #0:0: Audio: pcm_f32le, 44100 Hz, 2 channels, flt, 2822 kb/s\n');
+            
+            console.log(`📊 updateLastAudioTime called during FFmpeg setup: ${updateLastAudioTimeSpy.callCount}`);
+            
+            // Ждем небольшой промежуток времени
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Симулируем сообщения от FFmpeg в процессе записи (в тишине)
+            mockChildProcess.stderr.emit('data', 'Press [q] to quit, [?] for help\n');
+            
+            console.log(`📊 updateLastAudioTime called after FFmpeg ready: ${updateLastAudioTimeSpy.callCount}`);
+            
+            // Проверяем что updateLastAudioTime был вызван
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван при сообщениях FFmpeg');
+            
+            // Симулируем остановку записи пользователем (повторное нажатие F9)
+            console.log('🧪 Симулируем остановку записи пользователем (F9)...');
+            
+            recorder.stopRecording();
+            
+            // Даем время для завершения процесса
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            console.log(`📊 clearSilenceTimer called after manual stop: ${clearSilenceTimerSpy.callCount}`);
+            
+            // Проверяем что таймеры были очищены
+            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer должен быть вызван при остановке');
+            
+            // Проверяем что события были вызваны правильно
+            assert.ok(onRecordingStartSpy.calledOnce, 'onRecordingStart должен быть вызван');
+            assert.ok(onRecordingStopSpy.calledOnce, 'onRecordingStop должен быть вызван');
+            
+            console.log('✅ Test passed: F9 silence detection works correctly');
+        });
+
+        it('должен правильно обновлять lastAudioTime при различных сообщениях FFmpeg', () => {
+            console.log('🧪 Starting test: lastAudioTime update logic');
+            
+            const options: AudioRecordingOptions = {
+                silenceDetection: true,
+                silenceDuration: 3
+            };
+
+            recorder = new FFmpegAudioRecorder(mockEvents, options);
+            const recorderAny = recorder as any;
+            
+            // Spy на updateLastAudioTime
+            const updateLastAudioTimeSpy = sandbox.spy(recorderAny, 'updateLastAudioTime');
+            
+            // Устанавливаем начальные условия
+            recorderAny.silenceDetectionEnabled = true;
+            recorderAny.recordingStartTime = Date.now();
+            recorderAny.lastAudioTime = recorderAny.recordingStartTime;
+            
+            console.log('🧪 Тестируем различные типы сообщений FFmpeg...');
+            
+            // Имитируем создание child process
+            recorderAny.ffmpegProcess = mockChildProcess;
+            recorderAny.setupFFmpegEvents();
+            
+            // Тест 1: Сообщение о прогрессе записи
+            mockChildProcess.stderr.emit('data', 'size=    1024kB time=00:00:10.50 bitrate= 845.3kbits/s');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для progress message');
+            
+            updateLastAudioTimeSpy.resetHistory();
+            
+            // Тест 2: Информация о потоке
+            mockChildProcess.stderr.emit('data', 'Stream #0:0: Audio: pcm_s16le, 44100 Hz, 2 channels');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для stream info');
+            
+            updateLastAudioTimeSpy.resetHistory();
+            
+            // Тест 3: FFmpeg готов
+            mockChildProcess.stderr.emit('data', 'Press [q] to quit, [?] for help');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для FFmpeg ready');
+            
+            updateLastAudioTimeSpy.resetHistory();
+            
+            // Тест 4: Информация о входе/выходе
+            mockChildProcess.stderr.emit('data', 'Input #0, avfoundation, from \':0\':');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для input info');
+            
+            updateLastAudioTimeSpy.resetHistory();
+            
+            // Тест 5: Обычное сообщение (не ошибка) в режиме silence detection
+            mockChildProcess.stderr.emit('data', 'frame=  100 fps= 10 q=-0.0 size=    1024kB time=00:00:05.00');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для обычного сообщения');
+            
+            updateLastAudioTimeSpy.resetHistory();
+            
+            // Тест 6: Сообщение об ошибке (НЕ должно обновлять lastAudioTime)
+            mockChildProcess.stderr.emit('data', 'Error: Permission denied accessing microphone');
+            assert.ok(!updateLastAudioTimeSpy.called, 'updateLastAudioTime НЕ должен быть вызван для сообщения об ошибке');
+            
+            console.log('✅ Test passed: lastAudioTime update logic works correctly');
+        });
     });
 }); 

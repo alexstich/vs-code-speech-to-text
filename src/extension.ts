@@ -42,6 +42,9 @@ let deviceManagerProvider: DeviceManagerProvider;
 let settingsProvider: SettingsProvider;
 let modeSelectorProvider: ModeSelectorProvider;
 
+// Глобальный output канал для всего расширения
+let outputChannel: vscode.OutputChannel;
+
 // Система обработки ошибок
 let errorHandler: ErrorHandler;
 let retryManager: RetryManager;
@@ -130,6 +133,23 @@ class RecordingStateManager {
 	}
 
 	/**
+	 * Остановка записи с сохранением режима (для транскрибации)
+	 */
+	static stopRecordingKeepMode(): RecordingMode | null {
+		if (!recordingState.isRecording) {
+			console.warn('⚠️ No recording in progress to stop');
+			return null;
+		}
+
+		const mode = recordingState.mode;
+		recordingState.isRecording = false;
+		// mode и startTime остаются для обработки транскрибации
+
+		console.log(`⏹️ Recording stopped, mode preserved for transcription: ${mode}`);
+		return mode;
+	}
+
+	/**
 	 * Принудительный сброс состояния (для ошибок)
 	 */
 	static resetState(): void {
@@ -164,6 +184,20 @@ class RecordingStateManager {
  * Вызывается при первом использовании команды расширения
  */
 export function activate(context: vscode.ExtensionContext) {
+	// САМОЕ РАННЕЕ логирование
+	console.log('🚀 SpeechToTextWhisper extension activation started! NEW VERSION 2024');
+	console.log('🚀 Context:', context);
+	console.log('🚀 VS Code version:', vscode.version);
+	console.log('🚀 Extension folder:', context.extensionPath);
+	
+	// Также попробуем window.showInformationMessage для проверки
+	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
+	
+	// Создаем output channel для логирования
+	outputChannel = vscode.window.createOutputChannel('Speech to Text Whisper');
+	outputChannel.appendLine('🚀 Extension activation started');
+	outputChannel.show(); // Автоматически показываем в Output panel
+	
 	console.log('🎤 SpeechToTextWhisper extension activation started! NEW VERSION 2024');
 	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
 	
@@ -840,7 +874,6 @@ function initializeCursorIntegration(): void {
 async function recordAndInsertOrClipboard(): Promise<void> {
 	console.log('🎤 recordAndInsertOrClipboard called! UNIQUE COMMAND MESSAGE 67890');
 	console.log('🎤 recordAndInsertOrClipboard called! MODIFIED MESSAGE 99999');
-	vscode.window.showInformationMessage('🎤 Command recordAndInsertOrClipboard executed!');
 	
 	const context: ErrorContext = {
 		operation: 'record_and_insert_or_clipboard',
@@ -901,7 +934,6 @@ async function recordAndInsertToCurrentChat(): Promise<void> {
 	console.log('🎤 [COMMAND] recordAndInsertToCurrentChat called!');
 	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
 	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
-	vscode.window.showInformationMessage('🎤 Command recordAndInsertToCurrentChat executed!');
 	
 	const context: ErrorContext = {
 		operation: 'record_and_insert_to_current_chat',
@@ -968,10 +1000,39 @@ async function recordAndInsertToCurrentChat(): Promise<void> {
  * Команда записи с открытием нового чата (F9)
  */
 async function recordAndOpenNewChat(): Promise<void> {
-	console.log('🎤 [COMMAND] recordAndOpenNewChat called!');
-	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
-	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
-	vscode.window.showInformationMessage('🎤 Command recordAndOpenNewChat executed!');
+	// САМОЕ РАННЕЕ логирование для диагностики
+	console.log('🔥 === F9 COMMAND CALLED! ===');
+	console.log('🔥 Time:', new Date().toISOString());
+	console.log('🔥 console.log working:', true);
+	
+	// Также попробуем window.showInformationMessage
+	vscode.window.showInformationMessage('🔥 F9 COMMAND EXECUTED!');
+	
+	// Используем глобальный output channel
+	outputChannel.appendLine('🔥 === F9 COMMAND CALLED! ===');
+	outputChannel.appendLine('🔥 Time: ' + new Date().toISOString());
+	outputChannel.show();
+	
+	try {
+		console.log('🎤 [COMMAND] recordAndOpenNewChat called!');
+		outputChannel.appendLine('🎤 [COMMAND] recordAndOpenNewChat called!');
+		
+		console.log('🎤 [COMMAND] Step 1: Getting current recording state...');
+		outputChannel.appendLine('🎤 [COMMAND] Step 1: Getting current recording state...');
+		
+		const isCurrentlyRecording = RecordingStateManager.isRecording();
+		const currentMode = RecordingStateManager.getCurrentMode();
+		
+		console.log('🎤 [COMMAND] Current recording state:', isCurrentlyRecording);
+		console.log('🎤 [COMMAND] Current mode:', currentMode);
+		outputChannel.appendLine('🎤 [COMMAND] Current recording state: ' + isCurrentlyRecording);
+		outputChannel.appendLine('🎤 [COMMAND] Current mode: ' + currentMode);
+		
+	} catch (error) {
+		console.error('❌ [COMMAND] Error in step 1:', error);
+		outputChannel.appendLine('❌ [COMMAND] Error in step 1: ' + error);
+		return;
+	}
 	
 	const context: ErrorContext = {
 		operation: 'record_and_open_new_chat',
@@ -980,57 +1041,127 @@ async function recordAndOpenNewChat(): Promise<void> {
 	};
 
 	try {
+		console.log('🎤 [COMMAND] Step 2: Creating error context...');
+		outputChannel.appendLine('🎤 [COMMAND] Step 2: Creating error context...');
+		
 		// Проверяем, идет ли уже запись
+		console.log('🎤 [COMMAND] Step 3: Checking if recording is in progress...');
+		outputChannel.appendLine('🎤 [COMMAND] Step 3: Checking if recording is in progress...');
+		
 		if (RecordingStateManager.isRecording()) {
 			// Останавливаем запись
 			console.log('⏹️ [COMMAND] Stopping recording (recordAndOpenNewChat)');
+			outputChannel.appendLine('⏹️ [COMMAND] Stopping recording (recordAndOpenNewChat)');
 			stopRecording();
 			return;
 		}
 
+		console.log('🎤 [COMMAND] Step 4: Getting current time...');
+		outputChannel.appendLine('🎤 [COMMAND] Step 4: Getting current time...');
+		
 		// Проверяем минимальный интервал между попытками ЗДЕСЬ
 		const now = Date.now();
 		console.log('🎤 [COMMAND] Checking recording interval, now:', now, 'last:', lastRecordingStartTime);
+		outputChannel.appendLine('🎤 [COMMAND] Checking recording interval, now: ' + now + ' last: ' + lastRecordingStartTime);
+		
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
 			console.log('⚠️ [COMMAND] Too frequent recording attempts in command, skipping');
+			outputChannel.appendLine('⚠️ [COMMAND] Too frequent recording attempts in command, skipping');
 			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
 			return;
 		}
 
-		console.log('🎤 [COMMAND] Starting record and open new chat...');
+		console.log('🎤 [COMMAND] Step 5: Starting record and open new chat...');
+		outputChannel.appendLine('🎤 [COMMAND] Step 5: Starting record and open new chat...');
 		
 		// Начинаем запись с режимом NEW_CHAT
-		console.log('🎤 [COMMAND] Attempting to start recording with NEW_CHAT mode');
-		if (RecordingStateManager.startRecording(RecordingMode.NEW_CHAT)) {
-			console.log('🎤 [COMMAND] Recording state started successfully');
+		console.log('🎤 [COMMAND] Step 6: Attempting to start recording with NEW_CHAT mode');
+		outputChannel.appendLine('🎤 [COMMAND] Step 6: Attempting to start recording with NEW_CHAT mode');
+		
+		const startRecordingResult = RecordingStateManager.startRecording(RecordingMode.NEW_CHAT);
+		console.log('🎤 [COMMAND] RecordingStateManager.startRecording result:', startRecordingResult);
+		outputChannel.appendLine('🎤 [COMMAND] RecordingStateManager.startRecording result: ' + startRecordingResult);
+		
+		if (startRecordingResult) {
+			console.log('🎤 [COMMAND] Step 7: Recording state started successfully');
+			outputChannel.appendLine('🎤 [COMMAND] Step 7: Recording state started successfully');
 			
 			// Обновляем StatusBar сразу при начале попытки записи
+			console.log('🎤 [COMMAND] Step 8: Checking statusBarManager...');
+			outputChannel.appendLine('🎤 [COMMAND] Step 8: Checking statusBarManager...');
+			
 			if (statusBarManager) {
-				console.log('🎤 [COMMAND] Updating status bar to recording state');
+				console.log('🎤 [COMMAND] Step 9: Updating status bar to recording state');
+				outputChannel.appendLine('🎤 [COMMAND] Step 9: Updating status bar to recording state');
 				statusBarManager.updateRecordingState(true);
+				console.log('🎤 [COMMAND] Step 9: Status bar updated successfully');
+				outputChannel.appendLine('🎤 [COMMAND] Step 9: Status bar updated successfully');
+			} else {
+				console.log('🎤 [COMMAND] Step 9: statusBarManager is null');
+				outputChannel.appendLine('🎤 [COMMAND] Step 9: statusBarManager is null');
 			}
 			
 			// Устанавливаем время попытки записи
+			console.log('🎤 [COMMAND] Step 10: Setting lastRecordingStartTime...');
+			outputChannel.appendLine('🎤 [COMMAND] Step 10: Setting lastRecordingStartTime...');
 			lastRecordingStartTime = now;
 			console.log('🎤 [COMMAND] Set lastRecordingStartTime to:', lastRecordingStartTime);
+			outputChannel.appendLine('🎤 [COMMAND] Set lastRecordingStartTime to: ' + lastRecordingStartTime);
 			
-			console.log('🎤 [COMMAND] Calling startRecording()...');
-			await startRecording();
-			console.log('🎤 [COMMAND] startRecording() completed');
+			console.log('🎤 [COMMAND] Step 11: About to call startRecording()...');
+			outputChannel.appendLine('🎤 [COMMAND] Step 11: About to call startRecording()...');
+			
+			try {
+				console.time('startRecording');
+				await startRecording();
+				console.timeEnd('startRecording');
+				console.log('🎤 [COMMAND] Step 12: startRecording() completed successfully');
+				outputChannel.appendLine('🎤 [COMMAND] Step 12: startRecording() completed successfully');
+			} catch (startRecordingError) {
+				console.error('❌ [COMMAND] Error in startRecording():', startRecordingError);
+				outputChannel.appendLine('❌ [COMMAND] Error in startRecording(): ' + startRecordingError);
+				throw startRecordingError;
+			}
+			
+			console.log('🎤 [COMMAND] Step 13: Showing information message...');
+			outputChannel.appendLine('🎤 [COMMAND] Step 13: Showing information message...');
 			vscode.window.showInformationMessage('🎤 Recording... Press F9 again to stop and open new chat');
+			console.log('🎤 [COMMAND] Step 14: Function completed successfully');
+			outputChannel.appendLine('🎤 [COMMAND] Step 14: Function completed successfully');
+			
 		} else {
 			console.log('❌ [COMMAND] Failed to start recording state');
+			outputChannel.appendLine('❌ [COMMAND] Failed to start recording state');
 			vscode.window.showWarningMessage('Recording already in progress or too frequent attempts');
 		}
 		
 	} catch (error) {
 		console.error('❌ [COMMAND] recordAndOpenNewChat failed:', error);
+		outputChannel.appendLine('❌ [COMMAND] recordAndOpenNewChat failed: ' + error);
 		console.error('❌ [COMMAND] Error details:', {
 			name: (error as Error).name,
 			message: (error as Error).message,
 			stack: (error as Error).stack
 		});
-		await errorHandler.handleErrorFromException(error as Error, context);
+		outputChannel.appendLine('❌ [COMMAND] Error name: ' + (error as Error).name);
+		outputChannel.appendLine('❌ [COMMAND] Error message: ' + (error as Error).message);
+		
+		// Сбрасываем состояние при ошибке
+		console.log('🔄 [COMMAND] Resetting recording state due to error...');
+		outputChannel.appendLine('🔄 [COMMAND] Resetting recording state due to error...');
+		RecordingStateManager.resetState();
+		
+		// Сбрасываем StatusBar при ошибке
+		if (statusBarManager) {
+			statusBarManager.updateRecordingState(false);
+		}
+		
+		try {
+			await errorHandler.handleErrorFromException(error as Error, context);
+		} catch (handlerError) {
+			console.error('❌ [COMMAND] Error in error handler:', handlerError);
+			outputChannel.appendLine('❌ [COMMAND] Error in error handler: ' + handlerError);
+		}
 	}
 }
 
@@ -1039,9 +1170,14 @@ async function recordAndOpenNewChat(): Promise<void> {
  */
 async function startRecording(): Promise<void> {
 	console.log('▶️ [RECORDING] startRecording() called');
+	outputChannel.appendLine('▶️ [RECORDING] startRecording() called');
+	
 	console.log('▶️ [RECORDING] Current recording state:', RecordingStateManager.isRecording());
 	console.log('▶️ [RECORDING] Current mode:', RecordingStateManager.getCurrentMode());
 	console.log('▶️ [RECORDING] audioRecorder initialized:', !!audioRecorder);
+	outputChannel.appendLine('▶️ [RECORDING] Current recording state: ' + RecordingStateManager.isRecording());
+	outputChannel.appendLine('▶️ [RECORDING] Current mode: ' + RecordingStateManager.getCurrentMode());
+	outputChannel.appendLine('▶️ [RECORDING] audioRecorder initialized: ' + !!audioRecorder);
 	
 	const context: ErrorContext = {
 		operation: 'start_recording',
@@ -1051,17 +1187,33 @@ async function startRecording(): Promise<void> {
 
 	try {
 		console.log('▶️ [RECORDING] Starting recording process...');
+		outputChannel.appendLine('▶️ [RECORDING] Starting recording process...');
 		
 		// Обеспечиваем инициализацию FFmpeg Audio Recorder
 		console.log('🔧 [RECORDING] Step 1: Ensuring FFmpeg Audio Recorder initialization...');
+		outputChannel.appendLine('🔧 [RECORDING] Step 1: Ensuring FFmpeg Audio Recorder initialization...');
+		
 		console.time('ensureFFmpegAudioRecorder');
-		await ensureFFmpegAudioRecorder();
-		console.timeEnd('ensureFFmpegAudioRecorder');
-		console.log('🔧 [RECORDING] Step 1: ensureFFmpegAudioRecorder completed successfully');
+		
+		try {
+			await ensureFFmpegAudioRecorder();
+			console.timeEnd('ensureFFmpegAudioRecorder');
+			console.log('🔧 [RECORDING] Step 1: ensureFFmpegAudioRecorder completed successfully');
+			outputChannel.appendLine('🔧 [RECORDING] Step 1: ensureFFmpegAudioRecorder completed successfully');
+		} catch (ensureError) {
+			console.timeEnd('ensureFFmpegAudioRecorder');
+			console.error('❌ [RECORDING] Error in ensureFFmpegAudioRecorder:', ensureError);
+			outputChannel.appendLine('❌ [RECORDING] Error in ensureFFmpegAudioRecorder: ' + ensureError);
+			throw ensureError;
+		}
 		
 		// Проверяем, что audioRecorder инициализирован
+		console.log('🔧 [RECORDING] Step 1.5: Checking audioRecorder after ensure...');
+		outputChannel.appendLine('🔧 [RECORDING] Step 1.5: Checking audioRecorder after ensure...');
+		
 		if (!audioRecorder) {
 			console.error('❌ [RECORDING] audioRecorder is null after ensureFFmpegAudioRecorder');
+			outputChannel.appendLine('❌ [RECORDING] audioRecorder is null after ensureFFmpegAudioRecorder');
 			// Сбрасываем состояние записи если audioRecorder не инициализирован
 			RecordingStateManager.resetState();
 			vscode.window.showErrorMessage('❌ Failed to initialize audio recorder');
@@ -1069,39 +1221,59 @@ async function startRecording(): Promise<void> {
 		}
 		
 		console.log('✅ [RECORDING] Step 2: audioRecorder is initialized, checking if already recording...');
+		outputChannel.appendLine('✅ [RECORDING] Step 2: audioRecorder is initialized, checking if already recording...');
 		
 		// Проверяем, не идет ли уже запись
 		const isCurrentlyRecording = audioRecorder.getIsRecording();
 		console.log('✅ [RECORDING] audioRecorder.getIsRecording():', isCurrentlyRecording);
+		outputChannel.appendLine('✅ [RECORDING] audioRecorder.getIsRecording(): ' + isCurrentlyRecording);
+		
 		if (isCurrentlyRecording) {
 			console.log('⚠️ [RECORDING] Recording already in progress, skipping start');
+			outputChannel.appendLine('⚠️ [RECORDING] Recording already in progress, skipping start');
 			return;
 		}
 		
 		console.log('🎤 [RECORDING] Step 3: audioRecorder not recording, checking microphone...');
+		outputChannel.appendLine('🎤 [RECORDING] Step 3: audioRecorder not recording, checking microphone...');
 		
 		// Проверяем состояние микрофона с retry
 		console.log('🔍 [RECORDING] Step 3a: Starting microphone permission check...');
+		outputChannel.appendLine('🔍 [RECORDING] Step 3a: Starting microphone permission check...');
+		
 		console.time('microphone.permission.check');
-		const microphoneResult = await retryManager.retryMicrophoneOperation(
-			async () => {
-				console.log('🔍 [RECORDING] Calling FFmpegAudioRecorder.checkMicrophonePermission...');
-				const hasPermission = await FFmpegAudioRecorder.checkMicrophonePermission();
-				console.log('🔍 [RECORDING] Microphone permission result:', JSON.stringify(hasPermission, null, 2));
-				if (hasPermission.state !== 'granted') {
-					throw new Error('Microphone permission not granted');
-				}
-				return hasPermission;
-			},
-			'microphone_permission_check'
-		);
-		console.timeEnd('microphone.permission.check');
+		
+		let microphoneResult;
+		try {
+			microphoneResult = await retryManager.retryMicrophoneOperation(
+				async () => {
+					console.log('🔍 [RECORDING] Calling FFmpegAudioRecorder.checkMicrophonePermission...');
+					outputChannel.appendLine('🔍 [RECORDING] Calling FFmpegAudioRecorder.checkMicrophonePermission...');
+					const hasPermission = await FFmpegAudioRecorder.checkMicrophonePermission();
+					console.log('🔍 [RECORDING] Microphone permission result:', JSON.stringify(hasPermission, null, 2));
+					outputChannel.appendLine('🔍 [RECORDING] Microphone permission result: ' + JSON.stringify(hasPermission, null, 2));
+					if (hasPermission.state !== 'granted') {
+						throw new Error('Microphone permission not granted');
+					}
+					return hasPermission;
+				},
+				'microphone_permission_check'
+			);
+			console.timeEnd('microphone.permission.check');
+		} catch (micError) {
+			console.timeEnd('microphone.permission.check');
+			console.error('❌ [RECORDING] Error in microphone check:', micError);
+			outputChannel.appendLine('❌ [RECORDING] Error in microphone check: ' + micError);
+			throw micError;
+		}
 
 		console.log('🔍 [RECORDING] Step 3b: Microphone operation result:', JSON.stringify(microphoneResult, null, 2));
+		outputChannel.appendLine('🔍 [RECORDING] Step 3b: Microphone operation result: ' + JSON.stringify(microphoneResult, null, 2));
 
 		if (!microphoneResult.success) {
 			const error = microphoneResult.lastError || new Error('Microphone access failed');
 			console.error('❌ [RECORDING] Microphone check failed:', error);
+			outputChannel.appendLine('❌ [RECORDING] Microphone check failed: ' + error);
 			// Сбрасываем состояние записи при ошибке микрофона
 			RecordingStateManager.resetState();
 			await errorHandler.handleErrorFromException(error, context);
@@ -1109,22 +1281,46 @@ async function startRecording(): Promise<void> {
 		}
 		
 		console.log('✅ [RECORDING] Step 4: Microphone check passed, calling audioRecorder.startRecording()...');
+		outputChannel.appendLine('✅ [RECORDING] Step 4: Microphone check passed, calling audioRecorder.startRecording()...');
+		
 		console.time('audioRecorder.startRecording');
-		await audioRecorder.startRecording();
-		console.timeEnd('audioRecorder.startRecording');
-		console.log('✅ [RECORDING] Step 4: audioRecorder.startRecording() completed successfully');
-		console.log('✅ [RECORDING] Recording process completed successfully');
+		
+		try {
+			await audioRecorder.startRecording();
+			console.timeEnd('audioRecorder.startRecording');
+			console.log('✅ [RECORDING] Step 4: audioRecorder.startRecording() completed successfully');
+			outputChannel.appendLine('✅ [RECORDING] Step 4: audioRecorder.startRecording() completed successfully');
+			console.log('✅ [RECORDING] Recording process completed successfully');
+			outputChannel.appendLine('✅ [RECORDING] Recording process completed successfully');
+		} catch (startError) {
+			console.timeEnd('audioRecorder.startRecording');
+			console.error('❌ [RECORDING] Error in audioRecorder.startRecording():', startError);
+			outputChannel.appendLine('❌ [RECORDING] Error in audioRecorder.startRecording(): ' + startError);
+			throw startError;
+		}
 		
 	} catch (error) {
 		console.error('❌ [RECORDING] Failed to start recording:', error);
+		outputChannel.appendLine('❌ [RECORDING] Failed to start recording: ' + error);
 		console.error('❌ [RECORDING] Error details:', {
 			name: (error as Error).name,
 			message: (error as Error).message,
 			stack: (error as Error).stack
 		});
+		outputChannel.appendLine('❌ [RECORDING] Error name: ' + (error as Error).name);
+		outputChannel.appendLine('❌ [RECORDING] Error message: ' + (error as Error).message);
+		
 		// Сбрасываем состояние записи при любой ошибке
+		console.log('🔄 [RECORDING] Resetting state due to error...');
+		outputChannel.appendLine('🔄 [RECORDING] Resetting state due to error...');
 		RecordingStateManager.resetState();
-		await errorHandler.handleErrorFromException(error as Error, context);
+		
+		try {
+			await errorHandler.handleErrorFromException(error as Error, context);
+		} catch (handlerError) {
+			console.error('❌ [RECORDING] Error in error handler:', handlerError);
+			outputChannel.appendLine('❌ [RECORDING] Error in error handler: ' + handlerError);
+		}
 	}
 }
 
@@ -1135,10 +1331,10 @@ function stopRecording(): void {
 		console.log('⏹️ [RECORDING] Current mode:', RecordingStateManager.getCurrentMode());
 		console.log('⏹️ [RECORDING] audioRecorder initialized:', !!audioRecorder);
 		
-		// Сбрасываем режим записи через RecordingStateManager в любом случае
-		console.log('⏹️ [RECORDING] Step 1: Stopping recording state...');
-		const previousMode = RecordingStateManager.stopRecording();
-		console.log(`⏹️ [RECORDING] Step 1: Recording state reset, previous mode was: ${previousMode}`);
+		// Останавливаем запись но сохраняем режим для транскрибации
+		console.log('⏹️ [RECORDING] Step 1: Stopping recording but keeping mode for transcription...');
+		const previousMode = RecordingStateManager.stopRecordingKeepMode();
+		console.log(`⏹️ [RECORDING] Step 1: Recording stopped, mode preserved for transcription: ${previousMode}`);
 		
 		// Обновляем StatusBar сразу при остановке
 		console.log('⏹️ [RECORDING] Step 2: Updating status bar...');
@@ -1150,7 +1346,7 @@ function stopRecording(): void {
 		}
 		
 		if (!audioRecorder) {
-			console.warn('⚠️ [RECORDING] Audio recorder not initialized, but state was reset');
+			console.warn('⚠️ [RECORDING] Audio recorder not initialized, but mode was preserved');
 			return;
 		}
 		
@@ -1170,7 +1366,7 @@ function stopRecording(): void {
 			message: (error as Error).message,
 			stack: (error as Error).stack
 		});
-		// Убеждаемся что состояние сброшено даже при ошибке
+		// Сбрасываем состояние только при ошибке
 		RecordingStateManager.resetState();
 		// Обновляем StatusBar при ошибке
 		if (statusBarManager) {
@@ -1246,13 +1442,31 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			},
 			onRecordingStop: async (audioBlob: Blob) => {
 				console.log('⏹️ AudioRecorder event: onRecordingStop, blob size:', audioBlob.size);
+				console.log('⏹️ AudioRecorder event: onRecordingStop, blob type:', audioBlob.type);
+				console.log('⏹️ AudioRecorder event: About to call handleTranscription...');
+				
 				// Обновляем StatusBar
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(false);
 				}
 				
-				// Обрабатываем транскрибацию
-				await handleTranscription(audioBlob);
+				try {
+					// Обрабатываем транскрибацию
+					console.log('⏹️ AudioRecorder event: Calling handleTranscription...');
+					await handleTranscription(audioBlob);
+					console.log('⏹️ AudioRecorder event: handleTranscription completed successfully');
+				} catch (error) {
+					console.error('❌ AudioRecorder event: Error in handleTranscription:', error);
+					console.error('❌ AudioRecorder event: Error details:', {
+						name: (error as Error).name,
+						message: (error as Error).message,
+						stack: (error as Error).stack
+					});
+					// Показываем ошибку пользователю
+					vscode.window.showErrorMessage(`Transcription failed: ${(error as Error).message}`);
+					// Сбрасываем состояние при ошибке транскрибации
+					RecordingStateManager.resetState();
+				}
 			},
 			onError: (error: Error) => {
 				console.error('❌ AudioRecorder event: onError:', error);
@@ -1283,10 +1497,12 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		
 		console.log('🔧 Recorder options:', JSON.stringify(recorderOptions, null, 2));
 		
-		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions);
+		// Создаем новый экземпляр аудио рекордера
+		console.log('🎤 [RECORDING] Creating new FFmpegAudioRecorder instance...');
+		outputChannel.appendLine('🎤 [RECORDING] Creating new FFmpegAudioRecorder instance...');
 		
-		console.log(`✅ FFmpeg Audio Recorder initialized successfully (quality: ${audioConfig.audioQuality}, sample rate: ${sampleRate}Hz)`);
-		vscode.window.showInformationMessage(`✅ FFmpeg Audio Recorder initialized (${audioConfig.audioQuality} quality)`);
+		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions, outputChannel);
+		console.log('🎤 [RECORDING] FFmpegAudioRecorder instance created successfully!');
 		
 	} catch (error) {
 		console.error('❌ Failed to initialize FFmpeg Audio Recorder:', error);

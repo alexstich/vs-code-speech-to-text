@@ -71,12 +71,37 @@ export class FFmpegAudioRecorder {
 
     constructor(
         private events: AudioRecorderEvents,
-        private options: AudioRecordingOptions = {}
+        private options: AudioRecordingOptions = {},
+        private outputChannel?: any // vscode.OutputChannel, но избегаем импорта vscode здесь
     ) {
         // Настройка временной очистки при выходе из процесса
         process.on('exit', () => this.cleanup());
         process.on('SIGINT', () => this.cleanup());
         process.on('SIGTERM', () => this.cleanup());
+    }
+
+    /**
+     * Логирование с поддержкой outputChannel
+     */
+    private log(message: string): void {
+        console.log(message);
+        if (this.outputChannel) {
+            this.outputChannel.appendLine(message);
+        }
+    }
+
+    private logError(message: string, error?: any): void {
+        console.error(message, error || '');
+        if (this.outputChannel) {
+            this.outputChannel.appendLine(message + (error ? ` ${error}` : ''));
+        }
+    }
+
+    private logWarn(message: string): void {
+        console.warn(message);
+        if (this.outputChannel) {
+            this.outputChannel.appendLine(message);
+        }
     }
 
     /**
@@ -414,38 +439,53 @@ export class FFmpegAudioRecorder {
      * Остановить запись аудио
      */
     stopRecording(): void {
+        this.log(`🎤 [RECORDER] stopRecording called. Current isRecording: ${this.isRecording}`);
+        this.log(`🎤 [RECORDER] stopRecording: ffmpegProcess exists: ${!!this.ffmpegProcess}`);
+        this.log(`🎤 [RECORDER] stopRecording: ffmpegProcess killed: ${this.ffmpegProcess?.killed}`);
+        this.log(`🎤 [RECORDER] stopRecording: tempFilePath: ${this.tempFilePath}`);
+        
         if (!this.isRecording || !this.ffmpegProcess) {
+            this.logWarn(`🎤 [RECORDER] stopRecording: Not recording or no process. isRecording: ${this.isRecording}, ffmpegProcess: ${!!this.ffmpegProcess}`);
             return;
         }
 
         const recordingDuration = Date.now() - this.recordingStartTime;
-        console.log(`📊 Recording duration: ${recordingDuration}ms`);
+        this.log(`📊 Recording duration: ${recordingDuration}ms`);
 
         // Если запись слишком короткая (менее 500ms), покажем предупреждение
         if (recordingDuration < 500) {
-            console.warn('⚠️ Very short recording detected, may result in empty file');
+            this.logWarn('⚠️ Very short recording detected, may result in empty file');
             // Но все равно попробуем остановить запись
         }
 
         // Очищаем таймеры при остановке записи
+        this.log(`🎤 [RECORDER] stopRecording: Clearing timers...`);
         this.clearMaxDurationTimer();
         this.clearSilenceTimer();
+        this.log(`🎤 [RECORDER] stopRecording: Timers cleared`);
 
         try {
+            this.log(`🎤 [RECORDER] stopRecording: About to send SIGTERM to FFmpeg process PID: ${this.ffmpegProcess.pid}`);
             // Отправляем SIGTERM для graceful shutdown
             this.ffmpegProcess.kill('SIGTERM');
+            this.log(`🎤 [RECORDER] stopRecording: SIGTERM sent successfully`);
             
             // Timeout на случай, если процесс не завершится gracefully
             setTimeout(() => {
+                this.log(`🎤 [RECORDER] stopRecording: Timeout callback triggered. Process killed: ${this.ffmpegProcess?.killed}, exists: ${!!this.ffmpegProcess}`);
                 if (this.ffmpegProcess && !this.ffmpegProcess.killed) {
-                    console.log('⚠️ FFmpeg process did not terminate gracefully, forcing kill');
+                    this.log('⚠️ FFmpeg process did not terminate gracefully, forcing kill');
                     this.ffmpegProcess.kill('SIGKILL');
+                    this.log('⚠️ SIGKILL sent to FFmpeg process');
                 }
             }, 5000);
 
         } catch (error) {
+            this.logError(`🎤 [RECORDER] stopRecording: Error while killing process: ${error}`);
             this.events.onError(new Error(`Error stopping recording: ${(error as Error).message}`));
         }
+        
+        this.log(`🎤 [RECORDER] stopRecording: Method completed, waiting for 'close' event...`);
     }
 
     /**
@@ -456,7 +496,7 @@ export class FFmpegAudioRecorder {
         const args: string[] = [];
 
         // Уровень логирования
-        args.push('-loglevel', 'error');
+        args.push('-loglevel', 'info');
 
         // Платформо-специфический ввод
         const inputParts = platformCommands.audioInput.split(' ');
@@ -522,100 +562,142 @@ export class FFmpegAudioRecorder {
      */
     private setupFFmpegEvents(): void {
         if (!this.ffmpegProcess) {
+            this.log(`🎤 [RECORDER] setupFFmpegEvents: No ffmpegProcess to setup events for`);
             return;
         }
 
+        this.log(`🎤 [RECORDER] setupFFmpegEvents: Setting up events for FFmpeg PID: ${this.ffmpegProcess.pid}`);
+
         this.ffmpegProcess.on('close', (code) => {
-            console.log(`FFmpeg process closed with code: ${code}`);
+            this.log(`🎤 [RECORDER] FFmpeg 'close' event triggered!`);
+            this.log(`🎤 [RECORDER] FFmpeg process closed with code: ${code}`);
+            this.log(`🎤 [RECORDER] Current isRecording state at close: ${this.isRecording}`);
+            this.log(`🎤 [RECORDER] Process PID: ${this.ffmpegProcess?.pid}`);
+            this.log(`🎤 [RECORDER] Process killed: ${this.ffmpegProcess?.killed}`);
+            this.log(`🎤 [RECORDER] tempFilePath: ${this.tempFilePath}`);
+            
             if (this.isRecording) {
+                this.log(`🎤 [RECORDER] isRecording is true, calling handleRecordingComplete...`);
                 this.handleRecordingComplete(code);
+            } else {
+                this.logWarn('🎤 [RECORDER] FFmpeg process closed, but isRecording was false. Skipping handleRecordingComplete.');
+                this.log(`🎤 [RECORDER] Calling cleanup due to isRecording = false`);
+                this.cleanup(); 
             }
         });
 
         this.ffmpegProcess.on('error', (error) => {
-            console.error('FFmpeg process error:', error);
+            this.logError(`🎤 [RECORDER] FFmpeg process error event: ${error}`);
+            this.log(`🎤 [RECORDER] Error event: Setting isRecording to false`);
             this.isRecording = false;
             this.clearMaxDurationTimer();
+            this.log(`🎤 [RECORDER] Error event: Calling events.onError`);
             this.events.onError(new Error(`FFmpeg process error: ${error.message}`));
             this.cleanup();
         });
 
         this.ffmpegProcess.stdout?.on('data', (data) => {
             const output = data.toString();
-            console.log('FFmpeg stdout:', output);
+            this.log(`🎤 [RECORDER] FFmpeg stdout: ${output.trim()}`);
         });
 
         this.ffmpegProcess.stderr?.on('data', (data) => {
-            const errorMessage = data.toString();
-            console.log('FFmpeg stderr:', errorMessage);
+            const output = data.toString();
+            this.log(`🎤 [RECORDER] FFmpeg stderr: ${output.trim()}`);
             
-            // Обновляем время последней аудио активности только при получении данных о прогрессе записи
-            // Ищем индикаторы реальной аудио активности
-            if (errorMessage.includes('size=') && errorMessage.includes('time=') && errorMessage.includes('bitrate=')) {
-                // Это сообщение о прогрессе записи - означает аудио активность
+            // Обновляем время последней аудио активности только при РЕАЛЬНЫХ индикаторах активности
+            // Убираем слишком агрессивную логику, которая считала любое сообщение активностью
+            
+            // Проверяем на индикаторы реальной аудио активности
+            if (output.includes('size=') && output.includes('time=') && output.includes('bitrate=') && 
+                output.includes('kbits/s') && !output.includes('size=       0kB')) {
+                // Это сообщение о прогрессе записи с реальными данными - означает аудио активность
+                this.log('🎵 Audio activity detected: recording progress with data');
                 this.updateLastAudioTime();
-            } else if (errorMessage.includes('Stream #') && errorMessage.includes('Audio:')) {
-                // Информация о аудио потоке - тоже считаем активностью
+            } else if (output.includes('Stream #') && output.includes('Audio:')) {
+                // Информация о аудио потоке - считаем началом активности (однократно)
+                this.log('🎵 Audio activity detected: stream info');
+                this.updateLastAudioTime();
+            } else if (output.includes('Press [q] to quit')) {
+                // FFmpeg готов к записи - считаем началом активности (однократно)
+                this.log('🎵 Audio activity detected: FFmpeg ready');
+                this.updateLastAudioTime();
+            } else if (output.includes('Input #0') || output.includes('Output #0')) {
+                // Информация о входе/выходе - активность настройки (однократно)
+                this.log('🎵 Audio activity detected: input/output setup');
                 this.updateLastAudioTime();
             }
             
             // Ищем специфические ошибки, которые могут указывать на проблемы
-            if (errorMessage.includes('No such file or directory')) {
-                console.error('❌ FFmpeg error: Input device not found -', errorMessage);
+            if (output.includes('No such file or directory')) {
+                this.logError(`❌ FFmpeg error: Input device not found - ${output}`);
                 this.events.onError(new Error('Audio input device not found. Please check your microphone.'));
                 return;
             }
             
-            if (errorMessage.includes('Permission denied')) {
-                console.error('❌ FFmpeg error: Permission denied -', errorMessage);
+            if (output.includes('Permission denied')) {
+                this.logError(`❌ FFmpeg error: Permission denied - ${output}`);
                 this.events.onError(new Error('Permission denied accessing microphone. Please grant microphone access to VS Code.'));
                 return;
             }
             
-            if (errorMessage.includes('Device or resource busy')) {
-                console.error('❌ FFmpeg error: Device busy -', errorMessage);
+            if (output.includes('Device or resource busy')) {
+                this.logError(`❌ FFmpeg error: Device busy - ${output}`);
                 this.events.onError(new Error('Microphone is busy or being used by another application.'));
                 return;
             }
             
-            if (errorMessage.includes('Invalid data found when processing input')) {
-                console.error('❌ FFmpeg error: Invalid input data -', errorMessage);
+            if (output.includes('Invalid data found when processing input')) {
+                this.logError(`❌ FFmpeg error: Invalid input data - ${output}`);
                 this.events.onError(new Error('Invalid audio input. Please check your microphone settings.'));
                 return;
             }
             
-            if (errorMessage.includes('Immediate exit requested')) {
-                console.log('ℹ️ FFmpeg immediate exit (normal for short recordings)');
+            if (output.includes('Immediate exit requested')) {
+                this.log('ℹ️ FFmpeg immediate exit (normal for short recordings)');
                 return;
             }
             
             // Ошибки устройств на macOS
-            if (errorMessage.includes('AVFoundation input device') && errorMessage.includes('not found')) {
-                console.error('❌ macOS audio device error:', errorMessage);
+            if (output.includes('AVFoundation input device') && output.includes('not found')) {
+                this.logError(`❌ macOS audio device error: ${output}`);
                 this.events.onError(new Error('Audio input device not found on macOS. Please check microphone permissions in System Preferences.'));
                 return;
             }
             
             // Проверяем на успешные индикаторы записи
-            if (errorMessage.includes('size=') && errorMessage.includes('time=')) {
-                console.log('✅ FFmpeg recording progress:', errorMessage.trim());
+            if (output.includes('size=') && output.includes('time=')) {
+                this.log('✅ FFmpeg recording progress:', output.trim());
             }
         });
+        
+        this.log(`🎤 [RECORDER] setupFFmpegEvents: All event handlers setup completed`);
     }
 
     /**
      * Обработка завершения записи
      */
     private async handleRecordingComplete(exitCode: number | null): Promise<void> {
-        this.isRecording = false;
+        this.log(`🎤 [RECORDER] handleRecordingComplete called. Exit code: ${exitCode}, Original isRecording: ${this.isRecording}`);
+        const wasRecording = this.isRecording;
+        this.isRecording = false; 
+        
         this.clearMaxDurationTimer();
         this.clearSilenceTimer();
 
         try {
+            this.log(`🎤 [RECORDER] handleRecordingComplete: Cleared timers. WasRecording: ${wasRecording}`);
+
+            if (!wasRecording) {
+                this.logWarn('🎤 [RECORDER] handleRecordingComplete called, but wasRecording is false. Potential issue or duplicate call. Cleaning up.');
+                this.cleanup();
+                return;
+            }
+
             // На macOS FFmpeg может завершиться с кодом 255 при SIGTERM, что нормально
             // Также код null означает, что процесс был убит принудительно
             if (exitCode !== 0 && exitCode !== null && exitCode !== 255) {
-                console.warn(`FFmpeg exited with code ${exitCode}, but checking if file was created anyway`);
+                this.logWarn(`FFmpeg exited with code ${exitCode}, but checking if file was created anyway`);
             }
 
             // Проверяем наличие tempFilePath до всех операций
@@ -628,7 +710,7 @@ export class FFmpegAudioRecorder {
             // Даем FFmpeg время записать файл
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            console.log(`Checking for recording file: ${currentTempFilePath}`);
+            this.log(`Checking for recording file: ${currentTempFilePath}`);
 
             if (!fs.existsSync(currentTempFilePath)) {
                 // Попробуем подождать еще немного
@@ -640,7 +722,7 @@ export class FFmpegAudioRecorder {
 
             // Проверяем размер файла - если файл пустой, это ошибка
             const stats = fs.statSync(currentTempFilePath);
-            console.log(`Recording file size: ${stats.size} bytes`);
+            this.log(`Recording file size: ${stats.size} bytes`);
             
             const recordingDuration = Date.now() - this.recordingStartTime;
             const MIN_FILE_SIZE = 1000; // Минимум 1KB для валидного аудиофайла
@@ -649,10 +731,10 @@ export class FFmpegAudioRecorder {
                 // Подождем еще немного и проверим снова
                 await new Promise(resolve => setTimeout(resolve, 500));
                 const newStats = fs.statSync(currentTempFilePath);
-                console.log(`Recording file size after wait: ${newStats.size} bytes`);
+                this.log(`Recording file size after wait: ${newStats.size} bytes`);
                 
                 if (newStats.size === 0) {
-                    console.error(`❌ Recording file is empty after ${recordingDuration}ms recording`);
+                    this.logError(`❌ Recording file is empty after ${recordingDuration}ms recording`);
                     
                     if (recordingDuration < 500) {
                         throw new Error('Recording too short. Hold the record button for at least 0.5 seconds.');
@@ -661,7 +743,7 @@ export class FFmpegAudioRecorder {
                     }
                 }
             } else if (stats.size < MIN_FILE_SIZE) {
-                console.warn(`⚠️ Recording file is very small: ${stats.size} bytes (duration: ${recordingDuration}ms)`);
+                this.logWarn(`⚠️ Recording file is very small: ${stats.size} bytes (duration: ${recordingDuration}ms)`);
                 
                 if (recordingDuration < 500) {
                     throw new Error(`Recording too short (${recordingDuration}ms). Hold the record button longer to capture audio.`);
@@ -682,16 +764,16 @@ export class FFmpegAudioRecorder {
             const audioBlob = new Blob([audioBuffer], { type: mimeType }) as Blob & { name?: string };
             audioBlob.name = `recording.${fileExtension}`;
 
-            console.log(`Recording completed successfully: ${audioBuffer.length} bytes, ${mimeType}, filename: ${audioBlob.name}`);
-
+            this.log(`Recording completed successfully: ${audioBuffer.length} bytes, ${mimeType}, filename: ${audioBlob.name}`);
+            this.log(`🎤 [RECORDER] handleRecordingComplete: About to call events.onRecordingStop. Blob name: ${audioBlob.name}, size: ${audioBlob.size}`);
             // Уведомляем о завершении записи
             this.events.onRecordingStop(audioBlob);
             
         } catch (error) {
-            console.error('Error processing recording:', error);
+            this.logError(`🎤 [RECORDER] Error processing recording in handleRecordingComplete: ${error}`);
             this.events.onError(new Error(`Failed to process recording: ${(error as Error).message}`));
         } finally {
-            // Очищаем ресурсы
+            this.log('🎤 [RECORDER] handleRecordingComplete: Entering finally block for cleanup.');
             this.cleanup();
         }
     }
@@ -737,13 +819,23 @@ export class FFmpegAudioRecorder {
     }
 
     /**
-     * Настройка таймера максимальной продолжительности
+     * Настройка таймера максимальной продолжительности записи
      */
     private setupMaxDurationTimer(): void {
+        console.log(`⏱️ setupMaxDurationTimer called, maxDuration=${this.options.maxDuration}`);
+        
         if (this.options.maxDuration && this.options.maxDuration > 0) {
+            const maxDurationMs = this.options.maxDuration * 1000;
+            console.log(`⏱️ Setting up max duration timer: ${this.options.maxDuration}s (${maxDurationMs}ms)`);
+            
             this.maxDurationTimer = setTimeout(() => {
+                console.log(`⏱️ ⏰ Max duration timer triggered after ${this.options.maxDuration}s - stopping recording`);
                 this.stopRecording();
-            }, this.options.maxDuration * 1000);
+            }, maxDurationMs);
+            
+            console.log(`⏱️ Max duration timer set successfully`);
+        } else {
+            console.log(`⏱️ No max duration set or invalid value (${this.options.maxDuration})`);
         }
     }
 
@@ -751,36 +843,48 @@ export class FFmpegAudioRecorder {
      * Настройка определения тишины
      */
     private setupSilenceDetection(): void {
+        console.log(`🔇 setupSilenceDetection called, silenceDetection=${this.options.silenceDetection}`);
+        
         if (this.options.silenceDetection !== true) {
-            console.log('🔇 Silence detection disabled');
+            console.log('🔇 Silence detection disabled - will only use maxDuration timer');
+            // ❌ НЕ ВОЗВРАЩАЕМСЯ! Нужно убедиться что есть хотя бы maxDuration контроль
+            // Даже без детекции тишины должен работать таймер максимальной продолжительности
             return;
         }
 
+        console.log('🔇 Silence detection enabled - setting up silence monitoring');
         this.silenceDetectionEnabled = true;
-        this.lastAudioTime = Date.now();
+        
+        // Устанавливаем начальное время аудио активности в момент старта записи
+        this.lastAudioTime = this.recordingStartTime;
 
         const silenceDuration = (this.options.silenceDuration || 3) * 1000; // Преобразуем в миллисекунды
         const minRecordingTime = 2000; // Минимум 2 секунды записи перед включением определения тишины
 
-        console.log(`🔇 Silence detection enabled: ${silenceDuration}ms silence threshold, ${minRecordingTime}ms minimum recording time`);
+        console.log(`🔇 Silence detection parameters: ${silenceDuration}ms silence threshold, ${minRecordingTime}ms minimum recording time`);
+        console.log(`🔇 Initial lastAudioTime set to: ${this.lastAudioTime}`);
 
         // Запускаем таймер проверки тишины каждые 500ms
         const checkSilence = () => {
             if (!this.isRecording || !this.silenceDetectionEnabled) {
+                console.log('🔇 Stopping silence check - recording stopped or silence detection disabled');
                 return;
             }
 
             const recordingDuration = Date.now() - this.recordingStartTime;
             const timeSinceLastAudio = Date.now() - this.lastAudioTime;
             
+            console.log(`🔇 Silence check: recording=${recordingDuration}ms, since_audio=${timeSinceLastAudio}ms, min_time=${minRecordingTime}ms, threshold=${silenceDuration}ms`);
+            
             // Не проверяем тишину в первые minRecordingTime миллисекунд
             if (recordingDuration < minRecordingTime) {
+                console.log(`🔇 Still in minimum recording period (${recordingDuration}ms < ${minRecordingTime}ms)`);
                 this.silenceTimer = setTimeout(checkSilence, 500);
                 return;
             }
             
             if (timeSinceLastAudio >= silenceDuration) {
-                console.log(`🔇 Silence detected for ${timeSinceLastAudio}ms, stopping recording (recording duration: ${recordingDuration}ms)`);
+                console.log(`🔇 ⏰ Silence detected for ${timeSinceLastAudio}ms (>= ${silenceDuration}ms), stopping recording (total duration: ${recordingDuration}ms)`);
                 this.stopRecording();
                 return;
             }
@@ -790,6 +894,7 @@ export class FFmpegAudioRecorder {
         };
 
         // Запускаем первую проверку через 1 секунду после начала записи
+        console.log('🔇 Starting silence detection timer - first check in 1000ms');
         this.silenceTimer = setTimeout(checkSilence, 1000);
     }
 
@@ -798,7 +903,12 @@ export class FFmpegAudioRecorder {
      */
     private updateLastAudioTime(): void {
         if (this.silenceDetectionEnabled) {
+            const oldTime = this.lastAudioTime;
             this.lastAudioTime = Date.now();
+            const timeSinceLastUpdate = this.lastAudioTime - oldTime;
+            console.log(`🔇 Audio activity: lastAudioTime updated (was ${timeSinceLastUpdate}ms ago)`);
+        } else {
+            console.log('🔇 Audio activity detected, but silence detection is disabled - ignoring');
         }
     }
 
@@ -807,10 +917,17 @@ export class FFmpegAudioRecorder {
      */
     private clearSilenceTimer(): void {
         if (this.silenceTimer) {
+            console.log('🔇 Clearing silence detection timer');
             clearTimeout(this.silenceTimer);
             this.silenceTimer = null;
+        } else {
+            console.log('🔇 Silence detection timer was not set, nothing to clear');
         }
-        this.silenceDetectionEnabled = false;
+        
+        if (this.silenceDetectionEnabled) {
+            console.log('🔇 Disabling silence detection');
+            this.silenceDetectionEnabled = false;
+        }
     }
 
     /**
@@ -818,8 +935,11 @@ export class FFmpegAudioRecorder {
      */
     private clearMaxDurationTimer(): void {
         if (this.maxDurationTimer) {
+            console.log('⏱️ Clearing max duration timer');
             clearTimeout(this.maxDurationTimer);
             this.maxDurationTimer = null;
+        } else {
+            console.log('⏱️ Max duration timer was not set, nothing to clear');
         }
     }
 
@@ -1119,4 +1239,4 @@ export class FFmpegAudioRecorder {
             });
         });
     }
-} 
+}
