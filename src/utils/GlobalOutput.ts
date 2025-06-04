@@ -34,9 +34,22 @@ export function getGlobalOutputChannel(): vscode.OutputChannel | null {
 /**
  * Базовая функция логирования
  */
-function logMessage(level: LogLevel, component: string, message: string, error?: Error): void {
+function logMessage(level: LogLevel, component: string, message: string, data?: any, error?: Error): void {
     const timestamp = new Date().toISOString();
-    const formattedMessage = `${timestamp} ${level} [${component}] ${message}`;
+    
+    // Если есть дополнительные данные, добавляем их к сообщению
+    let fullMessage = message;
+    if (data !== undefined) {
+        if (typeof data === 'string') {
+            fullMessage += ` ${data}`;
+        } else if (typeof data === 'object' && data !== null) {
+            fullMessage += ` ${JSON.stringify(data)}`;
+        } else {
+            fullMessage += ` ${String(data)}`;
+        }
+    }
+    
+    const formattedMessage = `${timestamp} ${level} [${component}] ${fullMessage}`;
     
     // Логируем в консоль (для отладки в DevTools)
     if (level === LogLevel.ERROR || level === LogLevel.CRITICAL) {
@@ -71,43 +84,43 @@ function logMessage(level: LogLevel, component: string, message: string, error?:
 /**
  * Логирование отладочной информации
  */
-export function logDebug(component: string, message: string): void {
-    logMessage(LogLevel.DEBUG, component, message);
+export function logDebug(component: string, message: string, data?: any): void {
+    logMessage(LogLevel.DEBUG, component, message, data);
 }
 
 /**
  * Логирование информационных сообщений
  */
-export function logInfo(component: string, message: string): void {
-    logMessage(LogLevel.INFO, component, message);
+export function logInfo(component: string, message: string, data?: any): void {
+    logMessage(LogLevel.INFO, component, message, data);
 }
 
 /**
  * Логирование предупреждений
  */
-export function logWarn(component: string, message: string): void {
-    logMessage(LogLevel.WARN, component, message);
+export function logWarn(component: string, message: string, data?: any): void {
+    logMessage(LogLevel.WARN, component, message, data);
 }
 
 /**
  * Логирование ошибок
  */
-export function logError(component: string, message: string, error?: Error): void {
-    logMessage(LogLevel.ERROR, component, message, error);
+export function logError(component: string, message: string, data?: any, error?: Error): void {
+    logMessage(LogLevel.ERROR, component, message, data, error);
 }
 
 /**
  * Логирование критических ошибок
  */
-export function logCritical(component: string, message: string, error?: Error): void {
-    logMessage(LogLevel.CRITICAL, component, message, error);
+export function logCritical(component: string, message: string, data?: any, error?: Error): void {
+    logMessage(LogLevel.CRITICAL, component, message, data, error);
 }
 
 /**
  * Универсальная функция логирования с произвольным уровнем
  */
-export function log(level: LogLevel, component: string, message: string, error?: Error): void {
-    logMessage(level, component, message, error);
+export function log(level: LogLevel, component: string, message: string, data?: any, error?: Error): void {
+    logMessage(level, component, message, data, error);
 }
 
 /**
@@ -116,61 +129,61 @@ export function log(level: LogLevel, component: string, message: string, error?:
 
 // Для AudioQualityManager
 export const AudioQualityManagerLog = {
-    info: (message: string) => logInfo('AudioQualityManager', message),
-    warn: (message: string) => logWarn('AudioQualityManager', message),
-    error: (message: string, error?: Error) => logError('AudioQualityManager', message, error)
+    info: (message: string, data?: any) => logInfo('AudioQualityManager', message, data),
+    warn: (message: string, data?: any) => logWarn('AudioQualityManager', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('AudioQualityManager', message, data, error)
 };
 
 // Для RecoveryActionHandler
 export const RecoveryActionHandlerLog = {
-    info: (message: string) => logInfo('RecoveryActionHandler', message),
-    warn: (message: string) => logWarn('RecoveryActionHandler', message),
-    error: (message: string, error?: Error) => logError('RecoveryActionHandler', message, error)
+    info: (message: string, data?: any) => logInfo('RecoveryActionHandler', message, data),
+    warn: (message: string, data?: any) => logWarn('RecoveryActionHandler', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('RecoveryActionHandler', message, data, error)
 };
 
 // Для ErrorHandler
 export const ErrorHandlerLog = {
-    info: (message: string) => logInfo('ErrorHandler', message),
-    warn: (message: string) => logWarn('ErrorHandler', message),
-    error: (message: string, error?: Error) => logError('ErrorHandler', message, error)
+    info: (message: string, data?: any) => logInfo('ErrorHandler', message, data),
+    warn: (message: string, data?: any) => logWarn('ErrorHandler', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('ErrorHandler', message, data, error)
 };
 
 // Для RetryManager
 export const RetryManagerLog = {
-    info: (message: string) => logInfo('RetryManager', message),
-    warn: (message: string) => logWarn('RetryManager', message),
-    error: (message: string, error?: Error) => logError('RetryManager', message, error)
+    info: (message: string, data?: any) => logInfo('RetryManager', message, data),
+    warn: (message: string, data?: any) => logWarn('RetryManager', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('RetryManager', message, data, error)
 };
 
 // Для ConfigurationManager
 export const ConfigurationManagerLog = {
-    info: (message: string) => logInfo('ConfigurationManager', message),
-    warn: (message: string) => logWarn('ConfigurationManager', message),
-    error: (message: string, error?: Error) => logError('ConfigurationManager', message, error)
+    info: (message: string, data?: any) => logInfo('ConfigurationManager', message, data),
+    warn: (message: string, data?: any) => logWarn('ConfigurationManager', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('ConfigurationManager', message, data, error)
 };
 
 // Для CursorIntegration
 export const CursorIntegrationLog = {
-    debug: (message: string) => logDebug('CursorIntegration', message),
-    info: (message: string) => logInfo('CursorIntegration', message),
-    warn: (message: string) => logWarn('CursorIntegration', message),
-    error: (message: string, error?: Error) => logError('CursorIntegration', message, error)
+    debug: (message: string, data?: any) => logDebug('CursorIntegration', message, data),
+    info: (message: string, data?: any) => logInfo('CursorIntegration', message, data),
+    warn: (message: string, data?: any) => logWarn('CursorIntegration', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('CursorIntegration', message, data, error)
 };
 
 // Для Extension (основного модуля)
 export const ExtensionLog = {
-    debug: (message: string) => logDebug('Extension', message),
-    info: (message: string) => logInfo('Extension', message),
-    warn: (message: string) => logWarn('Extension', message),
-    error: (message: string, error?: Error) => logError('Extension', message, error)
+    debug: (message: string, data?: any) => logDebug('Extension', message, data),
+    info: (message: string, data?: any) => logInfo('Extension', message, data),
+    warn: (message: string, data?: any) => logWarn('Extension', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('Extension', message, data, error)
 };
 
 // Для FFmpegAudioRecorder
 export const FFmpegAudioRecorderLog = {
-    debug: (message: string) => logDebug('FFmpegAudioRecorder', message),
-    info: (message: string) => logInfo('FFmpegAudioRecorder', message),
-    warn: (message: string) => logWarn('FFmpegAudioRecorder', message),
-    error: (message: string, error?: Error) => logError('FFmpegAudioRecorder', message, error)
+    debug: (message: string, data?: any) => logDebug('FFmpegAudioRecorder', message, data),
+    info: (message: string, data?: any) => logInfo('FFmpegAudioRecorder', message, data),
+    warn: (message: string, data?: any) => logWarn('FFmpegAudioRecorder', message, data),
+    error: (message: string, data?: any, error?: Error) => logError('FFmpegAudioRecorder', message, data, error)
 };
 
 /**
