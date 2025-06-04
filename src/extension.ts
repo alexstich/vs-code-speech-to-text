@@ -6,7 +6,7 @@ import { WhisperClient } from './core/WhisperClient';
 import { TextInserter } from './ui/TextInserter';
 import { StatusBarManager, StatusBarEvents, StatusBarConfiguration } from './ui/StatusBarManager';
 import { DiagnosticsProvider } from './ui/DiagnosticsProvider';
-import { DeviceManagerProvider } from './ui/DiagnosticsProvider';
+import { DeviceManagerProvider } from './ui/DeviceManagerProvider';
 import { SettingsProvider } from './ui/SettingsProvider';
 import { ModeSelectorProvider } from './ui/ModeSelectorProvider';
 import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from './utils/ErrorHandler';
@@ -20,8 +20,7 @@ import { initializeGlobalOutput, ExtensionLog, disposeGlobalOutput } from './uti
  */
 enum RecordingMode {
 	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - вставка в курсор или буфер обмена
-	CURRENT_CHAT = 'currentChat',               // Ctrl+Shift+N - отправка в текущий чат Cursor
-	NEW_CHAT = 'newChat'                        // F9 - открытие нового чата
+	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - вставка в текущий чат Cursor
 }
 
 /**
@@ -197,10 +196,10 @@ export function activate(context: vscode.ExtensionContext) {
 	ExtensionLog.info(`Extension folder: ${context.extensionPath}`);
 	
 	// Также попробуем window.showInformationMessage для проверки
-	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
+	// vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
 	
 	console.log('🎤 SpeechToTextWhisper extension activation started! NEW VERSION 2024');
-	vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
+	// vscode.window.showInformationMessage('🎤 SpeechToTextWhisper extension is activating...');
 	
 	// Сохраняем контекст для глобального использования
 	extensionContext = context;
@@ -248,7 +247,7 @@ export function activate(context: vscode.ExtensionContext) {
 		});
 		
 		console.log('✅ SpeechToTextWhisper extension successfully activated');
-		vscode.window.showInformationMessage('✅ SpeechToTextWhisper extension successfully activated!');
+		// vscode.window.showInformationMessage('✅ SpeechToTextWhisper extension successfully activated!');
 		
 	} catch (error) {
 		const errorMessage = `Failed to activate SpeechToTextWhisper: ${(error as Error).message}`;
@@ -331,7 +330,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
 	const commands = [
 		// Основные команды записи
 		vscode.commands.registerCommand('speechToTextWhisper.recordAndInsertOrClipboard', recordAndInsertOrClipboard),
-		vscode.commands.registerCommand('speechToTextWhisper.recordAndInsertToCurrentChat', recordAndInsertToCurrentChat),
 		vscode.commands.registerCommand('speechToTextWhisper.recordAndOpenNewChat', recordAndOpenNewChat),
 		// Команда диагностики
 		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', () => diagnosticsProvider.runAllDiagnostics()),
@@ -339,7 +337,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('speechToTextWhisper.testFFmpeg', async () => {
 			try {
 				console.log('🔍 Testing FFmpeg availability...');
-				vscode.window.showInformationMessage('🔍 Testing FFmpeg...');
+				// vscode.window.showInformationMessage('🔍 Testing FFmpeg...');
 				
 				const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
 				console.log('🔍 FFmpeg check result:', ffmpegCheck);
@@ -370,7 +368,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('speechToTextWhisper.testAudioRecorder', async () => {
 			try {
 				console.log('🔍 Testing audioRecorder initialization...');
-				vscode.window.showInformationMessage('🔍 Testing Audio Recorder...');
+				// vscode.window.showInformationMessage('🔍 Testing Audio Recorder...');
 				
 				// Сбрасываем текущий audioRecorder
 				audioRecorder = null;
@@ -397,7 +395,8 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		// Команды для настроек
 		vscode.commands.registerCommand('speechToTextWhisper.openSettings', () => settingsProvider.openSettings()),
 		// Команды для переключения режима
-		vscode.commands.registerCommand('speechToTextWhisper.toggleMode', () => modeSelectorProvider.toggleMode())
+		vscode.commands.registerCommand('speechToTextWhisper.toggleMode', () => modeSelectorProvider.toggleMode()),
+		vscode.commands.registerCommand('speechToTextWhisper.setMode', (mode: string) => modeSelectorProvider.setMode(mode as 'insert' | 'clipboard'))
 	];
 
 	console.log(`📝 Created ${commands.length} command registrations`);
@@ -424,11 +423,11 @@ function registerCommands(context: vscode.ExtensionContext): void {
  * Обработка транскрибации
  */
 async function handleTranscription(audioBlob: Blob): Promise<void> {
-	console.log('🎯 [TRANSCRIPTION] handleTranscription called');
-	console.log('🎯 [TRANSCRIPTION] Audio blob size:', audioBlob.size);
-	console.log('🎯 [TRANSCRIPTION] Audio blob type:', audioBlob.type);
-	console.log('🎯 [TRANSCRIPTION] Current recording state:', RecordingStateManager.isRecording());
-	console.log('🎯 [TRANSCRIPTION] Current mode:', RecordingStateManager.getCurrentMode());
+	ExtensionLog.info('🎯 [TRANSCRIPTION] handleTranscription called');
+	ExtensionLog.info(`🎯 [TRANSCRIPTION] Audio blob size: ${audioBlob.size}`);
+	ExtensionLog.info(`🎯 [TRANSCRIPTION] Audio blob type: ${audioBlob.type}`);
+	ExtensionLog.info(`🎯 [TRANSCRIPTION] Current recording state: ${RecordingStateManager.isRecording()}`);
+	ExtensionLog.info(`🎯 [TRANSCRIPTION] Current mode: ${RecordingStateManager.getCurrentMode()}`);
 	
 	const context: ErrorContext = {
 		operation: 'transcription',
@@ -438,34 +437,29 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 	};
 
 	try {
-		console.log('🎯 [TRANSCRIPTION] Step 1: Getting recording state...');
+		ExtensionLog.info('🎯 [TRANSCRIPTION] Step 1: Getting recording state...');
 		const recordingState = RecordingStateManager.getState();
-		console.log('🎯 [TRANSCRIPTION] Recording state:', JSON.stringify(recordingState, null, 2));
+		ExtensionLog.info(`🎯 [TRANSCRIPTION] Recording state: ${JSON.stringify(recordingState, null, 2)}`);
 		
 		if (!recordingState.mode) {
-			console.log('❌ [TRANSCRIPTION] No recording mode set, aborting');
+			ExtensionLog.info('❌ [TRANSCRIPTION] No recording mode set, aborting');
 			return;
 		}
 
-		console.log('🎯 [TRANSCRIPTION] Step 2: Checking WhisperClient...');
+		ExtensionLog.info('🎯 [TRANSCRIPTION] Step 2: Checking WhisperClient...');
 		if (!whisperClient) {
-			console.error('❌ [TRANSCRIPTION] WhisperClient not initialized');
+			ExtensionLog.error('❌ [TRANSCRIPTION] WhisperClient not initialized');
 			throw new Error('WhisperClient not initialized');
 		}
-		console.log('🎯 [TRANSCRIPTION] WhisperClient is available');
+		ExtensionLog.info('🎯 [TRANSCRIPTION] WhisperClient is available');
 
 		// Получаем настройки из конфигурации VS Code через ConfigurationManager
-		console.log('🎯 [TRANSCRIPTION] Step 2.5: Getting configuration settings...');
+		ExtensionLog.info('🎯 [TRANSCRIPTION] Step 2.5: Getting configuration settings...');
 		const whisperConfig = configurationManager.getWhisperConfiguration();
 		
-		console.log('🎯 [TRANSCRIPTION] Configuration settings:', {
-			language: whisperConfig.language,
-			prompt: whisperConfig.prompt ? `"${whisperConfig.prompt.substring(0, 50)}..."` : '(empty)',
-			temperature: whisperConfig.temperature,
-			whisperModel: whisperConfig.whisperModel
-		});
+		ExtensionLog.info(`🎯 [TRANSCRIPTION] Configuration settings: language=${whisperConfig.language}, temperature=${whisperConfig.temperature}, model=${whisperConfig.whisperModel}`);
 
-		console.log('🎯 [TRANSCRIPTION] Step 3: Starting transcription...');
+		ExtensionLog.info('🎯 [TRANSCRIPTION] Step 3: Starting transcription...');
 		console.time('whisper.transcription');
 		const transcriptionResult = await whisperClient.transcribe(audioBlob, {
 			language: whisperConfig.language === 'auto' ? undefined : whisperConfig.language,
@@ -475,14 +469,14 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			response_format: 'json'
 		});
 		console.timeEnd('whisper.transcription');
-		console.log('🎯 [TRANSCRIPTION] Step 3: Transcription completed');
-		console.log('🎯 [TRANSCRIPTION] Transcription result length:', transcriptionResult.length);
-		console.log('🎯 [TRANSCRIPTION] Transcription preview:', transcriptionResult.substring(0, 100) + (transcriptionResult.length > 100 ? '...' : ''));
+		ExtensionLog.info('🎯 [TRANSCRIPTION] Step 3: Transcription completed');
+		ExtensionLog.info(`🎯 [TRANSCRIPTION] Transcription result length: ${transcriptionResult.length}`);
+		ExtensionLog.info(`🎯 [TRANSCRIPTION] Transcription preview: ${transcriptionResult.substring(0, 100)}${transcriptionResult.length > 100 ? '...' : ''}`);
 
 		if (transcriptionResult && transcriptionResult.trim().length > 0) {
-			console.log('🎯 [TRANSCRIPTION] Step 4: Processing non-empty transcription...');
+			ExtensionLog.info('🎯 [TRANSCRIPTION] Step 4: Processing non-empty transcription...');
 			lastTranscribedText = transcriptionResult.trim();
-			console.log('🎯 [TRANSCRIPTION] lastTranscribedText set, length:', lastTranscribedText.length);
+			ExtensionLog.info(`🎯 [TRANSCRIPTION] lastTranscribedText set, length: ${lastTranscribedText.length}`);
 			
 			// Сохраняем последнюю транскрибацию
 			lastTranscribedText = transcriptionResult.trim();
@@ -491,18 +485,19 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			statusBarManager.showInserting();
 			
 			// Используем currentRecordingMode для определения действия
-			console.log(`🔍 Current recording mode: ${recordingState.mode}`);
+			ExtensionLog.info(`🔍 Current recording mode: ${recordingState.mode}`);
 			
 			if (recordingState.mode === RecordingMode.INSERT_OR_CLIPBOARD) {
-				console.log('📝 Processing insertOrClipboard mode...');
+				ExtensionLog.info('📝 Processing insertOrClipboard mode...');
 				
 				try {
 					// Читаем режим вставки из ModeSelectorProvider
 					const insertMode = modeSelectorProvider.getCurrentMode();
+					ExtensionLog.info(`🔍 [DEBUG] Current insertMode from ModeSelectorProvider: ${insertMode}`);
 					
 					if (insertMode === 'insert') {
 						// Режим вставки в позицию курсора
-						console.log('📝 Inserting into active editor at cursor position');
+						ExtensionLog.info('📝 Inserting into active editor at cursor position');
 						await insertTranscribedTextWithErrorHandling(lastTranscribedText, 'cursor', context);
 						
 						// Показываем успех
@@ -512,13 +507,20 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 						
 					} else if (insertMode === 'clipboard') {
 						// Режим копирования в буфер обмена
-						console.log('📋 Copying to clipboard');
+						ExtensionLog.info('📋 [CLIPBOARD_MODE] Starting clipboard mode processing');
+						ExtensionLog.info('📋 [CLIPBOARD_MODE] About to copy text to clipboard');
 						await vscode.env.clipboard.writeText(lastTranscribedText);
+						ExtensionLog.info('📋 [CLIPBOARD_MODE] Text successfully copied to clipboard');
 						
 						// Показываем успех
 						const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
 						statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
 						vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
+						ExtensionLog.info('📋 [CLIPBOARD_MODE] Success messages shown');
+						ExtensionLog.info('📋 [CLIPBOARD_MODE] Clipboard mode processing completed, returning now');
+					} else {
+						ExtensionLog.error(`❌ [DEBUG] Unknown insertMode: ${insertMode}`);
+						vscode.window.showErrorMessage(`Unknown insert mode: ${insertMode}`);
 					}
 					
 					// Сбрасываем режим
@@ -526,130 +528,71 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					return;
 					
 				} catch (error) {
-					console.error('❌ Failed to process insertOrClipboard:', error);
+					ExtensionLog.error(`❌ Failed to process insertOrClipboard: ${error}`);
 					vscode.window.showErrorMessage(`Failed to process text: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
 				}
-			} else if (recordingState.mode === RecordingMode.CURRENT_CHAT) {
-				console.log('🎯 [CHAT] Starting CURRENT_CHAT mode processing');
-				console.log('🎯 [CHAT] Transcribed text length:', lastTranscribedText.length);
-				console.log('🎯 [CHAT] Transcribed text preview:', lastTranscribedText.substring(0, 100) + (lastTranscribedText.length > 100 ? '...' : ''));
+			} else if (recordingState.mode === RecordingMode.NEW_CHAT) {
+				ExtensionLog.info('🎯 [CHAT] Starting NEW_CHAT mode processing');
+				ExtensionLog.info(`🎯 [CHAT] Transcribed text length: ${lastTranscribedText.length}`);
+				ExtensionLog.info(`🎯 [CHAT] Transcribed text preview: ${lastTranscribedText.substring(0, 100)}${lastTranscribedText.length > 100 ? '...' : ''}`);
 				
-				try {
-					// Последовательность команд для текущего чата
-					console.log('🎯 [CHAT] Step 1: Executing aichat.insertselectionintochat...');
-					console.time('aichat.insertselectionintochat');
-					await vscode.commands.executeCommand('aichat.insertselectionintochat');
-					console.timeEnd('aichat.insertselectionintochat');
-					console.log('🎯 [CHAT] Step 1: aichat.insertselectionintochat completed successfully');
-					
-					// Задержка 200ms
-					console.log('🎯 [CHAT] Step 2: Waiting 200ms...');
-					await new Promise(resolve => setTimeout(resolve, 200));
-					console.log('🎯 [CHAT] Step 2: Wait completed');
-					
-					console.log('🎯 [CHAT] Step 3: Executing chat.action.focus...');
-					console.time('chat.action.focus');
-					await vscode.commands.executeCommand('chat.action.focus');
-					console.timeEnd('chat.action.focus');
-					console.log('🎯 [CHAT] Step 3: chat.action.focus completed successfully');
-					
-					// Задержка 200ms
-					console.log('🎯 [CHAT] Step 4: Waiting 200ms...');
-					await new Promise(resolve => setTimeout(resolve, 200));
-					console.log('🎯 [CHAT] Step 4: Wait completed');
-					
-					// Вставляем текст в чат
-					console.log('🎯 [CHAT] Step 5: Copying text to clipboard...');
-					console.time('clipboard.writeText');
+				// Проверяем режим вставки - если clipboard, то не отправляем в чат
+				const insertMode = modeSelectorProvider.getCurrentMode();
+				ExtensionLog.info(`🔍 [CHAT] Current insertMode from ModeSelectorProvider: ${insertMode}`);
+				
+				if (insertMode === 'clipboard') {
+					// Режим копирования в буфер обмена - игнорируем чат
+					ExtensionLog.info('📋 [CLIPBOARD_MODE] F9/Ctrl+Shift+N in clipboard mode - copying to clipboard instead of chat');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
-					console.timeEnd('clipboard.writeText');
-					console.log('🎯 [CHAT] Step 5: Text copied to clipboard successfully');
-					
-					console.log('🎯 [CHAT] Step 6: Executing paste action...');
-					console.time('editor.action.clipboardPasteAction');
-					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-					console.timeEnd('editor.action.clipboardPasteAction');
-					console.log('🎯 [CHAT] Step 6: Paste action completed successfully');
 					
 					// Показываем успех
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-					console.log('🎯 [CHAT] Step 7: Showing success messages...');
-					statusBarManager.showSuccess(`Sent to chat: "${truncatedText}"`);
-					vscode.window.showInformationMessage(`✅ Transcribed and sent to chat: "${truncatedText}"`);
-					console.log('🎯 [CHAT] Step 7: Success messages shown');
+					statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
+					vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
 					
 					// Сбрасываем режим
-					console.log('🎯 [CHAT] Step 8: Resetting recording state...');
-					RecordingStateManager.resetState();
-					console.log('🎯 [CHAT] Step 8: Recording state reset');
-					console.log('🎯 [CHAT] CURRENT_CHAT mode processing completed successfully');
-					return;
-					
-				} catch (error) {
-					console.error('❌ [CHAT] Failed to send to chat:', error);
-					console.error('❌ [CHAT] Error details:', {
-						name: (error as Error).name,
-						message: (error as Error).message,
-						stack: (error as Error).stack
-					});
-					vscode.window.showErrorMessage(`Failed to send to chat: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
 				}
-			} else if (recordingState.mode === RecordingMode.NEW_CHAT) {
-				console.log('🎯 [CHAT] Starting NEW_CHAT mode processing');
-				console.log('🎯 [CHAT] Transcribed text length:', lastTranscribedText.length);
-				console.log('🎯 [CHAT] Transcribed text preview:', lastTranscribedText.substring(0, 100) + (lastTranscribedText.length > 100 ? '...' : ''));
 				
 				try {
 					// Выполняем команду открытия нового чата
-					console.log('🎯 [CHAT] Step 1: Executing aichat.newfollowupaction...');
-					console.time('aichat.newfollowupaction');
+					ExtensionLog.info('🎯 [CHAT] Step 1: Executing aichat.newfollowupaction...');
 					await vscode.commands.executeCommand('aichat.newfollowupaction');
-					console.timeEnd('aichat.newfollowupaction');
-					console.log('🎯 [CHAT] Step 1: aichat.newfollowupaction completed successfully');
 					
 					// Задержка 300ms
-					console.log('🎯 [CHAT] Step 2: Waiting 300ms...');
+					ExtensionLog.info('🎯 [CHAT] Step 2: Waiting 300ms...');
 					await new Promise(resolve => setTimeout(resolve, 300));
-					console.log('🎯 [CHAT] Step 2: Wait completed');
 					
 					// Вставляем текст в новый чат
-					console.log('🎯 [CHAT] Step 3: Copying text to clipboard...');
-					console.time('clipboard.writeText');
+					ExtensionLog.info('🎯 [CHAT] Step 3: Copying text to clipboard...');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
-					console.timeEnd('clipboard.writeText');
-					console.log('🎯 [CHAT] Step 3: Text copied to clipboard successfully');
 					
-					console.log('🎯 [CHAT] Step 4: Executing paste action...');
-					console.time('editor.action.clipboardPasteAction');
+					ExtensionLog.info('🎯 [CHAT] Step 4: Executing paste action...');
 					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-					console.timeEnd('editor.action.clipboardPasteAction');
-					console.log('🎯 [CHAT] Step 4: Paste action completed successfully');
 					
 					// Показываем успех
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-					console.log('🎯 [CHAT] Step 5: Showing success messages...');
+					ExtensionLog.info('🎯 [CHAT] Step 5: Showing success messages...');
 					statusBarManager.showSuccess(`Opened new chat: "${truncatedText}"`);
 					vscode.window.showInformationMessage(`✅ Transcribed and opened new chat: "${truncatedText}"`);
-					console.log('🎯 [CHAT] Step 5: Success messages shown');
 					
 					// Сбрасываем режим
-					console.log('🎯 [CHAT] Step 6: Resetting recording state...');
+					ExtensionLog.info('🎯 [CHAT] Step 6: Resetting recording state...');
 					RecordingStateManager.resetState();
-					console.log('🎯 [CHAT] Step 6: Recording state reset');
-					console.log('🎯 [CHAT] NEW_CHAT mode processing completed successfully');
+					ExtensionLog.info('🎯 [CHAT] Step 7: Recording state reset');
+					ExtensionLog.info('🎯 [CHAT] NEW_CHAT mode processing completed successfully');
 					return;
 					
 				} catch (error) {
-					console.error('❌ [CHAT] Failed to open new chat:', error);
-					console.error('❌ [CHAT] Error details:', {
+					ExtensionLog.error(`❌ [CHAT] Failed to open new chat: ${error}`);
+					ExtensionLog.error(`❌ [CHAT] Error details: ${JSON.stringify({
 						name: (error as Error).name,
 						message: (error as Error).message,
 						stack: (error as Error).stack
-					});
+					})}`);
 					vscode.window.showErrorMessage(`Failed to open new chat: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
@@ -662,7 +605,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		}
 		
 	} catch (error) {
-		console.error('❌ Transcription failed:', error);
+		ExtensionLog.error(`❌ Transcription failed: ${error}`);
 		await errorHandler.handleErrorFromException(error as Error, context);
 	}
 }
@@ -683,21 +626,25 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 	};
 
 	try {
-		console.log(`📝 Inserting text with mode: ${mode}`);
+		ExtensionLog.info(`📝 [insertTranscribedTextWithErrorHandling] Inserting text with mode: ${mode}`);
+		ExtensionLog.info(`📝 [insertTranscribedTextWithErrorHandling] Text length: ${text.length}`);
+		ExtensionLog.info(`📝 [insertTranscribedTextWithErrorHandling] Text preview: ${text.substring(0, 50)}...`);
 		
 		// Используем retry для вставки текста
 		const insertResult = await retryManager.retry(
-			() => textInserter.insertText(text, { mode: mode as 'cursor' | 'comment' | 'replace' | 'newLine' | 'clipboard' }),
+			() => textInserter.insertText(text, { mode: mode as 'cursor' | 'clipboard' }),
 			'text_insertion'
 		);
 
 		if (!insertResult.success) {
 			const error = insertResult.lastError || new Error('Text insertion failed after retries');
 			await errorHandler.handleErrorFromException(error, context);
+		} else {
+			ExtensionLog.info(`✅ [insertTranscribedTextWithErrorHandling] Text insertion successful with mode: ${mode}`);
 		}
 		
 	} catch (error) {
-		console.error('❌ Text insertion failed:', error);
+		ExtensionLog.error(`❌ Text insertion failed: ${error}`);
 		await errorHandler.handleErrorFromException(error as Error, context);
 	}
 }
@@ -719,7 +666,7 @@ async function insertLastTranscription(mode: string): Promise<void> {
 	};
 
 	try {
-		console.log(`📝 Inserting last transcription with mode: ${mode}`);
+		ExtensionLog.info(`📝 Inserting last transcription with mode: ${mode}`);
 		
 		if (mode === 'currentChat') {
 			// Отправляем в Cursor чат
@@ -919,7 +866,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 			lastRecordingStartTime = now;
 			
 			await startRecording();
-			vscode.window.showInformationMessage('🎤 Recording... Press Ctrl+Shift+M again to stop');
+			// vscode.window.showInformationMessage('🎤 Recording... Press Ctrl+Shift+M again to stop');
 		} else {
 			vscode.window.showWarningMessage('Recording already in progress or too frequent attempts');
 		}
@@ -936,76 +883,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 }
 
 /**
- * Команда записи с отправкой в текущий чат Cursor (Ctrl+Shift+N)
- */
-async function recordAndInsertToCurrentChat(): Promise<void> {
-	console.log('🎤 [COMMAND] recordAndInsertToCurrentChat called!');
-	console.log('🎤 [COMMAND] Current recording state:', RecordingStateManager.isRecording());
-	console.log('🎤 [COMMAND] Current mode:', RecordingStateManager.getCurrentMode());
-	
-	const context: ErrorContext = {
-		operation: 'record_and_insert_to_current_chat',
-		isHoldToRecordMode: false,
-		timestamp: new Date()
-	};
-
-	try {
-		// Проверяем, идет ли уже запись
-		if (RecordingStateManager.isRecording()) {
-			// Останавливаем запись
-			console.log('⏹️ [COMMAND] Stopping recording (recordAndInsertToCurrentChat)');
-			stopRecording();
-			return;
-		}
-
-		// Проверяем минимальный интервал между попытками ЗДЕСЬ
-		const now = Date.now();
-		console.log('🎤 [COMMAND] Checking recording interval, now:', now, 'last:', lastRecordingStartTime);
-		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			console.log('⚠️ [COMMAND] Too frequent recording attempts in command, skipping');
-			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
-			return;
-		}
-
-		console.log('🎤 [COMMAND] Starting record and insert to current chat...');
-		
-		// Начинаем запись с режимом CURRENT_CHAT
-		console.log('🎤 [COMMAND] Attempting to start recording with CURRENT_CHAT mode');
-		if (RecordingStateManager.startRecording(RecordingMode.CURRENT_CHAT)) {
-			console.log('🎤 [COMMAND] Recording state started successfully');
-			
-			// Обновляем StatusBar сразу при начале попытки записи
-			if (statusBarManager) {
-				console.log('🎤 [COMMAND] Updating status bar to recording state');
-				statusBarManager.updateRecordingState(true);
-			}
-			
-			// Устанавливаем время попытки записи
-			lastRecordingStartTime = now;
-			console.log('🎤 [COMMAND] Set lastRecordingStartTime to:', lastRecordingStartTime);
-			
-			console.log('🎤 [COMMAND] Calling startRecording()...');
-			await startRecording();
-			console.log('🎤 [COMMAND] startRecording() completed');
-			vscode.window.showInformationMessage('🎤 Recording... Press Ctrl+Shift+N again to stop and send to chat');
-		} else {
-			console.log('❌ [COMMAND] Failed to start recording state');
-			vscode.window.showWarningMessage('Recording already in progress or too frequent attempts');
-		}
-		
-	} catch (error) {
-		console.error('❌ [COMMAND] recordAndInsertToCurrentChat failed:', error);
-		console.error('❌ [COMMAND] Error details:', {
-			name: (error as Error).name,
-			message: (error as Error).message,
-			stack: (error as Error).stack
-		});
-		await errorHandler.handleErrorFromException(error as Error, context);
-	}
-}
-
-/**
- * Команда записи с открытием нового чата (F9)
+ * Команда записи в текущий чат Cursor(Ctrl+Shift+N)
  */
 async function recordAndOpenNewChat(): Promise<void> {
 	// САМОЕ РАННЕЕ логирование для диагностики
@@ -1014,7 +892,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 	console.log('🔥 console.log working:', true);
 	
 	// Также попробуем window.showInformationMessage
-	vscode.window.showInformationMessage('🔥 F9 COMMAND EXECUTED!');
+	// vscode.window.showInformationMessage('🔥 F9 COMMAND EXECUTED!');
 	
 	// Используем глобальный output channel
 	outputChannel.appendLine('🔥 === F9 COMMAND CALLED! ===');
@@ -1133,7 +1011,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 			
 			console.log('🎤 [COMMAND] Step 13: Showing information message...');
 			outputChannel.appendLine('🎤 [COMMAND] Step 13: Showing information message...');
-			vscode.window.showInformationMessage('🎤 Recording... Press F9 again to stop and open new chat');
+			// vscode.window.showInformationMessage('🎤 Recording... Press F9 again to stop and open new chat');
 			console.log('🎤 [COMMAND] Step 14: Function completed successfully');
 			outputChannel.appendLine('🎤 [COMMAND] Step 14: Function completed successfully');
 			
@@ -1446,7 +1324,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(true);
 				}
-				vscode.window.showInformationMessage('🎤 Recording started...');
+				// vscode.window.showInformationMessage('🎤 Recording started...');
 			},
 			onRecordingStop: async (audioBlob: Blob) => {
 				console.log('⏹️ AudioRecorder event: onRecordingStop, blob size:', audioBlob.size);

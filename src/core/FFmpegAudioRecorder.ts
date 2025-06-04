@@ -667,7 +667,7 @@ export class FFmpegAudioRecorder {
             
             // Проверяем на успешные индикаторы записи
             if (output.includes('size=') && output.includes('time=')) {
-                this.log('✅ FFmpeg recording progress:', output.trim());
+                this.log(`✅ FFmpeg recording progress: ${output.trim()}`);
             }
         });
         

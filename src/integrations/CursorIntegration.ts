@@ -193,7 +193,7 @@ export class CursorIntegration {
         // Форматируем текст
         CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Formatting text for chat...');
         const formattedText = this.formatTextForChat(text);
-        CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Text formatted, new length:', formattedText.length);
+        CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text formatted, new length: ${formattedText.length}`);
 
         // Пробуем основную стратегию
         try {
@@ -308,8 +308,8 @@ export class CursorIntegration {
     private async useAIChatCommandStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Starting aichat.newfollowupaction command strategy');
-            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Text to send length:', text.length);
-            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Text preview:', text.substring(0, 100) + (text.length > 100 ? '...' : ''));
+            CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text to send length: ${text.length}`);
+            CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text preview: ${text.substring(0, 100) + (text.length > 100 ? '...' : '')}`);
             
             // 1. Сохраняем оригинальный буфер обмена
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 1: Reading original clipboard...');

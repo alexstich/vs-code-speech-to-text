@@ -44,7 +44,6 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:speechToTextWhisper.recordAndInsertOrClipboard",
-    "onCommand:speechToTextWhisper.recordAndInsertToCurrentChat",
     "onCommand:speechToTextWhisper.recordAndOpenNewChat",
     "onCommand:speechToTextWhisper.runDiagnostics",
     "onCommand:speechToTextWhisper.openSettings",
@@ -93,12 +92,6 @@
         "icon": "$(edit)"
       },
       {
-        "command": "speechToTextWhisper.recordAndInsertToCurrentChat",
-        "title": "Record and Insert to Current Chat",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(comment)"
-      },
-      {
         "command": "speechToTextWhisper.recordAndOpenNewChat",
         "title": "Record and Open New Chat",
         "category": "Speech to Text with Whisper",
@@ -135,6 +128,11 @@
         "icon": "$(arrow-swap)"
       },
       {
+        "command": "speechToTextWhisper.setMode",
+        "title": "Set Recording Mode",
+        "category": "Speech to Text with Whisper"
+      },
+      {
         "command": "speechToTextWhisper.audioSettings.selectDevice",
         "title": "Select Audio Device",
         "category": "Speech to Text with Whisper"
@@ -143,28 +141,19 @@
     "keybindings": [
       {
         "command": "speechToTextWhisper.recordAndOpenNewChat",
-        "key": "F9"
+        "key": "ctrl+shift+n",
+        "mac": "cmd+shift+n"
       },
       {
         "command": "speechToTextWhisper.recordAndInsertOrClipboard",
         "key": "ctrl+shift+m",
         "mac": "cmd+shift+m"
-      },
-      {
-        "command": "speechToTextWhisper.recordAndInsertToCurrentChat",
-        "key": "ctrl+shift+n",
-        "mac": "cmd+shift+n"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "speechToTextWhisper.recordAndInsertOrClipboard",
-          "when": "view == speechToTextWhisper.diagnostics",
-          "group": "navigation"
-        },
-        {
-          "command": "speechToTextWhisper.recordAndInsertToCurrentChat",
           "when": "view == speechToTextWhisper.diagnostics",
           "group": "navigation"
         },
@@ -181,11 +170,6 @@
         {
           "command": "speechToTextWhisper.openSettings",
           "when": "view == speechToTextWhisper.settings",
-          "group": "navigation"
-        },
-        {
-          "command": "speechToTextWhisper.toggleMode",
-          "when": "view == speechToTextWhisper.modeSelector",
           "group": "navigation"
         }
       ]

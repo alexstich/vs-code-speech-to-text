@@ -155,7 +155,13 @@ export class StatusBarManager implements vscode.Disposable {
      */
     updateRecordingState(isRecording: boolean): void {
         this.isRecording = isRecording;
-        this.setState(isRecording ? 'recording' : 'idle');
+        if (isRecording) {
+            this.setState('recording');
+            this.startProgressAnimation(); // Запускаем анимацию для записи
+        } else {
+            this.clearProgressAnimation(); // Останавливаем анимацию при остановке записи
+            this.setState('idle');
+        }
     }
 
     /**
@@ -377,8 +383,10 @@ export class StatusBarManager implements vscode.Disposable {
      */
     private getAnimatedText(config: StatusBarInfo): string {
         if (this.currentState === 'recording') {
-            const dots = '.'.repeat((this.progressStep % 3) + 1);
-            return `${config.text} Recording${dots}`;
+            // Анимация записи: RECORD с циклическими точками (1, 2, 3)
+            const dotsCount = (this.progressStep % 3) + 1;
+            const dots = '.'.repeat(dotsCount);
+            return `$(record) Recording${dots}`;
         }
         
         return config.text;

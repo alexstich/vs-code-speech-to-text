@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ExtensionLog } from '../utils/GlobalOutput';
 
 export type RecordingMode = 'insert' | 'clipboard';
 
@@ -31,37 +32,46 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
     private async getModeItems(): Promise<ModeItem[]> {
         const items: ModeItem[] = [];
 
-        // Текущий режим
-        const currentModeItem = new ModeItem(
-            `Current Mode: ${this.currentMode === 'insert' ? 'Insert Text' : 'Copy to Clipboard'}`,
-            `Currently set to ${this.currentMode === 'insert' ? 'insert text at cursor' : 'copy to clipboard'}`,
+        // Option для режима "Insert Text" с галочкой
+        const insertModeItem = new ModeItem(
+            'Insert Text',
+            'Insert transcribed text at cursor position',
             vscode.TreeItemCollapsibleState.None
         );
-        currentModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'insert' ? 'edit' : 'clippy');
-        items.push(currentModeItem);
-
-        // Кнопка переключения режима
-        const switchModeItem = new ModeItem(
-            `Switch to ${this.currentMode === 'insert' ? 'Clipboard' : 'Insert'} Mode`,
-            `Click to switch to ${this.currentMode === 'insert' ? 'clipboard copying' : 'text insertion'} mode`,
-            vscode.TreeItemCollapsibleState.None
-        );
-        switchModeItem.iconPath = new vscode.ThemeIcon('arrow-swap');
-        switchModeItem.command = {
-            command: 'speechToTextWhisper.toggleMode',
-            title: 'Toggle Mode'
+        insertModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'insert' ? 'check' : 'circle-outline');
+        insertModeItem.command = {
+            command: 'speechToTextWhisper.setMode',
+            title: 'Set Insert Mode',
+            arguments: ['insert']
         };
-        items.push(switchModeItem);
+        items.push(insertModeItem);
+
+        // Option для режима "Copy to Clipboard" с галочкой
+        const clipboardModeItem = new ModeItem(
+            'Copy to Clipboard',
+            'Copy transcribed text to clipboard',
+            vscode.TreeItemCollapsibleState.None
+        );
+        clipboardModeItem.iconPath = new vscode.ThemeIcon(this.currentMode === 'clipboard' ? 'check' : 'circle-outline');
+        clipboardModeItem.command = {
+            command: 'speechToTextWhisper.setMode',
+            title: 'Set Clipboard Mode',
+            arguments: ['clipboard']
+        };
+        items.push(clipboardModeItem);
 
         return items;
     }
 
     getCurrentMode(): RecordingMode {
+        ExtensionLog.info(`🔍 [ModeSelectorProvider] getCurrentMode() called, returning: ${this.currentMode}`);
         return this.currentMode;
     }
 
     toggleMode(): void {
+        const oldMode = this.currentMode;
         this.currentMode = this.currentMode === 'insert' ? 'clipboard' : 'insert';
+        ExtensionLog.info(`🔄 [ModeSelectorProvider] toggleMode() called, changed from ${oldMode} to ${this.currentMode}`);
         this.refresh();
         
         // Показываем уведомление о смене режима
@@ -70,9 +80,18 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
     }
 
     setMode(mode: RecordingMode): void {
+        ExtensionLog.info(`✓ [ModeSelectorProvider] setMode() called with mode: ${mode}, current mode: ${this.currentMode}`);
         if (this.currentMode !== mode) {
+            const oldMode = this.currentMode;
             this.currentMode = mode;
+            ExtensionLog.info(`✓ [ModeSelectorProvider] Mode changed from ${oldMode} to ${mode}`);
             this.refresh();
+            
+            // Показываем уведомление о смене режима
+            const modeText = mode === 'insert' ? 'Insert Text' : 'Copy to Clipboard';
+            vscode.window.showInformationMessage(`✓ Mode set to: ${modeText}`);
+        } else {
+            ExtensionLog.info(`✓ [ModeSelectorProvider] Mode already set to ${mode}, no change needed`);
         }
     }
 }
