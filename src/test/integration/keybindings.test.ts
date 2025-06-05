@@ -25,13 +25,13 @@ describe('Keybindings Integration Tests', () => {
                 command: 'speechToTextWhisper.recordAndInsertOrClipboard',
                 key: 'ctrl+shift+m',
                 mac: 'cmd+shift+m',
-                description: 'Record and Insert to Cursor or Clipboard'
+                description: 'Record and Insert at Cursor or Clipboard'
             },
             {
                 command: 'speechToTextWhisper.recordAndInsertToCurrentChat',
                 key: 'ctrl+shift+n',
                 mac: 'cmd+shift+n',
-                description: 'Record and Insert to Current Chat'
+                description: 'Record and Insert at Current Chat'
             }
         ];
 

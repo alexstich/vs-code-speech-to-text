@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "0.1.7",
+  "version": "0.1.9",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -81,13 +81,18 @@
           "id": "speechToTextWhisper.diagnostics",
           "name": "Diagnostics",
           "when": "true"
+        },
+        {
+          "id": "speechToTextWhisper.transcriptionHistory",
+          "name": "Transcription History",
+          "when": "true"
         }
       ]
     },
     "commands": [
       {
         "command": "speechToTextWhisper.recordAndInsertOrClipboard",
-        "title": "Record and Insert to Cursor or Clipboard",
+        "title": "Record and Insert at Cursor or Clipboard",
         "category": "Speech to Text with Whisper",
         "icon": "$(edit)"
       },
@@ -136,6 +141,36 @@
         "command": "speechToTextWhisper.audioSettings.selectDevice",
         "title": "Select Audio Device",
         "category": "Speech to Text with Whisper"
+      },
+      {
+        "command": "speechToTextWhisper.transcriptionHistory.copyToClipboard",
+        "title": "Copy to Clipboard",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "speechToTextWhisper.transcriptionHistory.insertAtCursor",
+        "title": "Insert at Cursor Chat",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "speechToTextWhisper.transcriptionHistory.deleteEntry",
+        "title": "Delete Entry",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "speechToTextWhisper.transcriptionHistory.clearHistory",
+        "title": "Clear History",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "speechToTextWhisper.transcriptionHistory.refresh",
+        "title": "Refresh",
+        "category": "Speech to Text with Whisper",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -171,6 +206,33 @@
           "command": "speechToTextWhisper.openSettings",
           "when": "view == speechToTextWhisper.settings",
           "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.transcriptionHistory.refresh",
+          "when": "view == speechToTextWhisper.transcriptionHistory",
+          "group": "navigation"
+        },
+        {
+          "command": "speechToTextWhisper.transcriptionHistory.clearHistory",
+          "when": "view == speechToTextWhisper.transcriptionHistory",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "speechToTextWhisper.transcriptionHistory.copyToClipboard",
+          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionEntry",
+          "group": "inline@1"
+        },
+        {
+          "command": "speechToTextWhisper.transcriptionHistory.insertAtCursor",
+          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionEntry",
+          "group": "inline@2"
+        },
+        {
+          "command": "speechToTextWhisper.transcriptionHistory.deleteEntry",
+          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionEntry",
+          "group": "context@1"
         }
       ]
     },

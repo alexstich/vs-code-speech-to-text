@@ -9,6 +9,8 @@ import { DiagnosticsProvider } from './ui/DiagnosticsProvider';
 import { DeviceManagerProvider } from './ui/DeviceManagerProvider';
 import { SettingsProvider } from './ui/SettingsProvider';
 import { ModeSelectorProvider } from './ui/ModeSelectorProvider';
+import { TranscriptionHistoryProvider } from './ui/TranscriptionHistoryProvider';
+import { TranscriptionHistoryManager } from './core/TranscriptionHistoryManager';
 import { ErrorHandler, ErrorType, ErrorContext, VSCodeErrorDisplayHandler } from './utils/ErrorHandler';
 import { RetryManager } from './utils/RetryManager';
 import { CursorIntegration, CursorIntegrationStrategy } from './integrations/CursorIntegration';
@@ -41,6 +43,8 @@ let diagnosticsProvider: DiagnosticsProvider;
 let deviceManagerProvider: DeviceManagerProvider;
 let settingsProvider: SettingsProvider;
 let modeSelectorProvider: ModeSelectorProvider;
+let transcriptionHistoryProvider: TranscriptionHistoryProvider;
+let transcriptionHistoryManager: TranscriptionHistoryManager;
 
 // Глобальный output канал для всего расширения
 let outputChannel: vscode.OutputChannel;
@@ -183,7 +187,7 @@ class RecordingStateManager {
  * Функция активации расширения
  * Вызывается при первом использовании команды расширения
  */
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	// Создаем output channel для логирования
 	outputChannel = vscode.window.createOutputChannel('Speech to Text Whisper');
 	outputChannel.appendLine('🚀 Extension activation started');
@@ -204,6 +208,9 @@ export function activate(context: vscode.ExtensionContext) {
 		
 		// Инициализируем компоненты
 		initializeComponents();
+		
+		// Инициализируем TranscriptionHistoryManager
+		await transcriptionHistoryManager.initialize();
 		
 		// Регистрируем все команды
 		registerCommands(context);
@@ -283,6 +290,12 @@ function initializeComponents(): void {
 	
 	// Инициализируем ModeSelectorProvider
 	modeSelectorProvider = new ModeSelectorProvider();
+	
+	// Инициализируем TranscriptionHistoryManager
+	transcriptionHistoryManager = new TranscriptionHistoryManager(extensionContext, errorHandler);
+	
+	// Инициализируем TranscriptionHistoryProvider
+	transcriptionHistoryProvider = new TranscriptionHistoryProvider(transcriptionHistoryManager);
 	
 	// События для StatusBar
 	const statusBarEvents: StatusBarEvents = {
@@ -379,7 +392,13 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('speechToTextWhisper.openSettings', () => settingsProvider.openSettings()),
 		// Команды для переключения режима
 		vscode.commands.registerCommand('speechToTextWhisper.toggleMode', () => modeSelectorProvider.toggleMode()),
-		vscode.commands.registerCommand('speechToTextWhisper.setMode', (mode: string) => modeSelectorProvider.setMode(mode as 'insert' | 'clipboard'))
+		vscode.commands.registerCommand('speechToTextWhisper.setMode', (mode: string) => modeSelectorProvider.setMode(mode as 'insert' | 'clipboard')),
+		// Команды для истории транскрипций
+		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.copyToClipboard', (item) => transcriptionHistoryProvider.copyToClipboard(item)),
+		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.insertAtCursor', (item) => transcriptionHistoryProvider.insertAtCursor(item)),
+		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.deleteEntry', (item) => transcriptionHistoryProvider.deleteEntry(item)),
+		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.clearHistory', () => transcriptionHistoryProvider.clearHistory()),
+		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.refresh', () => transcriptionHistoryProvider.refresh())
 	];
 
 	ExtensionLog.info(`📝 Created ${commands.length} command registrations`);
@@ -395,6 +414,9 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
 	// Регистрируем ModeSelectorProvider как TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.modeSelector', modeSelectorProvider);
+
+	// Регистрируем TranscriptionHistoryProvider как TreeDataProvider
+	vscode.window.registerTreeDataProvider('speechToTextWhisper.transcriptionHistory', transcriptionHistoryProvider);
 
 	// Добавляем все команды в подписки
 	context.subscriptions.push(...commands, statusBarManager);
@@ -451,6 +473,27 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 
 		if (transcriptionResult && transcriptionResult.trim().length > 0) {
 			lastTranscribedText = transcriptionResult.trim();
+			
+			// Добавляем запись в историю транскрипций
+			try {
+				const duration = recordingState.startTime ? Date.now() - recordingState.startTime : 0;
+				const language = whisperConfig.language === 'auto' ? 'auto' : whisperConfig.language;
+				
+				await transcriptionHistoryManager.addEntry({
+					text: lastTranscribedText,
+					duration: duration,
+					language: language,
+					mode: recordingState.mode as any // приводим к типу из TranscriptionHistory
+				});
+				
+				// Обновляем UI истории
+				transcriptionHistoryProvider.refresh();
+				
+				ExtensionLog.info('📚 [HISTORY] Transcription added to history');
+			} catch (error) {
+				ExtensionLog.error('❌ [HISTORY] Failed to add transcription to history:', error);
+				// Не прерываем выполнение, если не удалось добавить в историю
+			}
 			
 			// Показываем состояние вставки
 			statusBarManager.showInserting();
