@@ -69,10 +69,11 @@ export class StatusBarManager implements vscode.Disposable {
             command: 'speechToTextWhisper.recordAndInsertOrClipboard'
         },
         recording: {
-            text: '$(record)',
+            text: '$(sync~spin)',
             tooltip: 'Recording... Click to stop',
-            icon: 'record',
+            icon: 'sync',
             backgroundColor: new vscode.ThemeColor('statusBarItem.warningBackground'),
+            color: new vscode.ThemeColor('statusBarItem.warningForeground'),
             command: 'speechToTextWhisper.recordAndInsertOrClipboard'
         },
         processing: {
@@ -85,7 +86,8 @@ export class StatusBarManager implements vscode.Disposable {
             text: '$(sync~spin)',
             tooltip: 'Transcribing speech to text...',
             icon: 'sync',
-            backgroundColor: new vscode.ThemeColor('statusBarItem.prominentBackground')
+            backgroundColor: new vscode.ThemeColor('statusBarItem.warningBackground'),
+            color: new vscode.ThemeColor('statusBarItem.warningForeground')
         },
         inserting: {
             text: '$(edit)',
@@ -383,10 +385,11 @@ export class StatusBarManager implements vscode.Disposable {
      */
     private getAnimatedText(config: StatusBarInfo): string {
         if (this.currentState === 'recording') {
-            // Анимация записи: RECORD с циклическими точками (1, 2, 3)
-            const dotsCount = (this.progressStep % 3) + 1;
-            const dots = '.'.repeat(dotsCount);
-            return `$(record) Recording${dots}`;
+            return `$(sync~spin) Recording`;
+        }
+        
+        if (this.currentState === 'transcribing') {
+            return `$(sync~spin) Transcribing`;
         }
         
         return config.text;

@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "0.1.0",
+  "version": "0.1.7",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -369,11 +369,17 @@
         },
         "speechToTextWhisper.silenceThreshold": {
           "type": "number",
-          "default": 50,
+          "default": 30,
           "minimum": 20,
           "maximum": 80,
           "description": "Silence threshold value (20-80). Higher values are more sensitive to silence.",
           "order": 14
+        },
+        "speechToTextWhisper.inputDevice": {
+          "type": "string",
+          "default": "auto",
+          "description": "Audio input device for recording ('auto' for automatic detection)",
+          "order": 15
         }
       }
     }
@@ -389,7 +395,7 @@
     "test:unit": "mocha out/test/unit/**/*.test.js --timeout 5000",
     "test:integration": "vscode-test",
     "test:cursor": "npm run compile && vscode-test --grep \"Cursor Integration - Real IDE Tests\"",
-    "package": "vsce package"
+    "package": "node esbuild.js && vsce package"
   },
   "devDependencies": {
     "@istanbuljs/nyc-config-typescript": "^1.0.2",

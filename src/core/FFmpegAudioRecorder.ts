@@ -68,6 +68,16 @@ export class FFmpegAudioRecorder {
     private silenceTimer: NodeJS.Timeout | null = null;
     private lastAudioTime: number = 0;
     private silenceDetectionEnabled: boolean = false;
+    private lastFileSize: number = 0; // DEPRECATED: Отслеживание размера файла для детекции роста
+    
+    // Новые переменные для volumedetect системы
+    private volumeDetectProcess: ChildProcess | null = null;
+    private volumeTempFilePath: string | null = null;
+    private volumeTempFileCleanup: (() => void) | null = null;
+    private lastVolumeLevel: number = -91; // dB, начинаем с "тишина"
+    private volumeCheckInterval: NodeJS.Timeout | null = null;
+    private volumeSegmentDuration: number = 1; // секунды для анализа сегментов
+    private currentRecordingDevice: string | null = null; // текущее устройство записи
 
     constructor(
         private events: AudioRecorderEvents,
@@ -418,6 +428,7 @@ export class FFmpegAudioRecorder {
             
             this.setupFFmpegEvents();
             this.recordingStartTime = Date.now();
+            this.lastFileSize = 0; // Сбрасываем размер файла для новой записи
             this.isRecording = true;
 
             // Устанавливаем таймер максимальной продолжительности
@@ -425,6 +436,12 @@ export class FFmpegAudioRecorder {
             
             // Инициализируем определение тишины если включено
             this.setupSilenceDetection();
+
+            // Сохраняем устройство для volumedetect и запускаем анализ громкости
+            this.currentRecordingDevice = deviceToUse;
+            if (this.options.silenceDetection) {
+                await this.startVolumeDetection(deviceToUse);
+            }
 
             // Уведомляем о начале записи
             this.events.onRecordingStart();
@@ -605,28 +622,75 @@ export class FFmpegAudioRecorder {
             const output = data.toString();
             this.log(`🎤 [RECORDER] FFmpeg stderr: ${output.trim()}`);
             
-            // Обновляем время последней аудио активности только при РЕАЛЬНЫХ индикаторах активности
-            // Убираем слишком агрессивную логику, которая считала любое сообщение активностью
-            
-            // Проверяем на индикаторы реальной аудио активности
-            if (output.includes('size=') && output.includes('time=') && output.includes('bitrate=') && 
-                output.includes('kbits/s') && !output.includes('size=       0kB')) {
-                // Это сообщение о прогрессе записи с реальными данными - означает аудио активность
-                this.log('🎵 Audio activity detected: recording progress with data');
-                this.updateLastAudioTime();
-            } else if (output.includes('Stream #') && output.includes('Audio:')) {
-                // Информация о аудио потоке - считаем началом активности (однократно)
-                this.log('🎵 Audio activity detected: stream info');
-                this.updateLastAudioTime();
-            } else if (output.includes('Press [q] to quit')) {
-                // FFmpeg готов к записи - считаем началом активности (однократно)
-                this.log('🎵 Audio activity detected: FFmpeg ready');
-                this.updateLastAudioTime();
-            } else if (output.includes('Input #0') || output.includes('Output #0')) {
-                // Информация о входе/выходе - активность настройки (однократно)
-                this.log('🎵 Audio activity detected: input/output setup');
-                this.updateLastAudioTime();
+            // Подробное логирование для отладки тишины (теперь volumedetect управляет активностью)
+            if (this.silenceDetectionEnabled) {
+                this.log(`🔇 [VOLUMEDETECT] Processing FFmpeg output: "${output.trim()}"`);
+                this.log(`🔇 [VOLUMEDETECT] Current lastAudioTime: ${this.lastAudioTime}, timeSinceLastAudio: ${Date.now() - this.lastAudioTime}ms`);
             }
+            
+            // Анализируем прогресс записи для мониторинга (активность теперь определяется volumedetect)
+            
+            // Проверяем на РЕАЛЬНЫЕ индикаторы аудио активности
+            if (output.includes('size=') && output.includes('time=') && output.includes('bitrate=') && 
+                output.includes('kbits/s')) {
+                // Это сообщение о прогрессе записи - проверяем есть ли реальные данные
+                
+                if (this.silenceDetectionEnabled) {
+                    this.log(`🔇 [LEGACY DEBUG] Found progress message: ${output.trim()}`);
+                }
+                
+                // Извлекаем размер из строки вида "size=      14KiB time=00:00:00.51 bitrate= 219.8kbits/s"
+                // Поддерживаем оба формата: kB/MB/B (десятичные) и KiB/MiB/B (двоичные)
+                const sizeMatch = output.match(/size=\s*(\d+(?:\.\d+)?)(KiB|MiB|kB|MB|B|bytes?)/i);
+                if (sizeMatch) {
+                    const size = parseFloat(sizeMatch[1]);
+                    const unit = sizeMatch[2].toLowerCase();
+                    
+                    // Преобразуем в байты для унификации
+                    let sizeInBytes = size;
+                    if (unit === 'kib' || unit === 'kb') {
+                        sizeInBytes = size * 1024;
+                    } else if (unit === 'mib' || unit === 'mb') {
+                        sizeInBytes = size * 1024 * 1024;
+                    }
+                    
+                    if (this.silenceDetectionEnabled) {
+                        this.log(`🔇 [LEGACY DEBUG] Extracted file size: ${size}${unit} = ${sizeInBytes} bytes`);
+                        this.log(`🔇 [LEGACY DEBUG] Previous file size: ${this.lastFileSize} bytes`);
+                    }
+                    
+                    // СТАРАЯ ЛОГИКА (ОТКЛЮЧЕНА): Определение активности по размеру файла неточно
+                    // Теперь используем volumedetect для точного анализа громкости
+                    if (this.silenceDetectionEnabled) {
+                        this.log(`🔇 [LEGACY DEBUG] File size: ${size}${unit} = ${sizeInBytes} bytes (volumedetect теперь управляет детекцией тишины)`);
+                    }
+                    this.lastFileSize = sizeInBytes; // Сохраняем для совместимости с логами
+                    
+                    // БОЛЬШЕ НЕ ОБНОВЛЯЕМ lastAudioTime здесь - это теперь делает volumedetect
+                } else if (!output.includes('size=       0kB') && !output.includes('size=       0KiB') && !output.includes('size=       0B')) {
+                    // Fallback: если не можем извлечь размер
+                    if (this.silenceDetectionEnabled) {
+                        this.log(`🔇 [LEGACY DEBUG] Unable to parse file size - volumedetect handles activity detection`);
+                    }
+                }
+            } else if (this.silenceDetectionEnabled) {
+                // Логируем сообщения, которые НЕ являются прогрессом
+                if (output.includes('Stream #0:0: Audio:') || 
+                    output.includes('Press [q] to quit') || 
+                    output.includes('Input #0') || 
+                    output.includes('Output #0')) {
+                    this.log(`🔇 [LEGACY DEBUG] ℹ️ Service message (ignored): ${output.trim()}`);
+                } else {
+                    this.log(`🔇 [LEGACY DEBUG] ⚠️ Unknown FFmpeg output: ${output.trim()}`);
+                }
+            }
+            
+            // ИСПРАВЛЕНО: НЕ обновляем lastAudioTime для служебных сообщений:
+            // - "Stream #0:0: Audio:" - информация о потоке 
+            // - "Press [q] to quit" - готовность FFmpeg
+            // - "Input #0" / "Output #0" - настройка входа/выхода
+            // - другие настроечные сообщения
+            // Эти сообщения НЕ означают что пользователь говорит!
             
             // Ищем специфические ошибки, которые могут указывать на проблемы
             if (output.includes('No such file or directory')) {
@@ -665,7 +729,7 @@ export class FFmpegAudioRecorder {
                 return;
             }
             
-            // Проверяем на успешные индикаторы записи
+            // Проверяем на успешные индикаторы записи (без обновления lastAudioTime)
             if (output.includes('size=') && output.includes('time=')) {
                 this.log(`✅ FFmpeg recording progress: ${output.trim()}`);
             }
@@ -840,62 +904,282 @@ export class FFmpegAudioRecorder {
     }
 
     /**
-     * Настройка определения тишины
+     * Запуск volumedetect процесса для анализа громкости аудио
+     */
+    private async startVolumeDetection(recommendedDevice?: string): Promise<void> {
+        if (!this.options.silenceDetection) {
+            return;
+        }
+
+        this.log('🔊 [VOLUMEDETECT] Starting volume detection process');
+        
+        try {
+            // Построение команды volumedetect (без временного файла, используем null output)
+            const args = this.buildVolumeDetectArgs(recommendedDevice);
+            
+            this.log(`🔊 [VOLUMEDETECT] Command: ffmpeg ${args.join(' ')}`);
+
+            // Запуск volumedetect процесса
+            this.volumeDetectProcess = spawn('ffmpeg', args);
+            
+            if (this.volumeDetectProcess.pid) {
+                this.log(`🔊 [VOLUMEDETECT] Process started with PID: ${this.volumeDetectProcess.pid}`);
+                this.setupVolumeDetectEvents();
+                this.startVolumeCheckInterval();
+            } else {
+                throw new Error('Failed to start volumedetect process');
+            }
+
+        } catch (error) {
+            this.logError('🔊 [VOLUMEDETECT] Failed to start volume detection', error);
+            this.cleanupVolumeDetection();
+            // Продолжаем запись без volume detection
+        }
+    }
+
+    /**
+     * Построение аргументов для volumedetect команды
+     */
+    private buildVolumeDetectArgs(recommendedDevice?: string): string[] {
+        const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
+        const args: string[] = [];
+
+        // Уровень логирования для получения данных volumedetect
+        args.push('-loglevel', 'info');
+
+        // Платформо-специфический ввод (тот же что и для основной записи)
+        const inputParts = platformCommands.audioInput.split(' ');
+        args.push(...inputParts);
+
+        // Устройство ввода (то же что и для основной записи)
+        const inputDevice = recommendedDevice || platformCommands.defaultDevice;
+        args.push('-i', inputDevice);
+
+        // КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: анализируем короткий сегмент (1 секунда)
+        args.push('-t', '1.0');  // Длительность сегмента 1 секунда
+
+        // Фильтр volumedetect - анализирует уровень громкости
+        args.push('-filter_complex', `[0:a]volumedetect[out]`);
+
+        // Выводим обработанный звук в null (мы не сохраняем, только анализируем)
+        args.push('-map', '[out]');
+        args.push('-f', 'null');
+        args.push('-');
+
+        return args;
+    }
+
+    /**
+     * Настройка событий для volumedetect процесса
+     */
+    private setupVolumeDetectEvents(): void {
+        if (!this.volumeDetectProcess) {
+            return;
+        }
+
+        this.volumeDetectProcess.on('error', (error) => {
+            this.logError('🔊 [VOLUMEDETECT] Process error', error);
+            this.cleanupVolumeDetection();
+        });
+
+        this.volumeDetectProcess.stderr?.on('data', (data) => {
+            const output = data.toString();
+            
+            // Ищем данные volumedetect в выводе
+            // Формат: [Parsed_volumedetect_0 @ 0x...] mean_volume: -23.1 dB
+            // Формат: [Parsed_volumedetect_0 @ 0x...] max_volume: -10.5 dB
+            const meanVolumeMatch = output.match(/mean_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/);
+            const maxVolumeMatch = output.match(/max_volume:\s*(-?\d+(?:\.\d+)?)\s*dB/);
+            
+            if (meanVolumeMatch || maxVolumeMatch) {
+                const meanVolume = meanVolumeMatch ? parseFloat(meanVolumeMatch[1]) : null;
+                const maxVolume = maxVolumeMatch ? parseFloat(maxVolumeMatch[1]) : null;
+                
+                // Используем максимальную громкость, если доступна, иначе среднюю
+                const currentVolume = maxVolume !== null ? maxVolume : meanVolume;
+                
+                if (currentVolume !== null) {
+                    this.lastVolumeLevel = currentVolume;
+                    this.processVolumeLevel(currentVolume);
+                }
+            }
+        });
+
+        this.volumeDetectProcess.on('close', (code) => {
+            this.log(`🔊 [VOLUMEDETECT] Process closed with code: ${code}`);
+            this.cleanupVolumeDetection();
+        });
+    }
+
+    /**
+     * Обработка уровня громкости от volumedetect
+     */
+    private processVolumeLevel(volumeDb: number): void {
+        if (!this.silenceDetectionEnabled) {
+            return;
+        }
+
+        // Используем настройку silenceThreshold из опций
+        // silenceThreshold в настройках - это позитивное число (20-80)
+        // Конвертируем его в отрицательные dB для FFmpeg
+        const thresholdFromSettings = this.options.silenceThreshold || 30; // По умолчанию 30
+        const silenceThreshold = -thresholdFromSettings; // Делаем отрицательным (-30dB)
+        const isAudioActive = volumeDb > silenceThreshold;
+        
+        this.log(`🔊 [VOLUMEDETECT] Volume: ${volumeDb.toFixed(1)}dB (threshold: ${silenceThreshold}dB) - ${isAudioActive ? 'ACTIVE' : 'SILENT'}`);
+        
+        if (isAudioActive) {
+            this.log(`🎵 Audio activity detected via volumedetect: ${volumeDb.toFixed(1)}dB > ${silenceThreshold}dB`);
+            this.updateLastAudioTime();
+        }
+    }
+
+    /**
+     * Запуск интервала проверки громкости
+     */
+    private startVolumeCheckInterval(): void {
+        if (this.volumeCheckInterval) {
+            clearInterval(this.volumeCheckInterval);
+        }
+
+        // Перезапускаем volumedetect процесс каждые N секунд для получения актуальных данных
+        this.volumeCheckInterval = setInterval(() => {
+            if (this.isRecording && this.silenceDetectionEnabled) {
+                this.restartVolumeDetection();
+            }
+        }, this.volumeSegmentDuration * 1000);
+    }
+
+    /**
+     * Перезапуск volumedetect для получения свежих данных
+     */
+    private async restartVolumeDetection(): Promise<void> {
+        if (!this.isRecording || !this.silenceDetectionEnabled) {
+            return;
+        }
+
+        this.log('🔊 [VOLUMEDETECT] Restarting volume detection for fresh data');
+        
+        // Останавливаем текущий процесс
+        if (this.volumeDetectProcess && !this.volumeDetectProcess.killed) {
+            this.volumeDetectProcess.kill('SIGTERM');
+        }
+
+        // Небольшая пауза перед перезапуском
+        setTimeout(async () => {
+            if (this.isRecording && this.silenceDetectionEnabled) {
+                // Используем то же устройство, что было выбрано для основной записи
+                await this.startVolumeDetection(this.currentRecordingDevice || undefined);
+            }
+        }, 100);
+    }
+
+    /**
+     * Очистка ресурсов volumedetect
+     */
+    private cleanupVolumeDetection(): void {
+        this.log('🔊 [VOLUMEDETECT] Cleaning up volume detection');
+
+        if (this.volumeCheckInterval) {
+            clearInterval(this.volumeCheckInterval);
+            this.volumeCheckInterval = null;
+        }
+
+        if (this.volumeDetectProcess && !this.volumeDetectProcess.killed) {
+            this.volumeDetectProcess.kill('SIGTERM');
+            this.volumeDetectProcess = null;
+        }
+
+        if (this.volumeTempFileCleanup) {
+            try {
+                this.volumeTempFileCleanup();
+            } catch (error) {
+                // Игнорируем ошибки очистки
+            }
+            this.volumeTempFileCleanup = null;
+        }
+
+        this.volumeTempFilePath = null;
+    }
+
+    /**
+     * Настройка определения тишины (обновленная с volumedetect)
      */
     private setupSilenceDetection(): void {
-        console.log(`🔇 setupSilenceDetection called, silenceDetection=${this.options.silenceDetection}`);
+        this.log(`🔇 [SILENCE DEBUG] 🚀 setupSilenceDetection called`);
+        this.log(`🔇 [SILENCE DEBUG] silenceDetection option: ${this.options.silenceDetection}`);
+        this.log(`🔇 [SILENCE DEBUG] silenceDuration option: ${this.options.silenceDuration}`);
+        this.log(`🔇 [SILENCE DEBUG] Recording start time: ${this.recordingStartTime}`);
         
         if (this.options.silenceDetection !== true) {
-            console.log('🔇 Silence detection disabled - will only use maxDuration timer');
+            this.log('🔇 [SILENCE DEBUG] ❌ Silence detection disabled - will only use maxDuration timer');
             // ❌ НЕ ВОЗВРАЩАЕМСЯ! Нужно убедиться что есть хотя бы maxDuration контроль
             // Даже без детекции тишины должен работать таймер максимальной продолжительности
             return;
         }
 
-        console.log('🔇 Silence detection enabled - setting up silence monitoring');
+        this.log('🔇 [SILENCE DEBUG] ✅ Silence detection enabled - setting up silence monitoring');
         this.silenceDetectionEnabled = true;
         
         // Устанавливаем начальное время аудио активности в момент старта записи
         this.lastAudioTime = this.recordingStartTime;
 
         const silenceDuration = (this.options.silenceDuration || 3) * 1000; // Преобразуем в миллисекунды
-        const minRecordingTime = 2000; // Минимум 2 секунды записи перед включением определения тишины
+        const minRecordingTime = 5000; // Минимум 5 секунды записи перед включением определения тишины (увеличено с 5)
 
-        console.log(`🔇 Silence detection parameters: ${silenceDuration}ms silence threshold, ${minRecordingTime}ms minimum recording time`);
-        console.log(`🔇 Initial lastAudioTime set to: ${this.lastAudioTime}`);
+        this.log(`🔇 [SILENCE DEBUG] Configuration:`);
+        this.log(`🔇 [SILENCE DEBUG]   - Silence threshold: ${silenceDuration}ms (${this.options.silenceDuration || 3}s)`);
+        this.log(`🔇 [SILENCE DEBUG]   - Minimum recording time: ${minRecordingTime}ms`);
+        this.log(`🔇 [SILENCE DEBUG]   - Initial lastAudioTime: ${this.lastAudioTime}`);
+        this.log(`🔇 [SILENCE DEBUG]   - silenceDetectionEnabled: ${this.silenceDetectionEnabled}`);
 
-        // Запускаем таймер проверки тишины каждые 500ms
+        // Запускаем таймер проверки тишины каждые 2000ms
         const checkSilence = () => {
             if (!this.isRecording || !this.silenceDetectionEnabled) {
-                console.log('🔇 Stopping silence check - recording stopped or silence detection disabled');
+                this.log('🔇 [SILENCE DEBUG] 🛑 Stopping silence check - recording stopped or silence detection disabled');
+                this.log(`🔇 [SILENCE DEBUG] isRecording: ${this.isRecording}, silenceDetectionEnabled: ${this.silenceDetectionEnabled}`);
                 return;
             }
 
             const recordingDuration = Date.now() - this.recordingStartTime;
             const timeSinceLastAudio = Date.now() - this.lastAudioTime;
             
-            console.log(`🔇 Silence check: recording=${recordingDuration}ms, since_audio=${timeSinceLastAudio}ms, min_time=${minRecordingTime}ms, threshold=${silenceDuration}ms`);
+            this.log(`🔇 [SILENCE DEBUG] 🔍 Silence check cycle:`);
+            this.log(`🔇 [SILENCE DEBUG]   - Recording duration: ${recordingDuration}ms`);
+            this.log(`🔇 [SILENCE DEBUG]   - Time since last audio: ${timeSinceLastAudio}ms`);
+            this.log(`🔇 [SILENCE DEBUG]   - Minimum recording time: ${minRecordingTime}ms`);
+            this.log(`🔇 [SILENCE DEBUG]   - Silence threshold: ${silenceDuration}ms`);
+            this.log(`🔇 [SILENCE DEBUG]   - Current time: ${Date.now()}`);
+            this.log(`🔇 [SILENCE DEBUG]   - Last audio time: ${this.lastAudioTime}`);
+            this.log(`🔇 [SILENCE DEBUG]   - Recording start time: ${this.recordingStartTime}`);
             
             // Не проверяем тишину в первые minRecordingTime миллисекунд
             if (recordingDuration < minRecordingTime) {
-                console.log(`🔇 Still in minimum recording period (${recordingDuration}ms < ${minRecordingTime}ms)`);
-                this.silenceTimer = setTimeout(checkSilence, 500);
+                this.log(`🔇 [SILENCE DEBUG] ⏳ Still in minimum recording period (${recordingDuration}ms < ${minRecordingTime}ms) - continuing`);
+                this.silenceTimer = setTimeout(checkSilence, 2000);
                 return;
             }
             
             if (timeSinceLastAudio >= silenceDuration) {
-                console.log(`🔇 ⏰ Silence detected for ${timeSinceLastAudio}ms (>= ${silenceDuration}ms), stopping recording (total duration: ${recordingDuration}ms)`);
+                this.log(`🔇 [SILENCE DEBUG] ⏰ SILENCE THRESHOLD REACHED!`);
+                this.log(`🔇 [SILENCE DEBUG] Time since last audio: ${timeSinceLastAudio}ms >= threshold: ${silenceDuration}ms`);
+                this.log(`🔇 [SILENCE DEBUG] Stopping recording after ${recordingDuration}ms total duration`);
                 this.stopRecording();
                 return;
+            } else {
+                const remainingTime = silenceDuration - timeSinceLastAudio;
+                this.log(`🔇 [SILENCE DEBUG] ✅ Audio activity recent enough - ${remainingTime}ms remaining until silence threshold`);
             }
 
             // Планируем следующую проверку
-            this.silenceTimer = setTimeout(checkSilence, 500);
+            this.log(`🔇 [SILENCE DEBUG] 🔄 Scheduling next silence check in 2000ms`);
+            this.silenceTimer = setTimeout(checkSilence, 2000);
         };
 
-        // Запускаем первую проверку через 1 секунду после начала записи
-        console.log('🔇 Starting silence detection timer - first check in 1000ms');
-        this.silenceTimer = setTimeout(checkSilence, 1000);
+        // Запускаем первую проверку через 2 секунды после начала записи
+        this.log('🔇 [SILENCE DEBUG] ⏰ Starting silence detection timer - first check in 2000ms');
+        this.silenceTimer = setTimeout(checkSilence, 2000);
+        this.log('🎯 [SILENCE DEBUG] 🎯 Silence detection setup completed successfully');
     }
 
     /**
@@ -906,9 +1190,15 @@ export class FFmpegAudioRecorder {
             const oldTime = this.lastAudioTime;
             this.lastAudioTime = Date.now();
             const timeSinceLastUpdate = this.lastAudioTime - oldTime;
-            console.log(`🔇 Audio activity: lastAudioTime updated (was ${timeSinceLastUpdate}ms ago)`);
+            const recordingDuration = Date.now() - this.recordingStartTime;
+            
+            this.log(`🔇 [SILENCE DEBUG] 🎵 Audio activity: lastAudioTime updated`);
+            this.log(`🔇 [SILENCE DEBUG] Previous lastAudioTime: ${oldTime} (${timeSinceLastUpdate}ms ago)`);
+            this.log(`🔇 [SILENCE DEBUG] New lastAudioTime: ${this.lastAudioTime}`);
+            this.log(`🔇 [SILENCE DEBUG] Recording duration: ${recordingDuration}ms`);
+            this.log(`🔇 [SILENCE DEBUG] Silence timer reset - will check for silence again in next cycle`);
         } else {
-            console.log('🔇 Audio activity detected, but silence detection is disabled - ignoring');
+            this.log('🔇 Audio activity detected, but silence detection is disabled - ignoring');
         }
     }
 
@@ -916,17 +1206,23 @@ export class FFmpegAudioRecorder {
      * Очистка таймера определения тишины
      */
     private clearSilenceTimer(): void {
+        this.log('🔇 [SILENCE DEBUG] 🧹 clearSilenceTimer called');
+        
         if (this.silenceTimer) {
-            console.log('🔇 Clearing silence detection timer');
+            this.log('🔇 [SILENCE DEBUG] ✅ Clearing active silence detection timer');
             clearTimeout(this.silenceTimer);
             this.silenceTimer = null;
+            this.log('🔇 [SILENCE DEBUG] Silence timer cleared successfully');
         } else {
-            console.log('🔇 Silence detection timer was not set, nothing to clear');
+            this.log('🔇 [SILENCE DEBUG] ❌ Silence detection timer was not set, nothing to clear');
         }
         
         if (this.silenceDetectionEnabled) {
-            console.log('🔇 Disabling silence detection');
+            this.log('🔇 [SILENCE DEBUG] ⏹️ Disabling silence detection');
             this.silenceDetectionEnabled = false;
+            this.log('🔇 [SILENCE DEBUG] Silence detection disabled successfully');
+        } else {
+            this.log('🔇 [SILENCE DEBUG] Silence detection was already disabled');
         }
     }
 
@@ -949,6 +1245,7 @@ export class FFmpegAudioRecorder {
     private cleanup(): void {
         this.clearMaxDurationTimer();
         this.clearSilenceTimer();
+        this.cleanupVolumeDetection(); // Добавляем очистку volumedetect
         
         if (this.ffmpegProcess && !this.ffmpegProcess.killed) {
             this.ffmpegProcess.kill('SIGKILL');
@@ -965,6 +1262,7 @@ export class FFmpegAudioRecorder {
         }
 
         this.tempFilePath = null;
+        this.currentRecordingDevice = null;
         this.isRecording = false;
     }
 

@@ -185,7 +185,7 @@ export class ConfigurationManager {
                 maxRecordingDuration: 3600,
                 silenceDetection: true,
                 silenceDuration: 3,
-                silenceThreshold: 50,
+                silenceThreshold: 20,
                 inputDevice: 'auto'
             },
             ui: {

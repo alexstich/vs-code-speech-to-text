@@ -428,6 +428,11 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			throw new Error('WhisperClient not initialized');
 		}
 
+		// Показываем состояние транскрибации
+		if (statusBarManager) {
+			statusBarManager.showTranscribing();
+		}
+
 		// Получаем настройки из конфигурации
 		const whisperConfig = configurationManager.getWhisperConfiguration();
 
@@ -796,10 +801,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 		
 		// Начинаем запись с режимом INSERT_OR_CLIPBOARD
 		if (RecordingStateManager.startRecording(RecordingMode.INSERT_OR_CLIPBOARD)) {
-			// Обновляем StatusBar сразу при начале попытки записи
-			if (statusBarManager) {
-				statusBarManager.updateRecordingState(true);
-			}
+			// НЕ обновляем StatusBar здесь - будет обновлен в onRecordingStart событии
 			
 			// Устанавливаем время попытки записи
 			lastRecordingStartTime = now;
@@ -852,10 +854,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 		
 		// Начинаем запись с режимом NEW_CHAT
 		if (RecordingStateManager.startRecording(RecordingMode.NEW_CHAT)) {
-			// Обновляем StatusBar
-			if (statusBarManager) {
-				statusBarManager.updateRecordingState(true);
-			}
+			// НЕ обновляем StatusBar здесь - будет обновлен в onRecordingStart событии
 			
 			// Устанавливаем время попытки записи
 			lastRecordingStartTime = now;
@@ -1078,7 +1077,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			ffmpegPath: audioConfig.ffmpegPath || undefined,
 			silenceDetection: audioConfig.silenceDetection,
 			silenceDuration: audioConfig.silenceDuration,
-			silenceThreshold: -(audioConfig.silenceThreshold) // Применяем минус автоматически
+			silenceThreshold: audioConfig.silenceThreshold // Убрал автоматическое применение минуса
 		};
 		
 		// Создаем новый экземпляр аудио рекордера

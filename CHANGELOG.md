@@ -38,7 +38,27 @@
 
 ---
 
-## [0.1.0] - 2024-12-20
+## [0.1.1] - 2025-06-05
+
+### Fixed
+- **Исправлена детекция тишины**: Теперь запись корректно останавливается при отсутствии звука. Исправлена логика в `FFmpegAudioRecorder.ts` где служебные сообщения FFmpeg ошибочно интерпретировались как аудио активность.
+- **Улучшено отображение статуса**: StatusBar теперь показывает корректную последовательность состояний:
+  - Убрано преждевременное отображение "recording" до фактического начала записи
+  - Добавлен статус "transcribing" с синим цветом для этапа обработки речи
+  - StatusBar обновляется только в событии `onRecordingStart` когда запись реально началась
+
+### Technical Details
+- **Silence Detection**: Обновление `lastAudioTime` теперь происходит только при реальных данных записи (размер файла > 1KB), а не для служебных сообщений FFmpeg
+- **Status Management**: Последовательность переходов: idle → recording → transcribing → inserting → success
+- **Test Coverage**: Добавлены тесты для верификации исправлений в `src/test/unit/fixes-verification.test.ts`
+
+## [0.1.0] - 2024-XX-XX
+
+### Added
+- Initial release
+- Speech-to-text functionality using Whisper
+- VS Code extension with audio recording
+- Multiple output formats support
 
 ### Исправления ActivityBar, записи аудио и UI
 
