@@ -30,6 +30,8 @@
 ### 💬 **Cursor IDE Integration** ⭐ *NEW*
 - **Direct send to AI chat**: voice communication with AI assistant
 
+> ⚠️ **Important Note**: Chat insertion functions use unofficial Cursor IDE APIs and may be changed by Cursor IDE developers in future versions without prior notice.
+
 ### ⚡ **Fast and Efficient**
 - **Instant feedback**: status bar indicators
 - **Automatic silence detection**: smart recording stop
@@ -199,7 +201,7 @@ Access via Command Palette (`Ctrl+Shift+P`):
 
 ### 🎤 Recording
 - `Speech to Text with Whisper: Record and Insert at Cursor or Clipboard`
-- `Speech to Text with Whisper: Record and Open New Chat`
+- `Speech to Text with Whisper: Record and Open New Chat` ⚠️ *Uses unofficial Cursor IDE APIs*
 
 ### 🔧 Diagnostics & Settings
 - `Speech to Text with Whisper: Run Diagnostics`
@@ -211,7 +213,7 @@ Access via Command Palette (`Ctrl+Shift+P`):
 ### 📝 History & Tools
 - `Speech to Text with Whisper: Select Audio Device`
 - `Speech to Text with Whisper: Copy to Clipboard` (from history)
-- `Speech to Text with Whisper: Insert at Cursor Chat` (from history)
+- `Speech to Text with Whisper: Insert at Cursor Chat` (from history) ⚠️ *Uses unofficial Cursor IDE APIs*
 - `Speech to Text with Whisper: Clear History`
 
 ## 🎛️ Extension Panel
@@ -246,6 +248,8 @@ function validateEmail(email) {
 1. Press **Ctrl+Shift+N** to record and send to AI chat
 2. Say your question or instruction to the AI
 3. Text will be sent directly to Cursor IDE AI chat
+
+> ⚠️ **Warning**: Cursor IDE chat integration uses unofficial internal commands that may be changed in future IDE updates.
 
 ### 🌐 **Multilingual Development**
 - Speak in Russian - get text in Russian
