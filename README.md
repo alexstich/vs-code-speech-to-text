@@ -2,6 +2,13 @@
 
 > Professional voice input extension for VS Code and Cursor IDE with OpenAI Whisper API integration.
 
+## Core Functions
+
+| Shortcut | Action |
+|----------|--------|
+| **Ctrl+Shift+M** | 🎤 **Record and Insert Text** - Record speech and insert transcribed text at cursor position |
+| **Ctrl+Shift+N** | 💬 **Record and Send to AI Chat** - Record speech and send transcribed text directly to Cursor IDE chat |
+
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.74.0+-blue.svg)](https://code.visualstudio.com/)
 [![Cursor IDE](https://img.shields.io/badge/Cursor%20IDE-Supported-green.svg)](https://cursor.sh/)
 [![OpenAI Whisper](https://img.shields.io/badge/OpenAI-Whisper%20API-orange.svg)](https://openai.com/research/whisper)
@@ -170,7 +177,7 @@ Run `Speech to Text with Whisper: Run Diagnostics` from Command Palette for auto
 ## Development
 
 ```bash
-git clone https://github.com/speak-y/vs-code-speech-to-text.git
+git clone https://github.com/alexstich/vs-code-speech-to-text.git
 cd vs-code-speech-to-text
 npm install
 npm run compile
@@ -179,5 +186,5 @@ npm run test
 
 ## Support
 
-- [GitHub Issues](https://github.com/speak-y/vs-code-speech-to-text/issues) - Report problems
-- [Discussions](https://github.com/speak-y/vs-code-speech-to-text/discussions) - Feature requests
+- [GitHub Issues](https://github.com/alexstich/vs-code-speech-to-text/issues) - Report problems
+- [Discussions](https://github.com/alexstich/vs-code-speech-to-text/discussions) - Feature requests

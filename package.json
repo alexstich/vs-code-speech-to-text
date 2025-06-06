@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -11,12 +11,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/speak-y/vs-code-speech-to-text"
+    "url": "https://github.com/alexstich/vs-code-speech-to-text"
   },
   "bugs": {
-    "url": "https://github.com/speak-y/vs-code-speech-to-text/issues"
+    "url": "https://github.com/alexstich/vs-code-speech-to-text/issues"
   },
-  "homepage": "https://github.com/speak-y/vs-code-speech-to-text#readme",
+  "homepage": "https://github.com/alexstich/vs-code-speech-to-text#readme",
   "license": "MIT",
   "engines": {
     "vscode": "^1.74.0"
