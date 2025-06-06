@@ -63,15 +63,13 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
         return items;
     }
 
-    getCurrentMode(): RecordingMode {
-        ExtensionLog.info(`🔍 [ModeSelectorProvider] getCurrentMode() called, returning: ${this.currentMode}`);
-        return this.currentMode;
-    }
+    	getCurrentMode(): RecordingMode {
+		return this.currentMode;
+	}
 
     toggleMode(): void {
         const oldMode = this.currentMode;
         this.currentMode = this.currentMode === 'insert' ? 'clipboard' : 'insert';
-        ExtensionLog.info(`🔄 [ModeSelectorProvider] toggleMode() called, changed from ${oldMode} to ${this.currentMode}`);
         this.refresh();
         
         // Show a notification about the mode change
@@ -80,18 +78,14 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
     }
 
     setMode(mode: RecordingMode): void {
-        ExtensionLog.info(`✓ [ModeSelectorProvider] setMode() called with mode: ${mode}, current mode: ${this.currentMode}`);
         if (this.currentMode !== mode) {
             const oldMode = this.currentMode;
             this.currentMode = mode;
-            ExtensionLog.info(`✓ [ModeSelectorProvider] Mode changed from ${oldMode} to ${mode}`);
             this.refresh();
             
             // Show a notification about the mode change
             const modeText = mode === 'insert' ? 'Insert Text' : 'Copy to Clipboard';
             vscode.window.showInformationMessage(`✓ Mode set to: ${modeText}`);
-        } else {
-            ExtensionLog.info(`✓ [ModeSelectorProvider] Mode already set to ${mode}, no change needed`);
         }
     }
 }

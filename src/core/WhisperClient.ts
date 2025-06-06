@@ -262,8 +262,7 @@ export class WhisperClient {
             }
         };
 
-        console.log('🚀 [WHISPER REQUEST] Sending a request to the Whisper API:');
-        console.log(JSON.stringify(requestInfo, null, 2));
+
     }
 
     /**

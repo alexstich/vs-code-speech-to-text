@@ -100,7 +100,6 @@ class RecordingStateManager {
 	static startRecording(mode: RecordingMode): boolean {
 		// Checking if recording is already in progress
 		if (recordingState.isRecording) {
-			ExtensionLog.warn('⚠️ Recording already in progress');
 			return false;
 		}
 
@@ -112,7 +111,6 @@ class RecordingStateManager {
 			startTime: now
 		};
 
-		ExtensionLog.info(`🎤 Recording started with mode: ${mode}`);
 		return true;
 	}
 
@@ -121,7 +119,6 @@ class RecordingStateManager {
 	 */
 	static stopRecording(): RecordingMode | null {
 		if (!recordingState.isRecording) {
-			ExtensionLog.warn('⚠️ No recording in progress to stop');
 			return null;
 		}
 
@@ -132,7 +129,6 @@ class RecordingStateManager {
 			startTime: null
 		};
 
-		ExtensionLog.info(`⏹️ Recording stopped, mode was: ${mode}`);
 		return mode;
 	}
 
@@ -141,7 +137,6 @@ class RecordingStateManager {
 	 */
 	static stopRecordingKeepMode(): RecordingMode | null {
 		if (!recordingState.isRecording) {
-			ExtensionLog.warn('⚠️ No recording in progress to stop');
 			return null;
 		}
 
@@ -149,7 +144,6 @@ class RecordingStateManager {
 		recordingState.isRecording = false;
 		// mode and startTime remain for transcription processing
 
-		ExtensionLog.info(`⏹️ Recording stopped, mode preserved for transcription: ${mode}`);
 		return mode;
 	}
 
@@ -162,7 +156,6 @@ class RecordingStateManager {
 			mode: null,
 			startTime: null
 		};
-		ExtensionLog.info('🔄 Recording state reset');
 	}
 
 	/**
@@ -190,14 +183,9 @@ class RecordingStateManager {
 export async function activate(context: vscode.ExtensionContext) {
 	// Create an output channel for logging
 	outputChannel = vscode.window.createOutputChannel('Speech to Text Whisper');
-	outputChannel.appendLine('🚀 Extension activation started');
-	outputChannel.show(); // Automatically show in the Output panel
 	
 	// Initialize the global logging system
 	initializeGlobalOutput(outputChannel);
-	ExtensionLog.info('SpeechToTextWhisper extension activation started! NEW VERSION 2024');
-	ExtensionLog.info(`VS Code version: ${vscode.version}`);
-	ExtensionLog.info(`Extension folder: ${context.extensionPath}`);
 	
 	// Save the context for global use
 	extensionContext = context;
@@ -223,8 +211,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		
 		// Add a listener for configuration changes
 		configurationManager.addChangeListener((config) => {
-			ExtensionLog.info('🔧 Configuration changed, reinitializing components...');
-			
 			// Reinitialize the WhisperClient when settings change
 			initializeWhisperClient();
 			
@@ -239,8 +225,6 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		});
 		
-		ExtensionLog.info('✅ SpeechToTextWhisper extension successfully activated');
-		
 	} catch (error) {
 		const errorMessage = `Failed to activate SpeechToTextWhisper: ${(error as Error).message}`;
 		ExtensionLog.error('❌ Activation error: ' + errorMessage);
@@ -252,26 +236,19 @@ export async function activate(context: vscode.ExtensionContext) {
  * Initializing the error handling system
  */
 function initializeErrorHandling(): void {
-	ExtensionLog.info('🔧 Initializing error handling system...');
-	
 	// Create an ErrorHandler with the VS Code display handler
 	errorHandler = new ErrorHandler(new VSCodeErrorDisplayHandler());
 	
 	// Create a RetryManager
 	retryManager = new RetryManager(errorHandler);
-	
-	ExtensionLog.info('✅ Error handling system initialized');
 }
 
 /**
  * Initializing all extension components
  */
 function initializeComponents(): void {
-	ExtensionLog.info('🔧 Initializing SpeechToTextWhisper components...');
-	
 	// Initialize the ConfigurationManager
 	configurationManager = ConfigurationManager.getInstance();
-	ExtensionLog.info('✅ ConfigurationManager initialized');
 	
 	// Initialize the CursorIntegration
 	initializeCursorIntegration();
@@ -300,7 +277,6 @@ function initializeComponents(): void {
 	// Events for the StatusBar
 	const statusBarEvents: StatusBarEvents = {
 		onRecordingToggle: () => {
-			ExtensionLog.info('📊 Status bar clicked');
 			vscode.commands.executeCommand('workbench.action.openSettings', 'speechToTextWhisper');
 		}
 	};
@@ -315,15 +291,12 @@ function initializeComponents(): void {
 	
 	// Initialize the StatusBarManager
 	statusBarManager = new StatusBarManager(statusBarEvents, statusBarConfig);
-	
-	ExtensionLog.info('✅ Components initialized');
 }
 
 /**
  * Registering extension commands
  */
 function registerCommands(context: vscode.ExtensionContext): void {
-	ExtensionLog.info('📝 Registering commands...');
 	
 	const commands = [
 		// Main recording commands
@@ -334,10 +307,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		// FFmpeg test command
 		vscode.commands.registerCommand('speechToTextWhisper.testFFmpeg', async () => {
 			try {
-				ExtensionLog.info('🔍 Testing FFmpeg availability...');
-				
 				const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
-				ExtensionLog.info(`🔍 FFmpeg check result: ${JSON.stringify(ffmpegCheck)}`);
 				
 				if (ffmpegCheck.available) {
 					vscode.window.showInformationMessage(`✅ FFmpeg is available! Version: ${ffmpegCheck.version}`);
@@ -347,7 +317,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				
 				// Try diagnostics
 				const diagnostics = await FFmpegAudioRecorder.runDiagnostics();
-				ExtensionLog.info(`🔍 FFmpeg diagnostics: ${JSON.stringify(diagnostics)}`);
 				
 				const deviceCount = diagnostics.inputDevices.length;
 				const errorCount = diagnostics.errors.length;
@@ -357,15 +326,13 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				
 			} catch (error) {
 				const errorMsg = `FFmpeg test failed: ${(error as Error).message}`;
-				ExtensionLog.error('❌ FFmpeg test error: ' + errorMsg);
+				ExtensionLog.error('❌ FFmpeg test failed: ' + errorMsg);
 				vscode.window.showErrorMessage(errorMsg);
 			}
 		}),
 		// AudioRecorder initialization test command
 		vscode.commands.registerCommand('speechToTextWhisper.testAudioRecorder', async () => {
 			try {
-				ExtensionLog.info('🔍 Testing audioRecorder initialization...');
-				
 				// Reset the current audioRecorder
 				audioRecorder = null;
 				
@@ -374,15 +341,14 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				
 				if (audioRecorder) {
 					vscode.window.showInformationMessage('✅ Audio Recorder initialized successfully!');
-					ExtensionLog.info('✅ Audio Recorder test passed');
 				} else {
 					vscode.window.showErrorMessage('❌ Audio Recorder is still null after initialization');
-					ExtensionLog.error('❌ Audio Recorder test failed - still null');
+					ExtensionLog.error('❌ Audio Recorder test failed');
 				}
 				
 			} catch (error) {
 				const errorMsg = `Audio Recorder test failed: ${(error as Error).message}`;
-				ExtensionLog.error('❌ Audio Recorder test error: ' + errorMsg);
+				ExtensionLog.error('❌ Audio Recorder test failed: ' + errorMsg);
 				vscode.window.showErrorMessage(errorMsg);
 			}
 		}),
@@ -401,8 +367,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.refresh', () => transcriptionHistoryProvider.refresh())
 	];
 
-	ExtensionLog.info(`📝 Created ${commands.length} command registrations`);
-
 	// Register DiagnosticsProvider as TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.diagnostics', diagnosticsProvider);
 
@@ -420,16 +384,12 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
 	// Add all commands to subscriptions
 	context.subscriptions.push(...commands, statusBarManager);
-	
-	ExtensionLog.info(`✅ Registered ${commands.length} commands and added to subscriptions`);
 }
 
 /**
  * Handling transcription
  */
 async function handleTranscription(audioBlob: Blob): Promise<void> {
-	ExtensionLog.info('🎯 [TRANSCRIPTION] Processing transcription...');
-	
 	const context: ErrorContext = {
 		operation: 'transcription',
 		isHoldToRecordMode: false,
@@ -441,12 +401,11 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		const recordingState = RecordingStateManager.getState();
 		
 		if (!recordingState.mode) {
-			ExtensionLog.info('❌ [TRANSCRIPTION] No recording mode set, aborting');
 			return;
 		}
 
 		if (!whisperClient) {
-			ExtensionLog.error('❌ [TRANSCRIPTION] WhisperClient not initialized');
+			ExtensionLog.error('❌ WhisperClient not initialized');
 			throw new Error('WhisperClient not initialized');
 		}
 
@@ -458,7 +417,6 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		// Get settings from configuration
 		const whisperConfig = configurationManager.getWhisperConfiguration();
 
-		ExtensionLog.info('🎯 [TRANSCRIPTION] Starting transcription...');
 		console.time('whisper.transcription');
 		const transcriptionResult = await whisperClient.transcribe(audioBlob, {
 			language: whisperConfig.language === 'auto' ? undefined : whisperConfig.language,
@@ -468,8 +426,6 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			response_format: 'json'
 		});
 		console.timeEnd('whisper.transcription');
-		
-		ExtensionLog.info(`🎯 [TRANSCRIPTION] Transcription completed, length: ${transcriptionResult.length}`);
 
 		if (transcriptionResult && transcriptionResult.trim().length > 0) {
 			lastTranscribedText = transcriptionResult.trim();
@@ -488,10 +444,8 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 				
 				// Update UI history
 				transcriptionHistoryProvider.refresh();
-				
-				ExtensionLog.info('📚 [HISTORY] Transcription added to history');
 			} catch (error) {
-				ExtensionLog.error('❌ [HISTORY] Failed to add transcription to history:', error);
+				ExtensionLog.error('❌ Failed to add transcription to history:', error);
 				// Do not interrupt execution if failed to add to history
 			}
 			
@@ -499,15 +453,12 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			statusBarManager.showInserting();
 			
 			if (recordingState.mode === RecordingMode.INSERT_OR_CLIPBOARD) {
-				ExtensionLog.info('📝 Processing insertOrClipboard mode...');
-				
 				try {
 					// Read insert mode from ModeSelectorProvider
 					const insertMode = modeSelectorProvider.getCurrentMode();
 					
 					if (insertMode === 'insert') {
 						// Insert mode at cursor position
-						ExtensionLog.info('📝 Inserting into active editor at cursor position');
 						await insertTranscribedTextWithErrorHandling(lastTranscribedText, 'cursor', context);
 						
 						// Show success
@@ -517,7 +468,6 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 						
 					} else if (insertMode === 'clipboard') {
 						// Copy to clipboard mode
-						ExtensionLog.info('📋 [CLIPBOARD_MODE] Copying to clipboard');
 						await vscode.env.clipboard.writeText(lastTranscribedText);
 						
 						// Show success
@@ -540,14 +490,11 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					return;
 				}
 			} else if (recordingState.mode === RecordingMode.INSERT_AT_CURRENT_CHAT) {
-				ExtensionLog.info('🎯 [CHAT] Starting INSERT_AT_CURRENT_CHAT mode processing');
-				
 				// Check insert mode - if clipboard, then do not send to chat
 				const insertMode = modeSelectorProvider.getCurrentMode();
 				
 				if (insertMode === 'clipboard') {
 					// Copy to clipboard mode - ignore chat
-					ExtensionLog.info('📋 [CLIPBOARD_MODE] Ctrl+Shift+N in clipboard mode - copying to clipboard instead of chat');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
 					
 					// Show success
@@ -562,7 +509,6 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 				
 				try {
 					// Execute command to open current chat
-					ExtensionLog.info('🎯 [CHAT] Executing aichat.newfollowupaction...');
 					await vscode.commands.executeCommand('aichat.newfollowupaction');
 					
 					// Delay 300ms
@@ -582,7 +528,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					return;
 					
 				} catch (error) {
-					ExtensionLog.error(`❌ [CHAT] Failed to open current chat:`, error);
+					ExtensionLog.error(`❌ Failed to open current chat:`, error);
 					vscode.window.showErrorMessage(`Failed to open current chat: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
@@ -616,8 +562,6 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 	};
 
 	try {
-		ExtensionLog.info(`📝 Inserting text with mode: ${mode}`);
-		
 		// Use retry for text insertion
 		const insertResult = await retryManager.retry(
 			() => textInserter.insertText(text, { mode: mode as 'cursor' | 'clipboard' }),
@@ -627,8 +571,6 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 		if (!insertResult.success) {
 			const error = insertResult.lastError || new Error('Text insertion failed after retries');
 			await errorHandler.handleErrorFromException(error, context);
-		} else {
-			ExtensionLog.info(`✅ Text insertion successful with mode: ${mode}`);
 		}
 		
 	} catch (error) {
@@ -641,8 +583,6 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
  * Initializing WhisperClient
  */
 function initializeWhisperClient(): void {
-	ExtensionLog.info('🔧 Initializing WhisperClient...');
-	
 	const whisperConfig = configurationManager.getWhisperConfiguration();
 	
 	if (!whisperConfig.apiKey) {
@@ -663,8 +603,6 @@ function initializeWhisperClient(): void {
 			apiKey: whisperConfig.apiKey,
 			timeout: whisperConfig.timeout
 		});
-		
-		ExtensionLog.info('✅ WhisperClient initialized');
 		
 	} catch (error) {
 		ExtensionLog.error('❌ Failed to initialize WhisperClient: ' + error);
@@ -702,8 +640,6 @@ function showWelcomeMessage(): void {
  * Deactivation function for the extension
  */
 export function deactivate() {
-	ExtensionLog.info('Extension deactivating...');
-	
 	// Stop recording if active
 	if (audioRecorder && audioRecorder.getIsRecording()) {
 		audioRecorder.stopRecording();
@@ -728,20 +664,14 @@ export function deactivate() {
 	
 	// Release global logging resources
 	disposeGlobalOutput();
-	
-	ExtensionLog.info('Extension deactivated');
 }
 
 /**
  * Initializing Cursor integration
  */
 function initializeCursorIntegration(): void {
-	ExtensionLog.info('🔧 Initializing Cursor integration...');
-	
 	// Use default strategy
 	const primaryStrategy = CursorIntegrationStrategy.AICHAT_COMMAND;
-	
-	ExtensionLog.info(`🎯 Using Cursor integration strategy: ${primaryStrategy}`);
 	
 	// Create CursorIntegration instance
 	cursorIntegration = new CursorIntegration({
@@ -757,26 +687,21 @@ function initializeCursorIntegration(): void {
 		timeout: 5000
 	}, {
 		onChatSent: (text: string, strategy: CursorIntegrationStrategy) => {
-			ExtensionLog.info(`✅ Text sent to chat via ${strategy}: "${text.substring(0, 50)}..."`);
+			// Silent success
 		},
 		onFallbackUsed: (primary: CursorIntegrationStrategy, fallback: CursorIntegrationStrategy) => {
-			ExtensionLog.info(`🔄 Fallback used: ${primary} -> ${fallback}`);
 			vscode.window.showWarningMessage(`Cursor chat: fell back to ${fallback} strategy`);
 		},
 		onError: (error: Error, strategy: CursorIntegrationStrategy) => {
 			ExtensionLog.error(`❌ CursorIntegration error with ${strategy}:`, error);
 		}
 	});
-	
-	ExtensionLog.info(`✅ CursorIntegration initialized, enabled: ${cursorIntegration.isIntegrationEnabled()}`);
 }
 
 /**
  * Command to record and insert into cursor or clipboard (Ctrl+Shift+M)
  */
 async function recordAndInsertOrClipboard(): Promise<void> {
-	ExtensionLog.info('🎤 recordAndInsertOrClipboard called!');
-	
 	const context: ErrorContext = {
 		operation: 'record_and_insert_or_clipboard',
 		isHoldToRecordMode: false,
@@ -787,7 +712,6 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 		// Check if recording is already in progress
 		if (RecordingStateManager.isRecording()) {
 			// Stop recording
-			ExtensionLog.info('⏹️ Stopping recording (recordAndInsertOrClipboard)');
 			stopRecording();
 			return;
 		}
@@ -795,12 +719,9 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 		// Check minimum interval between attempts
 		const now = Date.now();
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			ExtensionLog.info('⚠️ Too frequent recording attempts, skipping');
 			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
 			return;
 		}
-
-		ExtensionLog.info('🎤 Starting record and insert or clipboard...');
 		
 		// Start recording with INSERT_OR_CLIPBOARD mode
 		if (RecordingStateManager.startRecording(RecordingMode.INSERT_OR_CLIPBOARD)) {
@@ -829,8 +750,6 @@ async function recordAndInsertOrClipboard(): Promise<void> {
  * Command to record and open current chat in Cursor (Ctrl+Shift+N)
  */
 async function recordAndOpenCurrentChat(): Promise<void> {
-	ExtensionLog.info('🎤 [COMMAND] recordAndOpenCurrentChat called!');
-	
 	const context: ErrorContext = {
 		operation: 'record_and_open_current_chat',
 		isHoldToRecordMode: false,
@@ -840,7 +759,6 @@ async function recordAndOpenCurrentChat(): Promise<void> {
 	try {
 		// Check if recording is already in progress
 		if (RecordingStateManager.isRecording()) {
-			ExtensionLog.info('⏹️ [COMMAND] Stopping recording (recordAndOpenCurrentChat)');
 			stopRecording();
 			return;
 		}
@@ -848,13 +766,10 @@ async function recordAndOpenCurrentChat(): Promise<void> {
 		// Check minimum interval between attempts
 		const now = Date.now();
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
-			ExtensionLog.info('⚠️ [COMMAND] Too frequent recording attempts, skipping');
 			vscode.window.showWarningMessage('Too frequent recording attempts. Please wait a moment.');
 			return;
 		}
 
-		ExtensionLog.info('🎤 [COMMAND] Starting record and open current chat...');
-		
 		// Start recording with INSERT_AT_CURRENT_CHAT mode
 		if (RecordingStateManager.startRecording(RecordingMode.INSERT_AT_CURRENT_CHAT)) {
 			// Do not update StatusBar here - will be updated in onRecordingStart event
@@ -865,12 +780,11 @@ async function recordAndOpenCurrentChat(): Promise<void> {
 			await startRecording();
 			
 		} else {
-			ExtensionLog.info('❌ [COMMAND] Failed to start recording state');
 			vscode.window.showWarningMessage('Recording already in progress or too frequent attempts');
 		}
 		
 	} catch (error) {
-		ExtensionLog.error('❌ [COMMAND] recordAndOpenCurrentChat failed:', error);
+		ExtensionLog.error('❌ recordAndOpenCurrentChat failed:', error);
 		
 		// Reset state on error
 		RecordingStateManager.resetState();
@@ -888,8 +802,6 @@ async function recordAndOpenCurrentChat(): Promise<void> {
  * Recording commands
  */
 async function startRecording(): Promise<void> {
-	ExtensionLog.info('▶️ [RECORDING] Starting recording process...');
-	
 	const context: ErrorContext = {
 		operation: 'start_recording',
 		isHoldToRecordMode: false,
@@ -904,7 +816,7 @@ async function startRecording(): Promise<void> {
 		
 		// Check that audioRecorder is initialized
 		if (!audioRecorder) {
-			ExtensionLog.error('❌ [RECORDING] audioRecorder is null after initialization');
+			ExtensionLog.error('❌ audioRecorder is null after initialization');
 			RecordingStateManager.resetState();
 			vscode.window.showErrorMessage('❌ Failed to initialize audio recorder');
 			return;
@@ -912,7 +824,6 @@ async function startRecording(): Promise<void> {
 		
 		// Check if recording is already in progress
 		if (audioRecorder.getIsRecording()) {
-			ExtensionLog.info('⚠️ [RECORDING] Recording already in progress, skipping');
 			return;
 		}
 		
@@ -933,20 +844,18 @@ async function startRecording(): Promise<void> {
 
 		if (!microphoneResult.success) {
 			const error = microphoneResult.lastError || new Error('Microphone access failed');
-			ExtensionLog.error('❌ [RECORDING] Microphone check failed:', error);
+			ExtensionLog.error('❌ Microphone check failed:', error);
 			RecordingStateManager.resetState();
 			await errorHandler.handleErrorFromException(error, context);
 			return;
 		}
 		
-		ExtensionLog.info('✅ [RECORDING] Starting audio recording...');
 		console.time('audioRecorder.startRecording');
 		await audioRecorder.startRecording();
 		console.timeEnd('audioRecorder.startRecording');
-		ExtensionLog.info('✅ [RECORDING] Recording started successfully');
 		
 	} catch (error) {
-		ExtensionLog.error('❌ [RECORDING] Failed to start recording:', error);
+		ExtensionLog.error('❌ Failed to start recording:', error);
 		
 		// Reset recording state on any error
 		RecordingStateManager.resetState();
@@ -957,8 +866,6 @@ async function startRecording(): Promise<void> {
 
 function stopRecording(): void {
 	try {
-		ExtensionLog.info('⏹️ [RECORDING] Stopping recording...');
-		
 		// Stop recording but keep mode for transcription
 		const previousMode = RecordingStateManager.stopRecordingKeepMode();
 		
@@ -968,14 +875,12 @@ function stopRecording(): void {
 		}
 		
 		if (!audioRecorder) {
-			ExtensionLog.warn('⚠️ [RECORDING] Audio recorder not initialized, but mode was preserved');
 			return;
 		}
 		
 		console.time('audioRecorder.stopRecording');
 		audioRecorder.stopRecording();
 		console.timeEnd('audioRecorder.stopRecording');
-		ExtensionLog.info('✅ [RECORDING] Recording stopped successfully');
 		
 	} catch (error) {
 		ExtensionLog.error('❌ [RECORDING] Failed to stop recording:', error);
@@ -996,8 +901,6 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 	if (audioRecorder) { // Already initialized
 		return; // Already initialized
 	}
-
-	ExtensionLog.info('🔧 Initializing FFmpeg Audio Recorder...');
 	
 	try {
 		// Check FFmpeg availability
@@ -1009,8 +912,6 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			vscode.window.showErrorMessage(`❌ FFmpeg Error: ${errorMsg}`);
 			throw new Error(errorMsg);
 		}
-		
-		ExtensionLog.info('✅ FFmpeg is available, version:', ffmpegCheck.version);
 		
 		// Get audio settings
 		const audioConfig = configurationManager.getAudioConfiguration();
@@ -1034,19 +935,14 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				break;
 		}
 		
-		ExtensionLog.info(`⚙️ Audio settings: ${audioConfig.audioQuality} quality, ${sampleRate}Hz sample rate`);
-		
 		// Events for AudioRecorder
 		const audioRecorderEvents: AudioRecorderEvents = {
 			onRecordingStart: () => {
-				ExtensionLog.info('🎤 AudioRecorder event: onRecordingStart');
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(true);
 				}
 			},
 			onRecordingStop: async (audioBlob: Blob) => {
-				ExtensionLog.info('⏹️ AudioRecorder event: onRecordingStop, blob size:', audioBlob.size);
-				
 				// Update StatusBar
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(false);
@@ -1054,7 +950,6 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				
 				try {
 					await handleTranscription(audioBlob);
-					ExtensionLog.info('⏹️ AudioRecorder event: handleTranscription completed successfully');
 				} catch (error) {
 					ExtensionLog.error('❌ AudioRecorder event: Error in handleTranscription:', error);
 					vscode.window.showErrorMessage(`Transcription failed: ${(error as Error).message}`);
@@ -1085,7 +980,6 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		
 		// Create new instance of audio recorder
 		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions, outputChannel);
-		ExtensionLog.info('✅ FFmpegAudioRecorder instance created successfully');
 		
 	} catch (error) {
 		ExtensionLog.error('❌ Failed to initialize FFmpeg Audio Recorder:', error);

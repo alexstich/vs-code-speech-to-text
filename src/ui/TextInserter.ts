@@ -389,22 +389,18 @@ export class TextInserter {
      */
     async insertText(text: string, options: InsertOptions = {}): Promise<void> {
         const mode = options.mode || 'cursor';
-        ExtensionLog.info(`🔍 [TextInserter] insertText called with mode: ${mode}, options: ${JSON.stringify(options)}`);
 
         switch (mode) {
             case 'cursor':
-                ExtensionLog.info('📝 [TextInserter] Executing cursor mode');
                 await this.insertAtCursor(text, options);
                 break;
             case 'clipboard':
-                ExtensionLog.info('📋 [TextInserter] Executing clipboard mode');
                 await this.copyToClipboard(text, options);
                 break;
             default:
                 ExtensionLog.error(`❌ [TextInserter] Unknown mode: ${mode}`);
                 throw this.createError(`Unsupported insertion mode: ${mode}`, 'INVALID_MODE', mode);
         }
-        ExtensionLog.info(`✅ [TextInserter] insertText completed for mode: ${mode}`);
     }
 
     /**

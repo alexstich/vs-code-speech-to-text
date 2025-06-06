@@ -240,7 +240,6 @@ export class FFmpegAudioRecorder {
                         break;
                 }
 
-                console.log(`Detecting input devices with command: ffmpeg ${args.join(' ')}`);
                 const listProcess = spawn(ffmpegPath, args);
                 let output = '';
                 
@@ -254,7 +253,6 @@ export class FFmpegAudioRecorder {
                     
                     // Parsing depends on the platform
                     const lines = output.split('\n');
-                    console.log('FFmpeg device detection raw output:', output);
                     
                     if (platform === 'macos') {
                         let inAudioSection = false;
@@ -310,11 +308,8 @@ export class FFmpegAudioRecorder {
                         }
                     }
                     
-                    console.log('Parsed devices:', devices);
-                    
                     // If no devices are found, return default ones
                     if (devices.length === 0) {
-                        console.log('No devices found, using default');
                         const platformCommands = FFmpegAudioRecorder.getPlatformCommands();
                         devices.push({
                             id: platformCommands.defaultDevice,
@@ -364,7 +359,6 @@ export class FFmpegAudioRecorder {
 
         try {
             // Run diagnostics to get the recommended device
-            console.log('Running audio diagnostics...');
             const diagnostics = await FFmpegAudioRecorder.runDiagnostics();
             
             if (diagnostics.errors.length > 0) {
@@ -400,28 +394,22 @@ export class FFmpegAudioRecorder {
                     // Use the first available device (usually default)
                     const defaultDevice = devices.find(device => device.isDefault) || devices[0];
                     deviceToUse = defaultDevice?.id || platformCommands.defaultDevice;
-                    console.log(`🎯 Using auto-selected device: ${defaultDevice?.name || 'Default'} (${deviceToUse})`);
                 } else {
                     // Check if the selected device exists
                     const selectedDevice = devices.find(device => device.id === selectedDeviceId);
                     if (selectedDevice) {
                         deviceToUse = selectedDevice.id;
-                        console.log(`🎯 Using configured device: ${selectedDevice.name} (${deviceToUse})`);
                     } else {
-                        console.warn(`⚠️ Configured device "${selectedDeviceId}" not found, falling back to default`);
                         const defaultDevice = devices.find(device => device.isDefault) || devices[0];
                         deviceToUse = defaultDevice?.id || platformCommands.defaultDevice;
                     }
                 }
             } catch (error) {
-                console.warn(`⚠️ Failed to get devices list, using platform default: ${(error as Error).message}`);
                 deviceToUse = platformCommands.defaultDevice;
             }
 
             // Build the FFmpeg command with the recommended device
             const ffmpegArgs = this.buildFFmpegArgs(this.tempFilePath, deviceToUse);
-            
-            console.log(`Starting recording with command: ffmpeg ${ffmpegArgs.join(' ')}`);
             
             // Start the recording process
             this.ffmpegProcess = spawn(ffmpegCheck.path!, ffmpegArgs);
@@ -521,7 +509,7 @@ export class FFmpegAudioRecorder {
 
         // Input device
         const inputDevice = recommendedDevice || platformCommands.defaultDevice;
-        console.log(`Using input device: ${inputDevice} (platform: ${platformCommands.platform})`);
+
         args.push('-i', inputDevice);
 
         // Audio settings
@@ -550,7 +538,6 @@ export class FFmpegAudioRecorder {
         args.push('-y'); // Overwrite if exists
         args.push(outputPath);
 
-        console.log(`FFmpeg command: ffmpeg ${args.join(' ')}`);
         return args;
     }
 
@@ -886,20 +873,14 @@ export class FFmpegAudioRecorder {
      * Setting up the maximum duration timer for recording
      */
     private setupMaxDurationTimer(): void {
-        console.log(`⏱️ setupMaxDurationTimer called, maxDuration=${this.options.maxDuration}`);
+
         
         if (this.options.maxDuration && this.options.maxDuration > 0) {
             const maxDurationMs = this.options.maxDuration * 1000;
-            console.log(`⏱️ Setting up max duration timer: ${this.options.maxDuration}s (${maxDurationMs}ms)`);
             
             this.maxDurationTimer = setTimeout(() => {
-                console.log(`⏱️ ⏰ Max duration timer triggered after ${this.options.maxDuration}s - stopping recording`);
                 this.stopRecording();
             }, maxDurationMs);
-            
-            console.log(`⏱️ Max duration timer set successfully`);
-        } else {
-            console.log(`⏱️ No max duration set or invalid value (${this.options.maxDuration})`);
         }
     }
 
@@ -1231,11 +1212,8 @@ export class FFmpegAudioRecorder {
      */
     private clearMaxDurationTimer(): void {
         if (this.maxDurationTimer) {
-            console.log('⏱️ Clearing max duration timer');
             clearTimeout(this.maxDurationTimer);
             this.maxDurationTimer = null;
-        } else {
-            console.log('⏱️ Max duration timer was not set, nothing to clear');
         }
     }
 
@@ -1470,8 +1448,6 @@ export class FFmpegAudioRecorder {
                 tempFile.name
             ];
 
-            console.log(`Test recording command: ffmpeg ${args.join(' ')}`);
-
             const startTime = Date.now();
             const testProcess = spawn(diagnostics.ffmpegAvailable.path!, args);
             
@@ -1481,7 +1457,6 @@ export class FFmpegAudioRecorder {
             testProcess.stderr?.on('data', (data) => {
                 const output = data.toString();
                 errorOutput += output;
-                console.log('FFmpeg test stderr:', output);
                 
                 // Check if there are signs of successful recording
                 if (output.includes('size=') || output.includes('time=')) {

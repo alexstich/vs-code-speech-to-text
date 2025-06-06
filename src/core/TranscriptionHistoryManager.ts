@@ -26,8 +26,6 @@ export class TranscriptionHistoryManager {
 	constructor(context: vscode.ExtensionContext, errorHandler: ErrorHandler) {
 		this.context = context;
 		this.errorHandler = errorHandler;
-		
-		ExtensionLog.info('TranscriptionHistoryManager initialized');
 	}
 
 	/**
@@ -36,9 +34,6 @@ export class TranscriptionHistoryManager {
 	public async initialize(): Promise<HistoryOperationResult> {
 		try {
 			const result = await this.loadHistory();
-			if (result.success) {
-				ExtensionLog.info(`History loaded successfully. Entries count: ${this._history?.entries.length || 0}`);
-			}
 			return result;
 		} catch (error) {
 			const errorMsg = `Failed to initialize TranscriptionHistoryManager: ${error instanceof Error ? error.message : String(error)}`;
@@ -86,7 +81,6 @@ export class TranscriptionHistoryManager {
 			// Save to storage
 			const saveResult = await this.saveHistory();
 			if (saveResult.success) {
-				ExtensionLog.info(`Transcription entry added. ID: ${entry.id}, Length: ${entry.text.length} chars`);
 				return {
 					success: true,
 					data: { entry, totalEntries: this._history!.entries.length }
@@ -124,7 +118,6 @@ export class TranscriptionHistoryManager {
 				const saveResult = await this.saveHistory();
 				
 				if (saveResult.success) {
-					ExtensionLog.info(`Transcription entry removed. ID: ${entryId}`);
 					return {
 						success: true,
 						data: { entryId, remainingEntries: this._history!.entries.length }
@@ -156,10 +149,6 @@ export class TranscriptionHistoryManager {
 		try {
 			this._history = this.createEmptyHistory();
 			const saveResult = await this.saveHistory();
-			
-			if (saveResult.success) {
-				ExtensionLog.info('Transcription history cleared');
-			}
 			
 			return saveResult;
 		} catch (error) {
@@ -207,7 +196,6 @@ export class TranscriptionHistoryManager {
 			const savedData = this.context.globalState.get<any>(TRANSCRIPTION_HISTORY_CONSTANTS.STORAGE_KEY);
 			
 			if (!savedData) {
-				ExtensionLog.info('No existing transcription history found, creating new');
 				this._history = this.createEmptyHistory();
 				return { success: true, data: { newHistory: true } };
 			}
@@ -215,8 +203,6 @@ export class TranscriptionHistoryManager {
 			// Attempt to migrate data if necessary
 			const migrationResult = this.migrateData(savedData);
 			this._history = migrationResult.data;
-
-			ExtensionLog.info(`History loaded. Version: ${this._history.version}, Entries: ${this._history.entries.length}`);
 			
 			return {
 				success: true,
@@ -251,8 +237,6 @@ export class TranscriptionHistoryManager {
 
 			await this.context.globalState.update(TRANSCRIPTION_HISTORY_CONSTANTS.STORAGE_KEY, this._history);
 			
-			ExtensionLog.info(`History saved. Entries: ${this._history.entries.length}`);
-			
 			return { success: true };
 		} catch (error) {
 			const errorMsg = `Failed to save history: ${error instanceof Error ? error.message : String(error)}`;
@@ -274,7 +258,7 @@ export class TranscriptionHistoryManager {
 			return { data: savedData as TranscriptionHistory, migrated: false };
 		}
 
-		ExtensionLog.info(`Migrating history data from version ${savedData.version || 'unknown'} to ${TRANSCRIPTION_HISTORY_CONSTANTS.CURRENT_VERSION}`);
+
 
 		// Migration from the old format (if there is just an array of entries)
 		if (Array.isArray(savedData)) {
@@ -341,7 +325,7 @@ export class TranscriptionHistoryManager {
 			const removedCount = this._history.entries.length - maxEntries;
 			this._history.entries = this._history.entries.slice(0, maxEntries);
 			
-			ExtensionLog.info(`Trimmed history: removed ${removedCount} oldest entries. Current count: ${this._history.entries.length}`);
+
 		}
 	}
 
