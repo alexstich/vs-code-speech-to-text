@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-// Интерфейсы для различных типов конфигураций
+// Interfaces for different configuration types
 export interface WhisperConfiguration {
     apiKey: string;
     language: string;
@@ -31,12 +31,12 @@ export interface FullConfiguration {
     ui: UIConfiguration;
 }
 
-// Тип для слушателей изменений конфигурации
+// Type for configuration change listeners
 export type ConfigurationChangeListener = (config: FullConfiguration) => void;
 
 /**
- * Централизованный менеджер для управления настройками расширения
- * Использует singleton паттерн для обеспечения единого источника истины
+ * Centralized manager for managing extension settings
+ * Uses singleton pattern to ensure a single source of truth
  */
 export class ConfigurationManager {
     private static instance: ConfigurationManager;
@@ -45,7 +45,7 @@ export class ConfigurationManager {
     private disposables: vscode.Disposable[] = [];
 
     private constructor() {
-        // Подписываемся на изменения конфигурации VS Code
+        // Subscribe to VS Code configuration changes
         const configChangeDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration('speechToTextWhisper')) {
                 this.invalidateCache();
@@ -56,7 +56,7 @@ export class ConfigurationManager {
     }
 
     /**
-     * Получить единственный экземпляр ConfigurationManager
+     * Get the single instance of ConfigurationManager
      */
     public static getInstance(): ConfigurationManager {
         if (!ConfigurationManager.instance) {
@@ -66,7 +66,7 @@ export class ConfigurationManager {
     }
 
     /**
-     * Получить полную конфигурацию
+     * Get the full configuration
      */
     public getConfiguration(): FullConfiguration {
         if (!this.cachedConfig) {
@@ -76,28 +76,28 @@ export class ConfigurationManager {
     }
 
     /**
-     * Получить конфигурацию Whisper
+     * Get the Whisper configuration
      */
     public getWhisperConfiguration(): WhisperConfiguration {
         return this.getConfiguration().whisper;
     }
 
     /**
-     * Получить конфигурацию аудио
+     * Get the audio configuration
      */
     public getAudioConfiguration(): AudioConfiguration {
         return this.getConfiguration().audio;
     }
 
     /**
-     * Получить конфигурацию UI
+     * Get the UI configuration
      */
     public getUIConfiguration(): UIConfiguration {
         return this.getConfiguration().ui;
     }
 
     /**
-     * Установить значение конфигурации
+     * Set the configuration value
      */
     public async setConfigurationValue<T>(section: string, value: T): Promise<void> {
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
@@ -106,14 +106,14 @@ export class ConfigurationManager {
     }
 
     /**
-     * Добавить слушатель изменений конфигурации
+     * Add a configuration change listener
      */
     public addChangeListener(listener: ConfigurationChangeListener): void {
         this.changeListeners.push(listener);
     }
 
     /**
-     * Удалить слушатель изменений конфигурации
+     * Remove a configuration change listener
      */
     public removeChangeListener(listener: ConfigurationChangeListener): void {
         const index = this.changeListeners.indexOf(listener);
@@ -123,13 +123,13 @@ export class ConfigurationManager {
     }
 
     /**
-     * Валидировать конфигурацию
+     * Validate the configuration
      */
     public validateConfiguration(): { isValid: boolean; errors: string[] } {
         const config = this.getConfiguration();
         const errors: string[] = [];
 
-        // Валидация Whisper конфигурации
+        // Validate the Whisper configuration
         if (!config.whisper.apiKey || config.whisper.apiKey.trim() === '') {
             errors.push('Whisper API key is required');
         }
@@ -146,7 +146,7 @@ export class ConfigurationManager {
             errors.push('Max retries must be non-negative');
         }
 
-        // Валидация аудио конфигурации
+        // Validate the audio configuration
         if (config.audio.maxRecordingDuration <= 0) {
             errors.push('Max recording duration must be greater than 0');
         }
@@ -166,7 +166,7 @@ export class ConfigurationManager {
     }
 
     /**
-     * Получить значение конфигурации по умолчанию
+     * Get the default configuration value
      */
     public getDefaultConfiguration(): FullConfiguration {
         return {
@@ -174,7 +174,7 @@ export class ConfigurationManager {
                 apiKey: '',
                 language: 'auto',
                 whisperModel: 'whisper-1',
-                prompt: '',
+                prompt: "This is a technical instruction about programming in Visual Studio Code IDE. The speaker provides step-by-step coding instructions related to features, extensions, debugging, and software development workflows. Output should be formatted in markdown with proper code blocks and structure.",
                 temperature: 0.1,
                 timeout: 30000,
                 maxRetries: 3
@@ -195,13 +195,13 @@ export class ConfigurationManager {
     }
 
     /**
-     * Сбросить конфигурацию к значениям по умолчанию
+     * Reset the configuration to default values
      */
     public async resetToDefaults(): Promise<void> {
         const defaultConfig = this.getDefaultConfiguration();
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
 
-        // Сброс Whisper настроек
+        // Reset Whisper settings
         await config.update('language', defaultConfig.whisper.language, vscode.ConfigurationTarget.Global);
         await config.update('whisperModel', defaultConfig.whisper.whisperModel, vscode.ConfigurationTarget.Global);
         await config.update('prompt', defaultConfig.whisper.prompt, vscode.ConfigurationTarget.Global);
@@ -209,7 +209,7 @@ export class ConfigurationManager {
         await config.update('timeout', defaultConfig.whisper.timeout, vscode.ConfigurationTarget.Global);
         await config.update('maxRetries', defaultConfig.whisper.maxRetries, vscode.ConfigurationTarget.Global);
 
-        // Сброс аудио настроек
+        // Reset audio settings
         await config.update('audioQuality', defaultConfig.audio.audioQuality, vscode.ConfigurationTarget.Global);
         await config.update('ffmpegPath', defaultConfig.audio.ffmpegPath, vscode.ConfigurationTarget.Global);
         await config.update('maxRecordingDuration', defaultConfig.audio.maxRecordingDuration, vscode.ConfigurationTarget.Global);
@@ -218,14 +218,14 @@ export class ConfigurationManager {
         await config.update('silenceThreshold', defaultConfig.audio.silenceThreshold, vscode.ConfigurationTarget.Global);
         await config.update('inputDevice', defaultConfig.audio.inputDevice, vscode.ConfigurationTarget.Global);
 
-        // Сброс UI настроек
+        // Reset UI settings
         await config.update('showStatusBar', defaultConfig.ui.showStatusBar, vscode.ConfigurationTarget.Global);
 
         this.invalidateCache();
     }
 
     /**
-     * Освободить ресурсы
+     * Release resources
      */
     public dispose(): void {
         this.disposables.forEach(disposable => disposable.dispose());
@@ -235,7 +235,7 @@ export class ConfigurationManager {
     }
 
     /**
-     * Загрузить конфигурацию из VS Code settings
+     * Load the configuration from VS Code settings
      */
     private loadConfiguration(): FullConfiguration {
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
@@ -267,14 +267,14 @@ export class ConfigurationManager {
     }
 
     /**
-     * Сбросить кэш конфигурации
+     * Clear the configuration cache
      */
     private invalidateCache(): void {
         this.cachedConfig = null;
     }
 
     /**
-     * Уведомить всех слушателей об изменении конфигурации
+     * Notify all listeners about configuration changes
      */
     private notifyListeners(): void {
         const config = this.getConfiguration();
@@ -288,5 +288,5 @@ export class ConfigurationManager {
     }
 }
 
-// Экспорт единственного экземпляра для удобства использования
+// Export the single instance for convenience
 export const configurationManager = ConfigurationManager.getInstance(); 

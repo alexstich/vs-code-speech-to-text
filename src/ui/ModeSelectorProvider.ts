@@ -4,7 +4,7 @@ import { ExtensionLog } from '../utils/GlobalOutput';
 export type RecordingMode = 'insert' | 'clipboard';
 
 /**
- * Провайдер данных для переключения режимов записи
+ * Data provider for switching recording modes
  */
 export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<ModeItem | undefined | void> = new vscode.EventEmitter<ModeItem | undefined | void>();
@@ -32,7 +32,7 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
     private async getModeItems(): Promise<ModeItem[]> {
         const items: ModeItem[] = [];
 
-        // Option для режима "Insert Text" с галочкой
+        // Option for the "Insert Text" mode with a checkmark
         const insertModeItem = new ModeItem(
             'Insert Text',
             'Insert transcribed text at cursor position',
@@ -46,7 +46,7 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
         };
         items.push(insertModeItem);
 
-        // Option для режима "Copy to Clipboard" с галочкой
+        // Option for the "Copy to Clipboard" mode with a checkmark
         const clipboardModeItem = new ModeItem(
             'Copy to Clipboard',
             'Copy transcribed text to clipboard',
@@ -74,7 +74,7 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
         ExtensionLog.info(`🔄 [ModeSelectorProvider] toggleMode() called, changed from ${oldMode} to ${this.currentMode}`);
         this.refresh();
         
-        // Показываем уведомление о смене режима
+        // Show a notification about the mode change
         const modeText = this.currentMode === 'insert' ? 'Insert Text' : 'Copy to Clipboard';
         vscode.window.showInformationMessage(`🔄 Mode switched to: ${modeText}`);
     }
@@ -87,7 +87,7 @@ export class ModeSelectorProvider implements vscode.TreeDataProvider<ModeItem> {
             ExtensionLog.info(`✓ [ModeSelectorProvider] Mode changed from ${oldMode} to ${mode}`);
             this.refresh();
             
-            // Показываем уведомление о смене режима
+            // Show a notification about the mode change
             const modeText = mode === 'insert' ? 'Insert Text' : 'Copy to Clipboard';
             vscode.window.showInformationMessage(`✓ Mode set to: ${modeText}`);
         } else {

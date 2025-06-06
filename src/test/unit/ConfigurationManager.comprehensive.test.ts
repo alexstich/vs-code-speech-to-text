@@ -7,13 +7,13 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
-        // Создаем песочницу sinon
+        // Create sinon sandbox
         sandbox = sinon.createSandbox();
         
-        // Сбрасываем синглтон
+        // Reset singleton
         (ConfigurationManager as any).instance = null;
         
-        // Создаем новый экземпляр
+        // Create new instance
         configManager = ConfigurationManager.getInstance();
     });
 
@@ -24,7 +24,7 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
 
     describe('Whisper Configuration Tests', () => {
         it('should handle valid API key', () => {
-            // Создаем мок для loadConfiguration с валидным API key
+            // Create mock for loadConfiguration with a valid API key
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -55,7 +55,7 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
         });
 
         it('should handle invalid API key', () => {
-            // Создаем мок для loadConfiguration с пустым API key
+            // Create mock for loadConfiguration with an empty API key
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -82,12 +82,12 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Пустой API key должен быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('API key')), 'Должна быть ошибка для API key');
+            assert.ok(!validation.isValid, 'Empty API key should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('API key')), 'Should be an error for API key');
         });
 
         it('should handle temperature bounds', () => {
-            // Тестируем валидную температуру
+            // Test valid temperature
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -114,16 +114,16 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Температура 0.5 должна быть валидной');
+            assert.ok(validation.isValid, 'Temperature 0.5 should be valid');
 
-            // Тестируем невалидную температуру
+            // Test invalid temperature
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'test-key',
                     language: 'auto', 
                     whisperModel: 'whisper-1',
                     prompt: '',
-                    temperature: 1.5, // Невалидное значение
+                    temperature: 1.5, // Invalid value
                     timeout: 30000,
                     maxRetries: 3
                 },
@@ -141,12 +141,12 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
                 }
             });
 
-            // Очищаем кэш чтобы новая конфигурация загрузилась
+            // Clear cache for new configuration to load
             (configManager as any).invalidateCache();
             
             validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Температура 1.5 должна быть невалидной');
-            assert.ok(validation.errors.some(err => err.includes('Temperature')), 'Должна быть ошибка для температуры');
+            assert.ok(!validation.isValid, 'Temperature 1.5 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Temperature')), 'Should be an error for temperature');
         });
     });
 
@@ -184,7 +184,7 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
         it('should validate silence threshold ranges', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             
-            // Тест валидного значения (в диапазоне 20-80)
+            // Test valid value (in 20-80 range)
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'test-key',
@@ -210,9 +210,9 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'silenceThreshold=30 должно быть валидным');
+            assert.ok(validation.isValid, 'silenceThreshold=30 should be valid');
 
-            // Тест невалидного значения (вне диапазона)
+            // Test invalid value (outside range)
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'test-key',
@@ -229,7 +229,7 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
                     maxRecordingDuration: 60,
                     silenceDetection: true,
                     silenceDuration: 3,
-                    silenceThreshold: 10, // Слишком мало
+                    silenceThreshold: 10, // Too low
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -237,12 +237,12 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
                 }
             });
 
-            // Очищаем кэш чтобы новая конфигурация загрузилась
+            // Clear cache for new configuration to load
             (configManager as any).invalidateCache();
 
             validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'silenceThreshold=10 должно быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'Должна быть ошибка для silenceThreshold');
+            assert.ok(!validation.isValid, 'silenceThreshold=10 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'Should be an error for silenceThreshold');
         });
     });
 
@@ -309,17 +309,17 @@ describe('ConfigurationManager - Comprehensive Settings Tests', () => {
             const audioConfig = configManager.getAudioConfiguration();
             const uiConfig = configManager.getUIConfiguration();
 
-            // Проверяем whisper конфигурацию
+            // Check whisper configuration
             assert.strictEqual(whisperConfig.apiKey, 'section-test-key');
             assert.strictEqual(whisperConfig.language, 'ru');
             assert.strictEqual(whisperConfig.temperature, 0.3);
 
-            // Проверяем audio конфигурацию
+            // Check audio configuration
             assert.strictEqual(audioConfig.audioQuality, 'ultra');
             assert.strictEqual(audioConfig.maxRecordingDuration, 120);
             assert.strictEqual(audioConfig.silenceDetection, false);
 
-            // Проверяем ui конфигурацию
+            // Check ui configuration
             assert.strictEqual(uiConfig.showStatusBar, false);
         });
     });

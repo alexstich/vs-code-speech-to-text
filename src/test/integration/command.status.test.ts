@@ -5,10 +5,10 @@ describe('Command Status Tests', () => {
     let extension: vscode.Extension<any> | undefined;
 
     before(async () => {
-        // Получаем расширение
+        // Get the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
         
-        // Активируем расширение если оно не активно
+        // Activate the extension if it's not active
         if (extension && !extension.isActive) {
             await extension.activate();
         }
@@ -28,10 +28,10 @@ describe('Command Status Tests', () => {
                 'speechToTextWhisper.audioSettings.selectDevice'
             ];
 
-            // Получаем все доступные команды
+            // Get all available commands
             const allCommands = await vscode.commands.getCommands(true);
             
-            // Проверяем, что все наши команды присутствуют
+            // Check that all our commands are present
             for (const commandId of expectedCommands) {
                 assert.ok(
                     allCommands.includes(commandId),
@@ -46,13 +46,13 @@ describe('Command Status Tests', () => {
             const packageJson = extension!.packageJSON;
             const commands = packageJson.contributes.commands;
             
-            // Проверяем, что у всех команд есть заголовки
+            // Check that all commands have titles
             for (const command of commands) {
                 assert.ok(command.command, 'Command should have command ID');
                 assert.ok(command.title, 'Command should have title');
                 assert.ok(command.category, 'Command should have category');
                 
-                // Проверяем, что категория правильная
+                // Check that the category is correct
                 assert.strictEqual(
                     command.category,
                     'Speech to Text with Whisper',
@@ -64,7 +64,7 @@ describe('Command Status Tests', () => {
 
     describe('Command Execution Status', () => {
         it('should handle command execution gracefully when not configured', async () => {
-            // Тестируем команды, которые могут завершиться с ошибкой из-за отсутствия настроек
+            // Test commands that might fail due to missing settings
             const commandsToTest = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
@@ -74,13 +74,13 @@ describe('Command Status Tests', () => {
             for (const commandId of commandsToTest) {
                 try {
                     await vscode.commands.executeCommand(commandId);
-                    // Если команда выполнилась без ошибки, это тоже нормально
+                    // If the command executed without error, that's also fine
                     console.log(`Command ${commandId} executed successfully`);
                 } catch (error) {
-                    // Проверяем, что ошибка связана с конфигурацией, а не с отсутствием команды
+                    // Check that the error is related to configuration, not missing command
                     const errorMessage = (error as Error).message.toLowerCase();
                     
-                    // Ожидаемые ошибки в тестовой среде
+                    // Expected errors in test environment
                     const expectedErrorPatterns = [
                         'api key',
                         'configuration',
@@ -100,7 +100,7 @@ describe('Command Status Tests', () => {
                         assert.ok(true, `Command ${commandId} handled gracefully`);
                     } else {
                         console.warn(`Command ${commandId} failed with unexpected error: ${errorMessage}`);
-                        // Не падаем на неожиданных ошибках, но логируем их
+                        // Do not fail on unexpected errors, but log them
                         assert.ok(true, `Command ${commandId} executed (with unexpected error)`);
                     }
                 }
@@ -119,9 +119,9 @@ describe('Command Status Tests', () => {
                     await vscode.commands.executeCommand(commandId);
                     assert.ok(true, `Diagnostic command ${commandId} executed successfully`);
                 } catch (error) {
-                    // Даже диагностические команды могут завершиться с ошибкой в тестовой среде
+                    // Even diagnostic commands might fail in the test environment
                     console.warn(`Diagnostic command ${commandId} failed:`, (error as Error).message);
-                    // Но важно, что они зарегистрированы и могут быть вызваны
+                    // But it's important that they are registered and callable
                     assert.ok(true, `Diagnostic command ${commandId} is callable`);
                 }
             }
@@ -130,7 +130,7 @@ describe('Command Status Tests', () => {
 
     describe('Command Context', () => {
         it('should handle context setting for recording state', async () => {
-            // Тестируем установку контекста для состояния записи
+            // Test setting context for recording state
             const contextCommands = [
                 { context: 'speechToTextWhisper.isRecording', value: false },
                 { context: 'speechToTextWhisper.isRecording', value: true },
@@ -165,7 +165,7 @@ describe('Command Status Tests', () => {
 
     describe('Command Performance', () => {
         it('should execute commands within reasonable time', async function() {
-            this.timeout(15000); // Увеличиваем таймаут для проверки производительности
+            this.timeout(15000); // Increase timeout for performance testing
             
             const performanceCommands = [
                 'speechToTextWhisper.openSettings',
@@ -179,7 +179,7 @@ describe('Command Status Tests', () => {
                     await vscode.commands.executeCommand(commandId);
                     const executionTime = Date.now() - startTime;
                     
-                    // Команды должны выполняться быстро (менее 5 секунд)
+                    // Commands should execute quickly (less than 5 seconds)
                     assert.ok(
                         executionTime < 5000,
                         `Command ${commandId} should execute within 5 seconds (took ${executionTime}ms)`
@@ -190,7 +190,7 @@ describe('Command Status Tests', () => {
                     const executionTime = Date.now() - startTime;
                     console.log(`Command ${commandId} failed in ${executionTime}ms:`, (error as Error).message);
                     
-                    // Даже если команда завершилась с ошибкой, она должна сделать это быстро
+                    // Even if the command failed, it should do so quickly
                     assert.ok(
                         executionTime < 5000,
                         `Command ${commandId} should fail quickly if it fails (took ${executionTime}ms)`
@@ -202,7 +202,7 @@ describe('Command Status Tests', () => {
 
     describe('Command Error Handling', () => {
         it('should provide meaningful error messages', async () => {
-            // Тестируем команды записи без настроенного API ключа
+            // Testing recording commands without configured API key
             const recordingCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
@@ -212,18 +212,18 @@ describe('Command Status Tests', () => {
             for (const commandId of recordingCommands) {
                 try {
                     await vscode.commands.executeCommand(commandId);
-                    // Если команда выполнилась успешно, это тоже нормально
+                    // If the command executed successfully, that's also fine
                     console.log(`Command ${commandId} executed without error`);
                 } catch (error) {
                     const errorMessage = (error as Error).message;
                     
-                    // Проверяем, что сообщение об ошибке информативное
+                    // Checking that the error message is informative
                     assert.ok(
                         errorMessage.length > 0,
                         `Command ${commandId} should provide non-empty error message`
                     );
                     
-                    // Проверяем, что это не системная ошибка
+                    // Checking that this is not a system error
                     assert.ok(
                         !errorMessage.includes('undefined'),
                         `Command ${commandId} should not have undefined in error message`

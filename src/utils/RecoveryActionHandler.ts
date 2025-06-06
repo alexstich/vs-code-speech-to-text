@@ -3,7 +3,7 @@ import { RecoveryAction } from './ErrorHandler';
 import { RecoveryActionHandlerLog } from './GlobalOutput';
 
 /**
- * Результат выполнения recovery action
+ * Result of executing recovery action
  */
 export interface RecoveryResult {
     success: boolean;
@@ -12,7 +12,7 @@ export interface RecoveryResult {
 }
 
 /**
- * Интерфейс для dependency injection внешних компонентов
+ * Interface for dependency injection of external components
  */
 export interface RecoveryDependencies {
     checkMicrophone?: () => Promise<boolean>;
@@ -23,7 +23,7 @@ export interface RecoveryDependencies {
 }
 
 /**
- * Обработчик восстановительных действий
+ * Recovery action handler
  */
 export class RecoveryActionHandler {
     private dependencies: RecoveryDependencies;
@@ -33,7 +33,7 @@ export class RecoveryActionHandler {
     }
 
     /**
-     * Выполнение recovery action
+     * Executing recovery action
      */
     async executeRecoveryAction(action: RecoveryAction, context?: any): Promise<RecoveryResult> {
         RecoveryActionHandlerLog.info(`🔧 Executing recovery action: ${action}`);
@@ -78,13 +78,13 @@ export class RecoveryActionHandler {
     }
 
     /**
-     * Настройка API ключа
+     * API key configuration
      */
     private async configureApiKey(): Promise<RecoveryResult> {
-        // Открываем настройки
+        // Opening settings
         this.openSettingsInternal();
 
-        // Показываем инструкции пользователю
+        // Showing instructions to the user
         const instruction = `
 Please configure your OpenAI API Key:
 
@@ -110,10 +110,10 @@ After setting the API key, try using SpeechToTextWhisper again.
     }
 
     /**
-     * Включение микрофона
+     * Enabling microphone
      */
     private async enableMicrophone(): Promise<RecoveryResult> {
-        // Проверяем текущее состояние микрофона
+        // Checking the current state of the microphone
         if (this.dependencies.checkMicrophone) {
             try {
                 const isWorking = await this.dependencies.checkMicrophone();
@@ -128,7 +128,7 @@ After setting the API key, try using SpeechToTextWhisper again.
             }
         }
 
-        // Показываем инструкции по настройке микрофона
+        // Showing instructions for microphone setup
         const instruction = `
 Microphone Setup Instructions:
 
@@ -186,14 +186,14 @@ After fixing the microphone, try SpeechToTextWhisper again.
     }
 
     /**
-     * Проверка сети
+     * Network check
      */
     private async checkNetwork(): Promise<RecoveryResult> {
-        // Простая проверка подключения к интернету
+        // Simple check of internet connection
         try {
             RecoveryActionHandlerLog.info('🌐 Checking network connectivity...');
             
-            // Проверяем доступность OpenAI API
+            // Checking the availability of the OpenAI API
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
             
@@ -205,7 +205,7 @@ After fixing the microphone, try SpeechToTextWhisper again.
             clearTimeout(timeoutId);
             
             if (response.ok || response.status === 401) {
-                // 401 означает что API доступен, но нужна авторизация - это нормально
+                // 401 means that the API is available, but authorization is needed - this is normal
                 return {
                     success: true,
                     message: 'Network connection is working'
@@ -233,7 +233,7 @@ After fixing the microphone, try SpeechToTextWhisper again.
             );
 
             if (action === 'Retry') {
-                // Повторная проверка
+                // Repeated check
                 return await this.checkNetwork();
             } else if (action === 'Troubleshoot') {
                 const troubleshootInfo = `
@@ -270,7 +270,7 @@ Try again after resolving network issues.
     }
 
     /**
-     * Повторная попытка операции
+     * Retry operation
      */
     private async retryOperation(): Promise<RecoveryResult> {
         if (this.dependencies.retryLastOperation) {
@@ -295,7 +295,7 @@ Try again after resolving network issues.
     }
 
     /**
-     * Открытие настроек
+     * Opening settings
      */
     private openSettings(): RecoveryResult {
         this.openSettingsInternal();
@@ -306,7 +306,7 @@ Try again after resolving network issues.
     }
 
     /**
-     * Перезагрузка расширения
+     * Reloading the extension
      */
     private refreshExtension(): RecoveryResult {
         if (this.dependencies.reloadExtension) {
@@ -318,7 +318,7 @@ Try again after resolving network issues.
             };
         }
 
-        // Предлагаем пользователю перезагрузить вручную
+        // Suggesting to the user to reload manually
         vscode.window.showInformationMessage(
             'Please reload VS Code to refresh the SpeechToTextWhisper extension.',
             'Reload Window'
@@ -335,7 +335,7 @@ Try again after resolving network issues.
     }
 
     /**
-     * Внутренняя функция для открытия настроек
+     * Internal function for opening settings
      */
     private openSettingsInternal(): void {
         if (this.dependencies.openSettings) {
@@ -346,7 +346,7 @@ Try again after resolving network issues.
     }
 
     /**
-     * Установка зависимостей
+     * Setting dependencies
      */
     setDependencies(dependencies: Partial<RecoveryDependencies>): void {
         this.dependencies = { ...this.dependencies, ...dependencies };
@@ -354,6 +354,6 @@ Try again after resolving network issues.
 }
 
 /**
- * Глобальный экземпляр recovery handler
+ * Global instance of recovery handler
  */
 export const globalRecoveryHandler = new RecoveryActionHandler(); 

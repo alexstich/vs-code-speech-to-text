@@ -16,19 +16,19 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
     beforeEach(() => {
         sandbox = sinon.createSandbox();
         
-        // Создаем spy для событий
+        // Creating spies for events
         onRecordingStartSpy = sandbox.spy();
         onRecordingStopSpy = sandbox.spy();
         onErrorSpy = sandbox.spy();
         
-        // Мокируем события
+        // Mocking events
         mockEvents = {
             onRecordingStart: onRecordingStartSpy,
             onRecordingStop: onRecordingStopSpy,
             onError: onErrorSpy
         };
 
-        // Мокируем child process для эмуляции FFmpeg
+        // Mocking child process for FFmpeg emulation
         mockChildProcess = new EventEmitter();
         mockChildProcess.killed = false;
         mockChildProcess.stdout = new EventEmitter();
@@ -36,24 +36,24 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
         mockChildProcess.kill = sandbox.stub().callsFake((signal: string) => {
             console.log(`Mock process kill called with signal: ${signal}`);
             mockChildProcess.killed = true;
-            // Эмулируем завершение процесса
+            // Emulating process completion
             setTimeout(() => {
                 console.log('Mock process emitting close event');
                 mockChildProcess.emit('close', signal === 'SIGTERM' ? 0 : 255);
             }, 50);
         });
         
-        // Мокируем spawn
+        // Mocking spawn
         sandbox.stub(require('child_process'), 'spawn').returns(mockChildProcess);
         
-        // Мокируем FFmpeg availability
+        // Mocking FFmpeg availability
         sandbox.stub(FFmpegAudioRecorder, 'checkFFmpegAvailability').resolves({
             available: true,
             version: '4.4.0',
             path: '/usr/local/bin/ffmpeg'
         });
         
-        // Мокируем detectInputDevices
+        // Mocking detectInputDevices
         sandbox.stub(FFmpegAudioRecorder, 'detectInputDevices').resolves([
             { id: ':0', name: 'Built-in Microphone', isDefault: true }
         ]);
@@ -64,25 +64,25 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             try {
                 recorder.stopRecording();
             } catch (error) {
-                // Игнорируем ошибки при очистке
+                // Ignoring errors during cleanup
             }
         }
         sandbox.restore();
     });
 
     describe('Timer Cleanup - The Critical Bug That Tests Should Catch', () => {
-        it('должен вызывать clearSilenceTimer() и clearMaxDurationTimer() при silenceDetection=false', async () => {
+        it('should call clearSilenceTimer() and clearMaxDurationTimer() when silenceDetection=false', async () => {
             console.log('🧪 Starting test: timer cleanup with silenceDetection=false');
             
             const options: AudioRecordingOptions = {
-                silenceDetection: false,  // КРИТИЧНО: отключено
-                maxDuration: 2,           // Короткая запись
-                silenceDuration: 1        // Не должно влиять
+                silenceDetection: false,  // CRITICAL: disabled
+                maxDuration: 2,           // Short recording
+                silenceDuration: 1        // Should not affect
             };
 
             recorder = new FFmpegAudioRecorder(mockEvents, options);
             
-            // Spy на методы очистки через приватный доступ
+            // Spy on cleanup methods through private access
             const recorderAny = recorder as any;
             const clearSilenceTimerSpy = sandbox.spy(recorderAny, 'clearSilenceTimer');
             const clearMaxDurationTimerSpy = sandbox.spy(recorderAny, 'clearMaxDurationTimer');
@@ -93,40 +93,40 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             try {
                 await recorder.startRecording();
             } catch (error) {
-                // Ожидаем ошибку из-за отсутствия файловой системы в тестах, но нас интересует логика таймеров
+                // Expecting error due to missing file system in tests, but we are interested in timer logic
                 console.log('Expected error in test environment:', (error as Error).message);
             }
             
-            // Проверяем что setupSilenceDetection был вызван
-            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection должен быть вызван при инициализации');
+            // Checking that setupSilenceDetection was called
+            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection should be called during initialization');
             
             console.log(`📊 setupSilenceDetection called: ${setupSilenceDetectionSpy.callCount}`);
             
-            // Принудительно вызываем stopRecording для проверки очистки таймеров
+            // Forcibly calling stopRecording to check timer cleanup
             recorder.stopRecording();
             
             console.log(`📊 clearSilenceTimer called after stopRecording: ${clearSilenceTimerSpy.callCount}`);
             console.log(`📊 clearMaxDurationTimer called after stopRecording: ${clearMaxDurationTimerSpy.callCount}`);
             
-            // КРИТИЧЕСКАЯ ПРОВЕРКА: clearSilenceTimer должен быть вызван при остановке
-            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer должен быть вызван при остановке записи');
-            assert.ok(clearMaxDurationTimerSpy.called, 'clearMaxDurationTimer должен быть вызван при остановке записи');
+            // CRITICAL CHECK: clearSilenceTimer should be called when stopping
+            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer should be called when stopping recording');
+            assert.ok(clearMaxDurationTimerSpy.called, 'clearMaxDurationTimer should be called when stopping recording');
             
             console.log('✅ Test passed: timers properly cleared with silenceDetection=false');
         });
 
-        it('должен вызывать clearSilenceTimer() и clearMaxDurationTimer() при silenceDetection=true', async () => {
+        it('should call clearSilenceTimer() and clearMaxDurationTimer() when silenceDetection=true', async () => {
             console.log('🧪 Starting test: timer cleanup with silenceDetection=true');
             
             const options: AudioRecordingOptions = {
-                silenceDetection: true,   // Включено
-                maxDuration: 10,          // Большое значение
-                silenceDuration: 1        // Быстрое срабатывание
+                silenceDetection: true,   // Enabled
+                maxDuration: 10,          // Large value
+                silenceDuration: 1        // Fast trigger
             };
 
             recorder = new FFmpegAudioRecorder(mockEvents, options);
             
-            // Spy на методы очистки
+            // Spy on cleanup methods
             const recorderAny = recorder as any;
             const clearSilenceTimerSpy = sandbox.spy(recorderAny, 'clearSilenceTimer');
             const clearMaxDurationTimerSpy = sandbox.spy(recorderAny, 'clearMaxDurationTimer');
@@ -137,30 +137,30 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             try {
                 await recorder.startRecording();
             } catch (error) {
-                // Ожидаем ошибку из-за отсутствия файловой системы в тестах
+                // Expecting error due to missing file system in tests
                 console.log('Expected error in test environment:', (error as Error).message);
             }
             
-            // Проверяем что setupSilenceDetection был вызван
-            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection должен быть вызван');
+            // Checking that setupSilenceDetection was called
+            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection should be called');
             
-            // Принудительно вызываем stopRecording
+            // Forcibly calling stopRecording
             recorder.stopRecording();
             
             console.log(`📊 clearSilenceTimer called: ${clearSilenceTimerSpy.callCount}`);
             console.log(`📊 clearMaxDurationTimer called: ${clearMaxDurationTimerSpy.callCount}`);
             
-            // Проверки аналогичные предыдущему тесту
-            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer должен быть вызван');
-            assert.ok(clearMaxDurationTimerSpy.called, 'clearMaxDurationTimer должен быть вызван');
+            // Checks similar to the previous test
+            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer should be called');
+            assert.ok(clearMaxDurationTimerSpy.called, 'clearMaxDurationTimer should be called');
             
             console.log('✅ Test passed: timers properly cleared with silenceDetection=true');
         });
 
-        it('должен правильно настраивать silence detection в зависимости от опции', () => {
+        it('should correctly set up silence detection based on the option', () => {
             console.log('🧪 Starting test: silence detection setup logic');
             
-            // Тест 1: silenceDetection = false
+            // Test 1: silenceDetection = false
             const optionsDisabled: AudioRecordingOptions = {
                 silenceDetection: false,
                 maxDuration: 60
@@ -169,18 +169,18 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             const recorderDisabled = new FFmpegAudioRecorder(mockEvents, optionsDisabled);
             const recorderDisabledAny = recorderDisabled as any;
             
-            // Spy на setupSilenceDetection
+            // Spy on setupSilenceDetection
             const setupSilenceDetectionSpyDisabled = sandbox.spy(recorderDisabledAny, 'setupSilenceDetection');
             
-            // Вызываем setupSilenceDetection напрямую для проверки логики
+            // Calling setupSilenceDetection directly to check the logic
             recorderDisabledAny.setupSilenceDetection();
             
-            assert.ok(setupSilenceDetectionSpyDisabled.calledOnce, 'setupSilenceDetection должен быть вызван');
+            assert.ok(setupSilenceDetectionSpyDisabled.calledOnce, 'setupSilenceDetection should be called');
             
-            // Проверяем что silenceDetectionEnabled остается false при silenceDetection=false
-            assert.strictEqual(recorderDisabledAny.silenceDetectionEnabled, false, 'silenceDetectionEnabled должен быть false при silenceDetection=false');
+            // Checking that silenceDetectionEnabled remains false when silenceDetection=false
+            assert.strictEqual(recorderDisabledAny.silenceDetectionEnabled, false, 'silenceDetectionEnabled should be false when silenceDetection=false');
             
-            // Тест 2: silenceDetection = true
+            // Test 2: silenceDetection = true
             const optionsEnabled: AudioRecordingOptions = {
                 silenceDetection: true,
                 maxDuration: 60,
@@ -190,55 +190,55 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             const recorderEnabled = new FFmpegAudioRecorder(mockEvents, optionsEnabled);
             const recorderEnabledAny = recorderEnabled as any;
             
-            // Spy на setupSilenceDetection
+            // Spy on setupSilenceDetection
             const setupSilenceDetectionSpyEnabled = sandbox.spy(recorderEnabledAny, 'setupSilenceDetection');
             
-            // Вызываем setupSilenceDetection напрямую
+            // Calling setupSilenceDetection directly
             recorderEnabledAny.setupSilenceDetection();
             
-            assert.ok(setupSilenceDetectionSpyEnabled.calledOnce, 'setupSilenceDetection должен быть вызван');
+            assert.ok(setupSilenceDetectionSpyEnabled.calledOnce, 'setupSilenceDetection should be called');
             
-            // Проверяем что silenceDetectionEnabled становится true при silenceDetection=true
-            assert.strictEqual(recorderEnabledAny.silenceDetectionEnabled, true, 'silenceDetectionEnabled должен быть true при silenceDetection=true');
+            // Checking that silenceDetectionEnabled becomes true when silenceDetection=true
+            assert.strictEqual(recorderEnabledAny.silenceDetectionEnabled, true, 'silenceDetectionEnabled should be true when silenceDetection=true');
             
             console.log('✅ Test passed: silence detection setup logic works correctly');
         });
 
-        it('должен корректно использовать новое значение maxDuration=3600', () => {
-            console.log('🧪 Starting test: новое значение maxDuration=3600');
+        it('should correctly use the new default value maxDuration=3600', () => {
+            console.log('🧪 Starting test: new default value maxDuration=3600');
             
             const options: AudioRecordingOptions = {
                 silenceDetection: false,
-                maxDuration: 3600  // Новое значение по умолчанию (1 час)
+                maxDuration: 3600  // New default value (1 hour)
             };
 
             recorder = new FFmpegAudioRecorder(mockEvents, options);
             
-            // Мокируем buildFFmpegArgs чтобы проверить аргументы
+            // Mocking buildFFmpegArgs to check arguments
             const recorderAny = recorder as any;
             const buildArgsSpy = sandbox.spy(recorderAny, 'buildFFmpegArgs');
             
-            // Вызываем buildFFmpegArgs напрямую для проверки
+            // Calling buildFFmpegArgs directly for checking
             const ffmpegArgs = recorderAny.buildFFmpegArgs('/tmp/test.wav', ':0');
             
-            // Проверяем что buildFFmpegArgs вернул правильные аргументы
-            assert.ok(Array.isArray(ffmpegArgs), 'Должен возвращать массив аргументов');
+            // Checking that buildFFmpegArgs returned the correct arguments
+            assert.ok(Array.isArray(ffmpegArgs), 'Should return an array of arguments');
             
             const tIndex = ffmpegArgs.indexOf('-t');
-            assert.ok(tIndex !== -1, 'Должен содержать аргумент -t для maxDuration');
-            assert.strictEqual(ffmpegArgs[tIndex + 1], '3600', 'Должен использовать значение 3600 секунд');
+            assert.ok(tIndex !== -1, 'Should contain -t argument for maxDuration');
+            assert.strictEqual(ffmpegArgs[tIndex + 1], '3600', 'Should use 3600 seconds value');
             
-            console.log(`✅ Test passed: FFmpeg использует -t 3600 (${ffmpegArgs[tIndex + 1]} секунд)`);
+            console.log(`✅ Test passed: FFmpeg uses -t 3600 (${ffmpegArgs[tIndex + 1]} seconds)`);
         });
     });
 
     describe('Regression Tests - Specific Bug Scenarios', () => {
-        it('должен правильно обрабатывать состояние isRecording независимо от silenceDetection', () => {
+        it('should correctly handle isRecording state regardless of silenceDetection', () => {
             console.log('🧪 Starting REGRESSION test: isRecording state management');
             
             const testCases = [
-                { silenceDetection: false, description: 'с отключенным silenceDetection' },
-                { silenceDetection: true, description: 'с включенным silenceDetection' }
+                { silenceDetection: false, description: 'with silenceDetection disabled' },
+                { silenceDetection: true, description: 'with silenceDetection enabled' }
             ];
 
             for (const testCase of testCases) {
@@ -252,17 +252,17 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
 
                 const testRecorder = new FFmpegAudioRecorder(mockEvents, options);
                 
-                // Проверяем начальное состояние
-                assert.strictEqual(testRecorder.getIsRecording(), false, `Изначально не должен записывать ${testCase.description}`);
+                // Checking initial state
+                assert.strictEqual(testRecorder.getIsRecording(), false, `Should not be recording ${testCase.description}`);
                 
-                // Проверяем продолжительность записи
-                assert.strictEqual(testRecorder.getRecordingDuration(), 0, `Продолжительность должна быть 0 ${testCase.description}`);
+                // Checking recording duration
+                assert.strictEqual(testRecorder.getRecordingDuration(), 0, `Duration should be 0 ${testCase.description}`);
                 
-                // Проверяем поддерживаемые MIME типы
+                // Checking supported MIME types
                 const mimeTypes = testRecorder.getSupportedMimeTypes();
-                assert.ok(Array.isArray(mimeTypes), `Должен возвращать массив MIME типов ${testCase.description}`);
-                assert.ok(mimeTypes.length > 0, `Должен поддерживать хотя бы один MIME тип ${testCase.description}`);
-                assert.ok(mimeTypes.includes('audio/wav'), `Должен поддерживать audio/wav ${testCase.description}`);
+                assert.ok(Array.isArray(mimeTypes), `Should return an array of MIME types ${testCase.description}`);
+                assert.ok(mimeTypes.length > 0, `Should support at least one MIME type ${testCase.description}`);
+                assert.ok(mimeTypes.includes('audio/wav'), `Should support audio/wav ${testCase.description}`);
                 
                 console.log(`✅ Test case passed: ${testCase.description}`);
             }
@@ -270,38 +270,38 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             console.log('✅ All state management tests passed');
         });
 
-        it('должен правильно проверять совместимость и доступность микрофона независимо от silenceDetection', async () => {
+        it('should correctly check compatibility and microphone availability regardless of silenceDetection', async () => {
             console.log('🧪 Starting test: compatibility and microphone checks');
             
-            // Проверяем совместимость браузера
+            // Checking browser compatibility
             const compatibility = FFmpegAudioRecorder.checkBrowserCompatibility();
             
-            assert.ok(typeof compatibility.supported === 'boolean', 'supported должно быть boolean');
-            assert.ok(Array.isArray(compatibility.missing), 'missing должно быть массивом');
+            assert.ok(typeof compatibility.supported === 'boolean', 'supported should be boolean');
+            assert.ok(Array.isArray(compatibility.missing), 'missing should be an array');
             
             console.log(`Compatibility check: supported=${compatibility.supported}, missing=${compatibility.missing.length} items`);
             
-            // Проверяем доступность микрофона
+            // Checking microphone availability
             const microphoneCheck = await FFmpegAudioRecorder.checkMicrophonePermission();
             
-            assert.ok(typeof microphoneCheck.state === 'string', 'state должно быть строкой');
-            assert.ok(typeof microphoneCheck.available === 'boolean', 'available должно быть boolean');
+            assert.ok(typeof microphoneCheck.state === 'string', 'state should be a string');
+            assert.ok(typeof microphoneCheck.available === 'boolean', 'available should be boolean');
             
             console.log(`Microphone check: state=${microphoneCheck.state}, available=${microphoneCheck.available}`);
             
             console.log('✅ Test passed: compatibility and microphone checks work correctly');
         });
 
-        it('должен корректно обрабатывать silence detection при нажатии F9 (recordAndOpenNewChat)', async () => {
+        it('should correctly handle silence detection when pressing F9 (recordAndOpenNewChat)', async () => {
             console.log('🧪 Starting test: F9 silence detection bug reproduction');
             
-            // Мокируем fs для эмуляции создания файла
+            // Mocking fs for file creation emulation
             const fs = require('fs');
             const fsExistsSync = sandbox.stub(fs, 'existsSync').returns(true);
-            const fsStatSync = sandbox.stub(fs, 'statSync').returns({ size: 2048 }); // Нормальный размер файла
+            const fsStatSync = sandbox.stub(fs, 'statSync').returns({ size: 2048 }); // Normal file size
             const fsReadFileSync = sandbox.stub(fs, 'readFileSync').returns(Buffer.from('fake audio data'));
             
-            // Мокируем tmp для создания временного файла
+            // Mocking tmp for temporary file creation
             const tmp = require('tmp');
             const tmpFileSync = sandbox.stub(tmp, 'fileSync').returns({
                 name: '/tmp/test-recording.wav',
@@ -310,78 +310,78 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             
             const options: AudioRecordingOptions = {
                 silenceDetection: true,
-                silenceDuration: 3,  // 3 секунды тишины
-                maxDuration: 30      // Максимум 30 секунд
+                silenceDuration: 3,  // 3 seconds of silence
+                maxDuration: 30      // Maximum 30 seconds
             };
 
             recorder = new FFmpegAudioRecorder(mockEvents, options);
             
-            // Spy на все важные методы
+            // Spy on all important methods
             const recorderAny = recorder as any;
             const setupSilenceDetectionSpy = sandbox.spy(recorderAny, 'setupSilenceDetection');
             const updateLastAudioTimeSpy = sandbox.spy(recorderAny, 'updateLastAudioTime');
             const clearSilenceTimerSpy = sandbox.spy(recorderAny, 'clearSilenceTimer');
 
-            console.log('🧪 Starting recording (симуляция F9)...');
+            console.log('🧪 Starting recording (simulating F9)...');
             
-            // Начинаем запись
+            // Start recording
             await recorder.startRecording();
             
-            console.log('🧪 Recording started, проверяем настройку silence detection...');
+            console.log('🧪 Recording started, checking silence detection setup...');
             
-            // Проверяем что silence detection был настроен
-            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection должен быть вызван');
-            assert.strictEqual(recorderAny.silenceDetectionEnabled, true, 'silenceDetectionEnabled должен быть true');
+            // Checking that silence detection was set up
+            assert.ok(setupSilenceDetectionSpy.calledOnce, 'setupSilenceDetection should be called');
+            assert.strictEqual(recorderAny.silenceDetectionEnabled, true, 'silenceDetectionEnabled should be true');
             
-            // Проверяем что lastAudioTime был установлен в recordingStartTime
-            assert.ok(recorderAny.lastAudioTime > 0, 'lastAudioTime должен быть установлен');
-            assert.strictEqual(recorderAny.lastAudioTime, recorderAny.recordingStartTime, 'lastAudioTime должен равняться recordingStartTime');
+            // Checking that lastAudioTime was set to recordingStartTime
+            assert.ok(recorderAny.lastAudioTime > 0, 'lastAudioTime should be set');
+            assert.strictEqual(recorderAny.lastAudioTime, recorderAny.recordingStartTime, 'lastAudioTime should equal recordingStartTime');
             
             console.log(`📊 Initial lastAudioTime: ${recorderAny.lastAudioTime}`);
             console.log(`📊 recordingStartTime: ${recorderAny.recordingStartTime}`);
             
-            // Симулируем сообщения FFmpeg (типичные для режима тишины)
-            console.log('🧪 Симулируем FFmpeg сообщения в режиме тишины...');
+            // Simulating FFmpeg messages (typical for silence mode)
+            console.log('🧪 Simulating FFmpeg messages in silence mode...');
             
-            // Эмулируем FFmpeg инициализацию (это должно обновить lastAudioTime)
+            // Emulating FFmpeg initialization (this should update lastAudioTime)
             mockChildProcess.stderr.emit('data', 'Input #0, avfoundation, from \':0\':\n');
             mockChildProcess.stderr.emit('data', '  Duration: N/A, start: 0.000000, bitrate: N/A\n');
             mockChildProcess.stderr.emit('data', '    Stream #0:0: Audio: pcm_f32le, 44100 Hz, 2 channels, flt, 2822 kb/s\n');
             
             console.log(`📊 updateLastAudioTime called during FFmpeg setup: ${updateLastAudioTimeSpy.callCount}`);
             
-            // Ждем небольшой промежуток времени
+            // Wait for a short period of time
             await new Promise(resolve => setTimeout(resolve, 100));
             
-            // Симулируем сообщения от FFmpeg в процессе записи (в тишине)
+            // Simulating FFmpeg messages during recording (in silence)
             mockChildProcess.stderr.emit('data', 'Press [q] to quit, [?] for help\n');
             
             console.log(`📊 updateLastAudioTime called after FFmpeg ready: ${updateLastAudioTimeSpy.callCount}`);
             
-            // Проверяем что updateLastAudioTime был вызван
-            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван при сообщениях FFmpeg');
+            // Checking that updateLastAudioTime was called
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime should be called for FFmpeg messages');
             
-            // Симулируем остановку записи пользователем (повторное нажатие F9)
-            console.log('🧪 Симулируем остановку записи пользователем (F9)...');
+            // Simulating user stopping the recording (pressing F9 again)
+            console.log('🧪 Simulating user stopping the recording (F9)...');
             
             recorder.stopRecording();
             
-            // Даем время для завершения процесса
+            // Give time for the process to complete
             await new Promise(resolve => setTimeout(resolve, 200));
             
             console.log(`📊 clearSilenceTimer called after manual stop: ${clearSilenceTimerSpy.callCount}`);
             
-            // Проверяем что таймеры были очищены
-            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer должен быть вызван при остановке');
+            // Checking that timers were cleared
+            assert.ok(clearSilenceTimerSpy.called, 'clearSilenceTimer should be called when stopping');
             
-            // Проверяем что события были вызваны правильно
-            assert.ok(onRecordingStartSpy.calledOnce, 'onRecordingStart должен быть вызван');
-            assert.ok(onRecordingStopSpy.calledOnce, 'onRecordingStop должен быть вызван');
+            // Checking that events were called correctly
+            assert.ok(onRecordingStartSpy.calledOnce, 'onRecordingStart should be called');
+            assert.ok(onRecordingStopSpy.calledOnce, 'onRecordingStop should be called');
             
             console.log('✅ Test passed: F9 silence detection works correctly');
         });
 
-        it('должен правильно обновлять lastAudioTime при различных сообщениях FFmpeg', () => {
+        it('should correctly update lastAudioTime for various FFmpeg messages', () => {
             console.log('🧪 Starting test: lastAudioTime update logic');
             
             const options: AudioRecordingOptions = {
@@ -392,53 +392,53 @@ describe('FFmpegAudioRecorder - Timer Cleanup and Recording Lifecycle Tests', ()
             recorder = new FFmpegAudioRecorder(mockEvents, options);
             const recorderAny = recorder as any;
             
-            // Spy на updateLastAudioTime
+            // Spy on updateLastAudioTime
             const updateLastAudioTimeSpy = sandbox.spy(recorderAny, 'updateLastAudioTime');
             
-            // Устанавливаем начальные условия
+            // Setting initial conditions
             recorderAny.silenceDetectionEnabled = true;
             recorderAny.recordingStartTime = Date.now();
             recorderAny.lastAudioTime = recorderAny.recordingStartTime;
             
-            console.log('🧪 Тестируем различные типы сообщений FFmpeg...');
+            console.log('🧪 Testing various types of FFmpeg messages...');
             
-            // Имитируем создание child process
+            // Imitating child process creation
             recorderAny.ffmpegProcess = mockChildProcess;
             recorderAny.setupFFmpegEvents();
             
-            // Тест 1: Сообщение о прогрессе записи
+            // Test 1: Recording progress message
             mockChildProcess.stderr.emit('data', 'size=    1024kB time=00:00:10.50 bitrate= 845.3kbits/s');
-            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для progress message');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime should be called for progress message');
             
             updateLastAudioTimeSpy.resetHistory();
             
-            // Тест 2: Информация о потоке
+            // Test 2: Stream information
             mockChildProcess.stderr.emit('data', 'Stream #0:0: Audio: pcm_s16le, 44100 Hz, 2 channels');
-            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для stream info');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime should be called for stream info');
             
             updateLastAudioTimeSpy.resetHistory();
             
-            // Тест 3: FFmpeg готов
+            // Test 3: FFmpeg ready
             mockChildProcess.stderr.emit('data', 'Press [q] to quit, [?] for help');
-            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для FFmpeg ready');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime should be called for FFmpeg ready');
             
             updateLastAudioTimeSpy.resetHistory();
             
-            // Тест 4: Информация о входе/выходе
+            // Test 4: Input/output information
             mockChildProcess.stderr.emit('data', 'Input #0, avfoundation, from \':0\':');
-            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для input info');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime should be called for input info');
             
             updateLastAudioTimeSpy.resetHistory();
             
-            // Тест 5: Обычное сообщение (не ошибка) в режиме silence detection
+            // Test 5: Regular message (not an error) in silence detection mode
             mockChildProcess.stderr.emit('data', 'frame=  100 fps= 10 q=-0.0 size=    1024kB time=00:00:05.00');
-            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime должен быть вызван для обычного сообщения');
+            assert.ok(updateLastAudioTimeSpy.called, 'updateLastAudioTime should be called for regular message');
             
             updateLastAudioTimeSpy.resetHistory();
             
-            // Тест 6: Сообщение об ошибке (НЕ должно обновлять lastAudioTime)
+            // Test 6: Error message (SHOULD NOT update lastAudioTime)
             mockChildProcess.stderr.emit('data', 'Error: Permission denied accessing microphone');
-            assert.ok(!updateLastAudioTimeSpy.called, 'updateLastAudioTime НЕ должен быть вызван для сообщения об ошибке');
+            assert.ok(!updateLastAudioTimeSpy.called, 'updateLastAudioTime SHOULD NOT be called for error message');
             
             console.log('✅ Test passed: lastAudioTime update logic works correctly');
         });

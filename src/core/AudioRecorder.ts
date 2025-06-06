@@ -1,6 +1,6 @@
-// AudioRecorder.ts - модуль для записи аудио через Web Audio API
+// AudioRecorder.ts - module for recording audio through Web Audio API
 
-// Расширенные типы для DOM API в контексте VS Code extension
+// Extended types for DOM API in the context of VS Code extension
 declare global {
     interface MediaRecorderConstructor {
         new (stream: MediaStream, options?: MediaRecorderOptions): MediaRecorder;
@@ -224,10 +224,10 @@ export interface AudioRecordingOptions {
     noiseSuppression?: boolean;
     autoGainControl?: boolean;
     quality?: 'standard' | 'high' | 'ultra';
-    maxDuration?: number; // в секундах
-    audioFormat?: 'wav' | 'mp3' | 'webm'; // Предпочитаемый формат
-    silenceDetection?: boolean; // Автоматическое определение тишины
-    silenceThreshold?: number; // Порог тишины в секундах
+    maxDuration?: number; // in seconds
+    audioFormat?: 'wav' | 'mp3' | 'webm'; // Preferred format
+    silenceDetection?: boolean; // Automatic silence detection
+    silenceThreshold?: number; // Silence threshold in seconds
 }
 
 export class AudioRecorder {
@@ -247,7 +247,7 @@ export class AudioRecorder {
     }
 
     /**
-     * Определяет поддерживаемые аудио форматы
+     * Determines supported audio formats
      */
     private detectSupportedFormats(): void {
         const formats = [
@@ -265,10 +265,10 @@ export class AudioRecorder {
     }
 
     /**
-     * Получает оптимальный MIME тип для записи
+     * Gets the optimal MIME type for recording
      */
     private getBestMimeType(): string {
-        // Приоритет: WebM/Opus > WebM > MP4 > WAV > OGG
+        // Priority: WebM/Opus > WebM > MP4 > WAV > OGG
         const preferred = [
             'audio/webm;codecs=opus',
             'audio/webm',
@@ -284,11 +284,11 @@ export class AudioRecorder {
             }
         }
 
-        throw new Error('Браузер не поддерживает запись аудио');
+        throw new Error('Browser does not support audio recording');
     }
 
     /**
-     * Проверяет совместимость браузера с API записи
+     * Checks browser compatibility with the recording API
      */
     static checkBrowserCompatibility(): { 
         supported: boolean; 
@@ -311,11 +311,11 @@ export class AudioRecorder {
     }
 
     /**
-     * Начинает запись аудио
+     * Starts recording audio
      */
     async startRecording(): Promise<void> {
         if (this.isRecording) {
-            const error = new Error('Запись уже идет');
+            const error = new Error('Recording already in progress');
             this.events.onError(error);
             return;
         }
@@ -323,25 +323,25 @@ export class AudioRecorder {
         const compatibility = AudioRecorder.checkBrowserCompatibility();
         if (!compatibility.supported) {
             const error = new Error(
-                `Браузер не поддерживает запись аудио. Отсутствуют: ${compatibility.missing.join(', ')}`
+                `Browser does not support audio recording. Missing: ${compatibility.missing.join(', ')}`
             );
             this.events.onError(error);
             return;
         }
 
         try {
-            // Настройки аудио потока
+            // Audio stream settings
             const audioConstraints = this.getAudioConstraints();
             
-            // Получаем доступ к микрофону
+            // Get access to the microphone
             this.stream = await navigator.mediaDevices.getUserMedia({
                 audio: audioConstraints
             });
 
-            // Получаем поддерживаемый MIME тип
+            // Get the supported MIME type
             const mimeType = this.getBestMimeType();
             
-            // Создаем MediaRecorder с оптимальными настройками
+            // Create MediaRecorder with optimal settings
             const recorderOptions: MediaRecorderOptions = {
                 mimeType,
                 audioBitsPerSecond: this.getAudioBitrate()
@@ -352,14 +352,14 @@ export class AudioRecorder {
             this.isRecording = true;
             this.recordingStartTime = Date.now();
 
-            // Настраиваем обработчики событий
+            // Setup event handlers
             this.setupMediaRecorderEvents();
 
-            // Настраиваем таймер максимальной длительности
+            // Setup the maximum duration timer
             this.setupMaxDurationTimer();
 
-            // Начинаем запись
-            this.mediaRecorder.start(100); // Собираем данные каждые 100мс
+            // Start recording
+            this.mediaRecorder.start(100); // Collect data every 100ms
             this.events.onRecordingStart();
 
         } catch (error) {
@@ -369,7 +369,7 @@ export class AudioRecorder {
     }
 
     /**
-     * Останавливает запись аудио
+     * Stops recording audio
      */
     stopRecording(): void {
         if (!this.isRecording || !this.mediaRecorder) {
@@ -386,34 +386,34 @@ export class AudioRecorder {
     }
 
     /**
-     * Получает настройки аудио потока
+     * Gets audio stream settings
      */
     private getAudioConstraints(): MediaTrackConstraints {
         const quality = this.options.quality || 'standard';
         
-        // Базовые настройки для разных уровней качества
+        // Base settings for different quality levels
         let sampleRate: number;
         let sampleSize: number;
         
         switch (quality) {
             case 'ultra':
-                sampleRate = 48000;  // 48kHz для максимального качества
-                sampleSize = 24;     // 24-bit глубина
+                sampleRate = 48000;  // 48kHz for maximum quality
+                sampleSize = 24;     // 24-bit depth
                 break;
             case 'high':
-                sampleRate = 44100;  // 44.1kHz CD качество
-                sampleSize = 16;     // 16-bit стандарт
+                sampleRate = 44100;  // 44.1kHz CD quality
+                sampleSize = 16;     // 16-bit standard
                 break;
             case 'standard':
             default:
-                sampleRate = 16000;  // 16kHz оптимально для Whisper
+                sampleRate = 16000;  // 16kHz optimal for Whisper
                 sampleSize = 16;     // 16-bit
                 break;
         }
         
-        // Применяем пользовательские настройки если заданы
+        // Apply user settings if provided
         const finalSampleRate = this.options.sampleRate || sampleRate;
-        const channelCount = this.options.channelCount || 1; // Моно по умолчанию
+        const channelCount = this.options.channelCount || 1; // Mono by default
         
         return {
             sampleRate: finalSampleRate,
@@ -422,30 +422,30 @@ export class AudioRecorder {
             echoCancellation: this.options.echoCancellation !== false,
             noiseSuppression: this.options.noiseSuppression !== false,
             autoGainControl: this.options.autoGainControl !== false,
-            // Дополнительные настройки для улучшения качества
-            latency: quality === 'ultra' ? 0.01 : 0.02  // Низкая задержка для высокого качества
+            // Additional settings for improved quality
+            latency: quality === 'ultra' ? 0.01 : 0.02  // Low latency for high quality
         };
     }
 
     /**
-     * Получает битрейт для аудио в зависимости от настроек качества
+     * Gets audio bitrate based on quality settings
      */
     private getAudioBitrate(): number {
         const quality = this.options.quality || 'standard';
         
         switch (quality) {
             case 'ultra':
-                return 256000;  // 256kbps для максимального качества
+                return 256000;  // 256kbps for maximum quality
             case 'high':
-                return 128000;  // 128kbps для высокого качества
+                return 128000;  // 128kbps for high quality
             case 'standard':
             default:
-                return 64000;   // 64kbps для стандартного качества
+                return 64000;   // 64kbps for standard quality
         }
     }
 
     /**
-     * Настраивает обработчики событий MediaRecorder
+     * Sets up event handlers for MediaRecorder
      */
     private setupMediaRecorderEvents(): void {
         if (!this.mediaRecorder) {return;}
@@ -469,17 +469,17 @@ export class AudioRecorder {
         };
 
         this.mediaRecorder.onerror = (event: Event) => {
-            this.events.onError(new Error(`Ошибка MediaRecorder: ${event}`));
+            this.events.onError(new Error(`Error in MediaRecorder: ${event}`));
             this.cleanup();
         };
     }
 
     /**
-     * Создает финальный аудио blob
+     * Creates the final audio blob
      */
     private createAudioBlob(): Blob {
         if (this.audioChunks.length === 0) {
-            throw new Error('Нет записанных аудио данных');
+            throw new Error('No recorded audio data');
         }
 
         const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
@@ -487,7 +487,7 @@ export class AudioRecorder {
     }
 
     /**
-     * Настраивает таймер максимальной длительности
+     * Sets up the maximum duration timer
      */
     private setupMaxDurationTimer(): void {
         const maxDuration = this.options.maxDuration;
@@ -501,7 +501,7 @@ export class AudioRecorder {
     }
 
     /**
-     * Очищает таймер максимальной длительности
+     * Clears the maximum duration timer
      */
     private clearMaxDurationTimer(): void {
         if (this.maxDurationTimer) {
@@ -511,7 +511,7 @@ export class AudioRecorder {
     }
 
     /**
-     * Очищает ресурсы
+     * Clears resources
      */
     private cleanup(): void {
         this.clearMaxDurationTimer();
@@ -528,14 +528,14 @@ export class AudioRecorder {
     }
 
     /**
-     * Возвращает текущее состояние записи
+     * Returns the current recording state
      */
     getIsRecording(): boolean {
         return this.isRecording;
     }
 
     /**
-     * Возвращает длительность текущей записи в миллисекундах
+     * Returns the duration of the current recording in milliseconds
      */
     getRecordingDuration(): number {
         if (!this.isRecording) {return 0;}
@@ -543,14 +543,14 @@ export class AudioRecorder {
     }
 
     /**
-     * Возвращает поддерживаемые MIME типы
+     * Returns supported MIME types
      */
     getSupportedMimeTypes(): string[] {
         return [...this.supportedMimeTypes];
     }
 
     /**
-     * Проверяет, доступен ли микрофон
+     * Checks if the microphone is available
      */
     static async checkMicrophonePermission(): Promise<{
         state: 'granted' | 'denied' | 'prompt' | 'unknown';

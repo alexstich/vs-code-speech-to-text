@@ -1,7 +1,7 @@
-// testData.ts - тестовые данные и fixtures для unit/integration тестов
+// testData.ts - Test data and fixtures for unit/integration tests
 
 export const testAudioData = {
-    // Мок данные для аудио файлов
+    // Mock data for audio files
     validAudioBlob: {
         type: 'audio/webm',
         size: 1024,
@@ -22,9 +22,9 @@ export const testAudioData = {
 };
 
 export const testApiResponses = {
-    // Успешные ответы API
+    // Successful API responses
     successfulTranscription: {
-        text: 'Привет, это тестовая транскрипция аудио'
+        text: 'Hello, this is a test audio transcription'
     },
     
     englishTranscription: {
@@ -35,7 +35,7 @@ export const testApiResponses = {
         text: 'function sayHello() { console.log("Hello World"); }'
     },
     
-    // Ошибки API
+    // API Errors
     invalidApiKeyError: {
         error: {
             message: 'Invalid API key provided',
@@ -101,7 +101,7 @@ export const testLanguageConfigs = {
 };
 
 export const testUserSettings = {
-    // Настройки расширения для тестирования
+    // Extension settings for testing
     default: {
         'speechToTextWhisper.apiKey': 'test-api-key',
         'speechToTextWhisper.language': 'auto',
@@ -133,9 +133,9 @@ export const testUserSettings = {
 };
 
 export const testScenarios = {
-    // Сценарии для integration тестов
+    // Scenarios for integration tests
     basicChatRecordingFlow: {
-        description: 'Базовый сценарий: запись → транскрипция → отправка в чат',
+        description: 'Basic scenario: recording → transcription → sending to chat',
         steps: [
             'User presses F9',
             'Recording starts',
@@ -149,7 +149,7 @@ export const testScenarios = {
     },
     
     basicClipboardRecordingFlow: {
-        description: 'Базовый сценарий: запись → транскрипция → копирование в буфер',
+        description: 'Basic scenario: recording → transcription → copying to clipboard',
         steps: [
             'User presses Ctrl+Shift+V',
             'Recording starts',
@@ -163,7 +163,7 @@ export const testScenarios = {
     },
     
     recordingWithoutMicrophone: {
-        description: 'Сценарий без доступа к микрофону',
+        description: 'Scenario without microphone access',
         steps: [
             'User presses F9',
             'getUserMedia fails',
@@ -173,7 +173,7 @@ export const testScenarios = {
     },
     
     recordingWithInvalidApiKey: {
-        description: 'Сценарий с неверным API ключом',
+        description: 'Scenario with invalid API key',
         steps: [
             'User presses F9',
             'Recording completes',
@@ -184,7 +184,7 @@ export const testScenarios = {
     },
     
     cursorIntegrationUnavailable: {
-        description: 'Сценарий когда Cursor интеграция недоступна',
+        description: 'Scenario when Cursor integration is unavailable',
         steps: [
             'User presses F9 in VS Code',
             'Recording completes',
@@ -196,7 +196,7 @@ export const testScenarios = {
 };
 
 export const testEditorStates = {
-    // Различные состояния редактора для тестирования
+    // Various editor states for testing
     emptyFile: {
         content: '',
         cursorPosition: { line: 0, character: 0 },

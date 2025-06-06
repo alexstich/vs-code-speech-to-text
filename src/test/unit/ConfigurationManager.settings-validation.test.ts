@@ -7,13 +7,13 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
-        // Создаем песочницу sinon
+        // Create sinon sandbox
         sandbox = sinon.createSandbox();
         
-        // Сбрасываем синглтон
+        // Reset singleton
         (ConfigurationManager as any).instance = null;
         
-        // Создаем новый экземпляр
+        // Create new instance
         configManager = ConfigurationManager.getInstance();
     });
 
@@ -23,7 +23,7 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
     });
 
     describe('API Key Validation', () => {
-        it('должен принимать валидный API key', () => {
+        it('should accept a valid API key', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -50,11 +50,11 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Валидный API key должен проходить валидацию');
-            assert.strictEqual(validation.errors.length, 0, 'Не должно быть ошибок для валидного API key');
+            assert.ok(validation.isValid, 'Valid API key should pass validation');
+            assert.strictEqual(validation.errors.length, 0, 'There should be no errors for a valid API key');
         });
 
-        it('должен отклонять пустой API key', () => {
+        it('should reject empty API key', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -81,11 +81,11 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Пустой API key должен быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('API key')), 'Должна быть ошибка для API key');
+            assert.ok(!validation.isValid, 'Empty API key should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('API key')), 'There should be an error for API key');
         });
 
-        it('должен принимать короткий API key (только проверка на пустоту)', () => {
+        it('should accept short API key (only checks for emptiness)', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -112,14 +112,14 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Короткий, но непустой API key должен быть валидным');
-            assert.strictEqual(validation.errors.length, 0, 'Не должно быть ошибок для непустого API key');
+            assert.ok(validation.isValid, 'Short but non-empty API key should be valid');
+            assert.strictEqual(validation.errors.length, 0, 'There should be no errors for a non-empty API key');
         });
     });
 
     describe('Temperature Validation', () => {
-        it('должен принимать валидные значения температуры - граничные случаи', () => {
-            // Тест минимального значения (0.0)
+        it('should accept valid temperature values - boundary cases', () => {
+            // Test minimal value (0.0)
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -146,9 +146,9 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Температура 0.0 должна быть валидной');
+            assert.ok(validation.isValid, 'Temperature 0.0 should be valid');
 
-            // Тест максимального значения (1.0)
+            // Test maximal value (1.0)
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'sk-test123456789',
@@ -175,11 +175,11 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Температура 1.0 должна быть валидной');
+            assert.ok(validation.isValid, 'Temperature 1.0 should be valid');
         });
 
-        it('должен отклонять невалидные значения температуры', () => {
-            // Тест значения выше максимума
+        it('should reject invalid temperature values', () => {
+            // Test value above maximum
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -206,10 +206,10 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Температура 1.5 должна быть невалидной');
-            assert.ok(validation.errors.some(err => err.includes('Temperature')), 'Должна быть ошибка для температуры 1.5');
+            assert.ok(!validation.isValid, 'Temperature 1.5 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Temperature')), 'There should be an error for temperature 1.5');
 
-            // Тест отрицательного значения
+            // Test negative value
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'sk-test123456789',
@@ -236,13 +236,13 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Температура -0.1 должна быть невалидной');
-            assert.ok(validation.errors.some(err => err.includes('Temperature')), 'Должна быть ошибка для температуры -0.1');
+            assert.ok(!validation.isValid, 'Temperature -0.1 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Temperature')), 'There should be an error for temperature -0.1');
         });
     });
 
     describe('Timeout Validation', () => {
-        it('должен принимать валидные значения timeout', () => {
+        it('should accept valid timeout values', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -269,10 +269,10 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Timeout 30000 должен быть валидным');
+            assert.ok(validation.isValid, 'Timeout 30000 should be valid');
         });
 
-        it('должен отклонять невалидные значения timeout', () => {
+        it('should reject invalid timeout values', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -299,13 +299,13 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Timeout 0 должен быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('Timeout')), 'Должна быть ошибка для timeout 0');
+            assert.ok(!validation.isValid, 'Timeout 0 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Timeout')), 'There should be an error for timeout 0');
         });
     });
 
     describe('Silence Threshold Validation', () => {
-        it('должен принимать валидные значения silenceThreshold (20-80)', () => {
+        it('should accept valid silenceThreshold values (20-80)', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -332,9 +332,9 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Silence threshold 50 должен быть валидным');
+            assert.ok(validation.isValid, 'Silence threshold 50 should be valid');
 
-            // Тест граничных значений
+            // Test boundary values
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'sk-test123456789',
@@ -351,7 +351,7 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
                     maxRecordingDuration: 60,
                     silenceDetection: true,
                     silenceDuration: 3,
-                    silenceThreshold: 20, // Минимум
+                    silenceThreshold: 20, // Minimum
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -361,7 +361,7 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Silence threshold 20 должен быть валидным');
+            assert.ok(validation.isValid, 'Silence threshold 20 should be valid');
 
             loadConfigurationStub.returns({
                 whisper: {
@@ -379,7 +379,7 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
                     maxRecordingDuration: 60,
                     silenceDetection: true,
                     silenceDuration: 3,
-                    silenceThreshold: 80, // Максимум
+                    silenceThreshold: 80, // Maximum
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -389,11 +389,11 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Silence threshold 80 должен быть валидным');
+            assert.ok(validation.isValid, 'Silence threshold 80 should be valid');
         });
 
-        it('должен отклонять невалидные значения silenceThreshold', () => {
-            // Ниже минимума
+        it('should reject invalid silenceThreshold values', () => {
+            // Below minimum
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -420,10 +420,10 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Silence threshold 15 должен быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'Должна быть ошибка для silence threshold 15');
+            assert.ok(!validation.isValid, 'Silence threshold 15 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'There should be an error for silence threshold 15');
 
-            // Выше максимума
+            // Above maximum
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'sk-test123456789',
@@ -450,13 +450,13 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Silence threshold 85 должен быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'Должна быть ошибка для silence threshold 85');
+            assert.ok(!validation.isValid, 'Silence threshold 85 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'There should be an error for silence threshold 85');
         });
     });
 
     describe('Max Retries Validation', () => {
-        it('должен принимать валидные значения maxRetries (неотрицательные)', () => {
+        it('should accept valid maxRetries values (non-negative)', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -483,9 +483,9 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Max retries 5 должно быть валидным');
+            assert.ok(validation.isValid, 'Max retries 5 should be valid');
 
-            // Тест нулевого значения
+            // Test zero value
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'sk-test123456789',
@@ -512,10 +512,10 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Max retries 0 должно быть валидным');
+            assert.ok(validation.isValid, 'Max retries 0 should be valid');
         });
 
-        it('должен отклонять отрицательные значения maxRetries', () => {
+        it('should reject negative maxRetries values', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -542,31 +542,31 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Max retries -1 должно быть невалидным');
-            assert.ok(validation.errors.some(err => err.includes('Max retries')), 'Должна быть ошибка для max retries -1');
+            assert.ok(!validation.isValid, 'Max retries -1 should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Max retries')), 'There should be an error for max retries -1');
         });
     });
 
     describe('Combined Validation Tests', () => {
-        it('должен обрабатывать множественные ошибки валидации', () => {
+        it('should handle multiple validation errors', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
-                    apiKey: '', // Пустой API key
+                    apiKey: '', // Empty API key
                     language: 'auto', 
                     whisperModel: 'whisper-1',
                     prompt: '',
-                    temperature: 2.0, // Невалидная температура
-                    timeout: -1000, // Невалидный timeout
-                    maxRetries: -5 // Невалидные retry
+                    temperature: 2.0, // Invalid temperature
+                    timeout: -1000, // Invalid timeout
+                    maxRetries: -5 // Invalid retries
                 },
                 audio: {
                     audioQuality: 'standard',
                     ffmpegPath: '',
-                    maxRecordingDuration: -10, // Невалидная длительность
+                    maxRecordingDuration: -10, // Invalid duration
                     silenceDetection: true,
-                    silenceDuration: -1, // Невалидная длительность тишины
-                    silenceThreshold: 100, // Невалидный порог
+                    silenceDuration: -1, // Invalid silence duration
+                    silenceThreshold: 100, // Invalid threshold
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -575,17 +575,17 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Конфигурация с множественными ошибками должна быть невалидна');
-            assert.ok(validation.errors.length > 1, 'Должно быть несколько ошибок валидации');
+            assert.ok(!validation.isValid, 'Configuration with multiple errors should be invalid');
+            assert.ok(validation.errors.length > 1, 'There should be multiple validation errors');
             
-            // Проверяем что есть ошибки для каждой категории
+            // Check that there are errors for each category
             const errorText = validation.errors.join(' ');
-            assert.ok(errorText.includes('API key'), 'Должна быть ошибка API key');
-            assert.ok(errorText.includes('Temperature'), 'Должна быть ошибка температуры');
-            assert.ok(errorText.includes('Timeout'), 'Должна быть ошибка timeout');
+            assert.ok(errorText.includes('API key'), 'There should be an error for API key');
+            assert.ok(errorText.includes('Temperature'), 'There should be an error for temperature');
+            assert.ok(errorText.includes('Timeout'), 'There should be an error for timeout');
         });
 
-        it('должен проходить валидацию с корректными настройками', () => {
+        it('should pass validation with correct settings', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -612,8 +612,8 @@ describe('ConfigurationManager - Settings Validation Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Корректная конфигурация должна проходить валидацию');
-            assert.strictEqual(validation.errors.length, 0, 'Не должно быть ошибок для корректной конфигурации');
+            assert.ok(validation.isValid, 'Correct configuration should pass validation');
+            assert.strictEqual(validation.errors.length, 0, 'There should be no errors for correct configuration');
         });
     });
 }); 

@@ -1,4 +1,4 @@
-// ffmpegMocks.ts - моки для FFmpeg и связанных модулей для тестирования
+// ffmpegMocks.ts - FFmpeg and related module mocks for testing
 
 import * as sinon from 'sinon';
 import { ChildProcess } from 'child_process';
@@ -30,7 +30,7 @@ export class MockChildProcess extends EventEmitter implements MockFFmpegProcess 
 
     constructor() {
         super();
-        // Симулируем успешное завершение процесса по умолчанию
+        // Simulate successful process completion by default
         setTimeout(() => {
             this.exitCode = 0;
             this.emit('exit', 0, null);
@@ -59,23 +59,23 @@ export class MockTempFile {
     }
 }
 
-// Мок для модуля 'which'
+// Mock for 'which' module
 export const mockWhich = {
     sync: sinon.stub()
 };
 
-// Мок для модуля 'tmp'
+// Mock for 'tmp' module
 export const mockTmp = {
     file: sinon.stub(),
     setGracefulCleanup: sinon.stub()
 };
 
-// Мок для модуля 'child_process'
+// Mock for 'child_process' module
 export const mockChildProcess = {
     spawn: sinon.stub()
 };
 
-// Мок для модуля 'fs'
+// Mock for 'fs' module
 export const mockFs = {
     createReadStream: sinon.stub(),
     createWriteStream: sinon.stub(),
@@ -91,7 +91,7 @@ export const mockFs = {
     }
 };
 
-// Мок для модуля 'path'
+// Mock for 'path' module
 export const mockPath = {
     join: sinon.stub(),
     resolve: sinon.stub(),
@@ -100,7 +100,7 @@ export const mockPath = {
     extname: sinon.stub()
 };
 
-// Мок для Node.js Blob (если доступен)
+// Mock for Node.js Blob (if available)
 export class MockBlob {
     public size: number;
     public type: string;
@@ -151,7 +151,7 @@ export class MockBlob {
     }
 }
 
-// Мок для платформо-специфических команд
+// Mock for platform-specific commands
 export const mockPlatformCommands = {
     win32: {
         ffmpeg: 'ffmpeg.exe',
@@ -170,7 +170,7 @@ export const mockPlatformCommands = {
     }
 };
 
-// Мок для вывода команды list_devices
+// Mock for list_devices command output
 export const mockDeviceListOutput = {
     win32: `[dshow @ 0x12345] DirectShow video devices
 [dshow @ 0x12345]  "Integrated Camera"
@@ -189,21 +189,21 @@ export const mockDeviceListOutput = {
 [pulse @ 0x12345]  "alsa_input.pci-0000_00_1f.3.analog-stereo" (Built-in Audio Analog Stereo)`
 };
 
-// Глобальные моки для тестирования
+// Global mocks for testing
 export function setupFFmpegMocks(): void {
-    // Мок which - определяет доступность FFmpeg
+    // Mock which - determines FFmpeg availability
     mockWhich.sync.withArgs('ffmpeg').returns('/usr/local/bin/ffmpeg');
     mockWhich.sync.withArgs('ffmpeg.exe').returns('C:\\ffmpeg\\bin\\ffmpeg.exe');
     
-    // Мок tmp - создание временных файлов
+    // Mock tmp - creating temporary files
     const mockTempFile = new MockTempFile();
     mockTmp.file.callsArgWith(1, null, mockTempFile.path, mockTempFile.fd, mockTempFile.removeCallback);
     
-    // Мок child_process.spawn - запуск FFmpeg
+    // Mock child_process.spawn - starting FFmpeg
     const mockProcess = new MockChildProcess();
     mockChildProcess.spawn.returns(mockProcess);
     
-    // Мок fs операций
+    // Mock fs operations
     mockFs.existsSync.returns(true);
     mockFs.createReadStream.returns({
         on: sinon.stub(),
@@ -216,31 +216,31 @@ export function setupFFmpegMocks(): void {
         on: sinon.stub()
     });
     
-    // Мок path операций
+    // Mock path operations
     mockPath.join.callsFake((...args) => args.join('/'));
     mockPath.resolve.callsFake((...args) => '/' + args.join('/'));
     mockPath.dirname.returns('/tmp');
     mockPath.basename.returns('mock-audio.wav');
     mockPath.extname.returns('.wav');
     
-    // Настройка Node.js Blob если доступен
+    // Setup Node.js Blob if available
     if (!(global as any).Blob) {
         (global as any).Blob = MockBlob;
     }
     
-    // Мок для process.platform
+    // Mock for process.platform
     Object.defineProperty(process, 'platform', {
-        value: 'darwin', // по умолчанию macOS для тестов
+        value: 'darwin', // default macOS for tests
         writable: true,
         configurable: true
     });
 }
 
 export function cleanupFFmpegMocks(): void {
-    // Очистка всех стабов
+    // Clear all stubs
     sinon.restore();
     
-    // Сброс моков к исходному состоянию
+    // Reset mocks to initial state
     mockWhich.sync.reset();
     mockTmp.file.reset();
     mockChildProcess.spawn.reset();
@@ -293,28 +293,28 @@ export function simulatePlatformSpecificBehavior(platform: string): void {
         configurable: true
     });
     
-    // Настройка platform-specific моков
+    // Setup platform-specific mocks
     const commands = mockPlatformCommands[platform as keyof typeof mockPlatformCommands];
     if (commands) {
         mockWhich.sync.withArgs(commands.ffmpeg).returns(`/usr/local/bin/${commands.ffmpeg}`);
     }
 }
 
-// Утилиты для тестирования различных сценариев
+// Utilities for testing various scenarios
 export const FFmpegTestScenarios = {
-    // Успешная запись
+    // Successful recording
     successfulRecording: () => {
         const process = new MockChildProcess();
         mockChildProcess.spawn.returns(process);
         return process;
     },
     
-    // FFmpeg не найден
+    // FFmpeg not found
     ffmpegNotFound: () => {
         mockWhich.sync.throws(createMockFFmpegError('FFmpeg not found', 'ENOENT'));
     },
     
-    // Ошибка записи
+    // Recording error
     recordingError: () => {
         const process = new MockChildProcess();
         setTimeout(() => process.simulateError(1, 'SIGTERM'), 50);
@@ -322,7 +322,7 @@ export const FFmpegTestScenarios = {
         return process;
     },
     
-    // Нет аудио устройств
+    // No audio devices
     noAudioDevices: () => {
         const process = new MockChildProcess();
         process.simulateFFmpegOutput('No audio devices found');
@@ -330,7 +330,7 @@ export const FFmpegTestScenarios = {
         return process;
     },
     
-    // Временный файл не может быть создан
+    // Temporary file cannot be created
     tempFileError: () => {
         mockTmp.file.callsArgWith(1, new Error('Cannot create temp file'), null, null, null);
     }

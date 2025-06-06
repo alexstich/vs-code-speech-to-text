@@ -5,7 +5,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 // import * as myExtension from '../../extension';
 
-// Простой тест для проверки работы тестовой среды
+// Simple test to check the test environment
 describe('Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start all tests.');
 

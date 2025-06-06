@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Провайдер данных для настроек
+ * Data provider for settings
  */
 export class SettingsProvider implements vscode.TreeDataProvider<SettingsItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<SettingsItem | undefined | void> = new vscode.EventEmitter<SettingsItem | undefined | void>();
@@ -27,7 +27,7 @@ export class SettingsProvider implements vscode.TreeDataProvider<SettingsItem> {
     private async getSettingsItems(): Promise<SettingsItem[]> {
         const items: SettingsItem[] = [];
 
-        // Кнопка открытия настроек
+        // Button to open settings
         const openSettingsItem = new SettingsItem(
             'Open Extension Settings',
             'Configure Speech to Text settings',

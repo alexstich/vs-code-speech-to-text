@@ -1,13 +1,13 @@
-// WhisperClient.ts - HTTP клиент для интеграции с OpenAI Whisper API
+// WhisperClient.ts - HTTP client for integration with OpenAI Whisper API
 
 export interface TranscriptionOptions {
-    language?: string;      // ISO 639-1 код языка или 'auto' для автоопределения
-    prompt?: string;        // Контекстная подсказка для улучшения точности
-    temperature?: number;   // 0-1, креативность (0 = детерминированный)
+    language?: string;      // ISO 639-1 code of the language or 'auto' for auto-detection
+    prompt?: string;        // Contextual prompt for improving accuracy
+    temperature?: number;   // 0-1, creativity (0 = deterministic)
     response_format?: 'json' | 'text' | 'srt' | 'verbose_json' | 'vtt';
     timestamp_granularities?: ('word' | 'segment')[];
-    model?: string;         // Модель Whisper для использования
-    confidence_threshold?: number; // Минимальная уверенность для авто-детекции языка
+    model?: string;         // Whisper model to use
+    confidence_threshold?: number; // Minimum confidence for language auto-detection
 }
 
 export interface TranscriptionResult {
@@ -52,7 +52,7 @@ export interface WhisperClientConfig {
 }
 
 /**
- * HTTP клиент для интеграции с OpenAI Whisper API
+ * HTTP client for integration with OpenAI Whisper API
  */
 export class WhisperClient {
     private apiKey: string;
@@ -61,36 +61,39 @@ export class WhisperClient {
     private maxRetries: number;
     private retryDelay: number;
 
-    // Поддерживаемые форматы аудио
+    // Supported audio formats
     private readonly supportedFormats = [
         'flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm'
     ];
 
-    // Максимальный размер файла (25MB)
+    // Maximum file size (25MB)
     private readonly maxFileSize = 25 * 1024 * 1024;
 
     constructor(config: WhisperClientConfig) {
         this.apiKey = config.apiKey;
         this.baseURL = config.baseURL || 'https://api.openai.com/v1';
-        this.timeout = config.timeout || 30000; // 30 секунд
+        this.timeout = config.timeout || 30000; // 30 seconds
         this.maxRetries = config.maxRetries || 3;
-        this.retryDelay = config.retryDelay || 1000; // 1 секунда
+        this.retryDelay = config.retryDelay || 1000; // 1 second
     }
 
     /**
-     * Транскрибация аудио файла
+     * Transcription of an audio file
      */
     async transcribe(audioBlob: Blob, options: TranscriptionOptions = {}): Promise<string> {
         this.validateAudioBlob(audioBlob);
         
         const formData = this.prepareFormData(audioBlob, options);
         
+        // Log the request parameters
+        this.logRequestParameters(audioBlob, options);
+        
         for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
             try {
                 const response = await this.makeRequest('/audio/transcriptions', formData);
                 return this.processTranscriptionResponse(response, options);
             } catch (error) {
-                // Проверяем retryable до enhance для правильной логики
+                // Check retryable for correct logic
                 const isRetryable = this.isRetryableError(error);
                 const enhancedError = this.enhanceError(error as Error);
                 
@@ -98,16 +101,16 @@ export class WhisperClient {
                     throw enhancedError;
                 }
                 
-                // Ждем перед повторной попыткой
+                // Wait before the next attempt
                 await this.delay(this.retryDelay * attempt);
             }
         }
         
-        throw new Error('Все попытки транскрибации исчерпаны');
+        throw new Error('All transcription attempts have been exhausted');
     }
 
     /**
-     * Проверка валидности API ключа
+     * Checking the validity of the API key
      */
     async checkApiKey(): Promise<boolean> {
         try {
@@ -126,7 +129,7 @@ export class WhisperClient {
     }
 
     /**
-     * Получение информации об использовании API
+     * Getting information about the use of the API
      */
     async getUsage(): Promise<any> {
         try {
@@ -149,29 +152,29 @@ export class WhisperClient {
     }
 
     /**
-     * Валидация аудио blob
+     * Validation of the audio blob
      */
     private validateAudioBlob(audioBlob: Blob): void {
         if (!audioBlob || audioBlob.size === 0) {
-            throw this.createError('Аудио файл пуст', 'EMPTY_AUDIO');
+            throw this.createError('Audio file is empty', 'EMPTY_AUDIO');
         }
 
         if (audioBlob.size > this.maxFileSize) {
             throw this.createError(
-                `Размер файла превышает лимит в ${this.maxFileSize / (1024 * 1024)}MB`,
+                `File size exceeds the limit of ${this.maxFileSize / (1024 * 1024)}MB`,
                 'FILE_TOO_LARGE'
             );
         }
 
-        // Проверка формата по MIME типу
+        // Check the format by MIME type
         const mimeType = audioBlob.type;
         if (mimeType && !this.isSupportedFormat(mimeType)) {
-            console.warn(`Неподдерживаемый MIME тип: ${mimeType}. Продолжаем...`);
+            console.warn(`Unsupported MIME type: ${mimeType}. Continuing...`);
         }
     }
 
     /**
-     * Проверка поддерживаемости формата
+     * Checking the support of the format
      */
     private isSupportedFormat(mimeType: string): boolean {
         return this.supportedFormats.some(format => 
@@ -180,20 +183,20 @@ export class WhisperClient {
     }
 
     /**
-     * Подготовка FormData для запроса
+     * Preparing FormData for the request
      */
     private prepareFormData(audioBlob: Blob, options: TranscriptionOptions): FormData {
         const formData = new FormData();
         
-        // Определяем расширение файла на основе MIME типа
+        // Determine the file extension based on the MIME type
         const extension = this.getFileExtension(audioBlob.type);
         formData.append('file', audioBlob, `audio.${extension}`);
         
-        // Модель (по умолчанию whisper-1, но можно настроить)
+        // Model (default whisper-1, but can be configured)
         const model = options.model || 'whisper-1';
         formData.append('model', model);
 
-        // Добавляем опции
+        // Add options
         if (options.language && options.language !== 'auto') {
             formData.append('language', options.language);
         }
@@ -202,16 +205,16 @@ export class WhisperClient {
             formData.append('prompt', options.prompt);
         }
 
-        // Температура для определения креативности
+        // Temperature for determining creativity
         const temperature = options.temperature ?? 0;
         formData.append('temperature', temperature.toString());
 
-        // Формат ответа (поддерживаем новые варианты)
+        // Response format (support new variants)
         if (options.response_format) {
             formData.append('response_format', options.response_format);
         }
 
-        // Временные метки (только для json форматов)
+        // Timestamp granularities (only for json formats)
         if (options.timestamp_granularities && 
             (options.response_format === 'verbose_json' || options.response_format === 'json')) {
             formData.append('timestamp_granularities[]', options.timestamp_granularities.join(','));
@@ -221,7 +224,7 @@ export class WhisperClient {
     }
 
     /**
-     * Получение расширения файла по MIME типу
+     * Getting the file extension by MIME type
      */
     private getFileExtension(mimeType: string): string {
         const mimeToExtension: { [key: string]: string } = {
@@ -238,7 +241,33 @@ export class WhisperClient {
     }
 
     /**
-     * Выполнение HTTP запроса
+     * Logging the request parameters to the Whisper API
+     */
+    private logRequestParameters(audioBlob: Blob, options: TranscriptionOptions): void {
+        const requestInfo = {
+            endpoint: `${this.baseURL}/audio/transcriptions`,
+            method: 'POST',
+            parameters: {
+                model: options.model || 'whisper-1',
+                language: options.language && options.language !== 'auto' ? options.language : 'auto-detect',
+                prompt: options.prompt || '(no prompt)',
+                temperature: options.temperature ?? 0,
+                response_format: options.response_format || 'json',
+                timestamp_granularities: options.timestamp_granularities || '(not specified)'
+            },
+            audioFile: {
+                size: `${(audioBlob.size / 1024).toFixed(2)} KB`,
+                type: audioBlob.type || 'unknown',
+                extension: this.getFileExtension(audioBlob.type)
+            }
+        };
+
+        console.log('🚀 [WHISPER REQUEST] Sending a request to the Whisper API:');
+        console.log(JSON.stringify(requestInfo, null, 2));
+    }
+
+    /**
+     * Performing an HTTP request
      */
     private async makeRequest(endpoint: string, formData: FormData): Promise<Response> {
         const controller = new AbortController();
@@ -270,7 +299,7 @@ export class WhisperClient {
     }
 
     /**
-     * Обработка ответа транскрибации
+     * Processing the transcription response
      */
     private async processTranscriptionResponse(
         response: Response, 
@@ -287,7 +316,7 @@ export class WhisperClient {
     }
 
     /**
-     * Парсинг ошибок API
+     * Parsing API errors
      */
     private async parseErrorResponse(response: Response): Promise<any> {
         try {
@@ -298,7 +327,7 @@ export class WhisperClient {
     }
 
     /**
-     * Создание API ошибки
+     * Creating an API error
      */
     private createApiError(status: number, statusText: string, errorData: any): WhisperError {
         let message = `OpenAI API Error: ${status} ${statusText}`;
@@ -309,23 +338,23 @@ export class WhisperClient {
             code = errorData.error.code || code;
         }
 
-        // Специфичные сообщения для разных кодов ошибок
+        // Specific messages for different error codes
         switch (status) {
             case 401:
-                message = 'Неверный API ключ OpenAI';
+                message = 'Invalid OpenAI API key';
                 code = 'INVALID_API_KEY';
                 break;
             case 429:
-                message = 'Превышен лимит запросов API. Попробуйте позже';
+                message = 'API request limit exceeded. Please try again later';
                 code = 'RATE_LIMIT_EXCEEDED';
                 break;
             case 413:
-                message = 'Файл слишком большой для обработки';
+                message = 'File too large for processing';
                 code = 'FILE_TOO_LARGE';
                 break;
             case 400:
                 if (errorData?.error?.message?.includes('audio')) {
-                    message = 'Неподдерживаемый формат аудио';
+                    message = 'Unsupported audio format';
                     code = 'UNSUPPORTED_FORMAT';
                 }
                 break;
@@ -335,7 +364,7 @@ export class WhisperClient {
     }
 
     /**
-     * Создание расширенной ошибки
+     * Creating an enhanced error
      */
     private createError(
         message: string, 
@@ -351,65 +380,65 @@ export class WhisperClient {
     }
 
     /**
-     * Улучшение существующей ошибки
+     * Improving an existing error
      */
     private enhanceError(error: Error): WhisperError {
         if (error.name === 'AbortError') {
-            return this.createError('Превышено время ожидания ответа API', 'TIMEOUT');
+            return this.createError('Timeout waiting for API response', 'TIMEOUT');
         }
 
         if (error.message.includes('fetch')) {
-            return this.createError('Ошибка сети при подключении к API', 'NETWORK_ERROR');
+            return this.createError('Network error when connecting to the API', 'NETWORK_ERROR');
         }
 
         return error as WhisperError;
     }
 
     /**
-     * Проверка возможности повтора запроса
+     * Checking the possibility of repeating the request
      */
     private isRetryableError(error: any): boolean {
-        // Проверяем по типу ошибки
+        // Check the type of error
         if (error.name === 'AbortError') {
             return true; // TIMEOUT - retryable
         }
         
-        // Проверяем network errors по сообщению
+        // Check network errors by message
         if (error.message && error.message.includes('fetch')) {
             return true; // NETWORK_ERROR - retryable
         }
         
-        // Проверяем по коду (если уже enhanced)
+        // Check by code (if already enhanced)
         if (error.code === 'TIMEOUT' || error.code === 'NETWORK_ERROR') {
             return true;
         }
 
-        // Проверяем по HTTP статусу
+        // Check by HTTP status
         const retryableStatuses = [429, 500, 502, 503, 504];
         return retryableStatuses.includes(error.statusCode);
     }
 
     /**
-     * Задержка для повторных попыток
+     * Delay for retries
      */
     private delay(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
-     * Статическая валидация API ключа
+     * Static validation of the API key
      */
     static validateApiKey(apiKey: string): boolean {
         if (!apiKey || typeof apiKey !== 'string') {
             return false;
         }
 
-        // OpenAI ключи начинаются с sk- и имеют определенную длину
+        // OpenAI keys start with sk- and have a certain length
         return apiKey.startsWith('sk-') && apiKey.length >= 48;
     }
 
     /**
-     * Получение поддерживаемых форматов
+     * Getting supported formats
      */
     static getSupportedFormats(): string[] {
         return [
@@ -418,7 +447,7 @@ export class WhisperClient {
     }
 
     /**
-     * Получение максимального размера файла
+     * Getting the maximum file size
      */
     static getMaxFileSize(): number {
         return 25 * 1024 * 1024; // 25MB

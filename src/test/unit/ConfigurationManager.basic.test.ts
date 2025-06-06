@@ -7,13 +7,13 @@ describe('ConfigurationManager - Basic Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
-        // Создаем песочницу sinon
+        // Create sinon sandbox
         sandbox = sinon.createSandbox();
         
-        // Сбрасываем синглтон
+        // Reset singleton
         (ConfigurationManager as any).instance = null;
         
-        // Создаем новый экземпляр
+        // Create new instance
         configManager = ConfigurationManager.getInstance();
     });
 
@@ -22,8 +22,8 @@ describe('ConfigurationManager - Basic Tests', () => {
         sandbox.restore();
     });
 
-    it('должен использовать правильный префикс speechToTextWhisper', () => {
-        // Создаем мок для loadConfiguration
+    it('should use the correct speechToTextWhisper prefix', () => {
+        // Create mock for loadConfiguration
         const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
         loadConfigurationStub.returns({
             whisper: {
@@ -49,23 +49,23 @@ describe('ConfigurationManager - Basic Tests', () => {
             }
         });
 
-        // Получаем конфигурацию (что запускает loadConfiguration)
+        // Get configuration (which triggers loadConfiguration)
         const config = configManager.getConfiguration();
 
-        // Проверяем что loadConfiguration был вызван
-        assert.ok(loadConfigurationStub.called, 'loadConfiguration должен был быть вызван');
+        // Check that loadConfiguration was called
+        assert.ok(loadConfigurationStub.called, 'loadConfiguration should have been called');
         
-        // Проверяем структуру возвращаемой конфигурации
-        assert.ok(config.whisper, 'Должна быть секция whisper');
-        assert.ok(config.audio, 'Должна быть секция audio');
-        assert.ok(config.ui, 'Должна быть секция ui');
+        // Check the structure of the returned configuration
+        assert.ok(config.whisper, 'Should have whisper section');
+        assert.ok(config.audio, 'Should have audio section');
+        assert.ok(config.ui, 'Should have ui section');
     });
 
-    it('должен правильно валидировать silenceThreshold с диапазоном 20-80', () => {
-        // Тестируем валидные значения
+    it('should correctly validate silenceThreshold within 20-80 range', () => {
+        // Test valid values
         const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
         
-        // Тест валидного значения
+        // Test valid value
         loadConfigurationStub.returns({
             whisper: { apiKey: 'test-key', language: 'auto', whisperModel: 'whisper-1', prompt: '', temperature: 0.1, timeout: 30000, maxRetries: 3 },
             audio: { audioQuality: 'standard', ffmpegPath: '', maxRecordingDuration: 60, silenceDetection: true, silenceDuration: 3, silenceThreshold: 25, inputDevice: 'auto' },
@@ -73,24 +73,24 @@ describe('ConfigurationManager - Basic Tests', () => {
         });
         
         let validation = configManager.validateConfiguration();
-        assert.ok(validation.isValid, 'silenceThreshold=25 должно быть валидным');
+        assert.ok(validation.isValid, 'silenceThreshold=25 should be valid');
 
-        // Тест невалидного значения
+        // Test invalid value
         loadConfigurationStub.returns({
             whisper: { apiKey: 'test-key', language: 'auto', whisperModel: 'whisper-1', prompt: '', temperature: 0.1, timeout: 30000, maxRetries: 3 },
             audio: { audioQuality: 'standard', ffmpegPath: '', maxRecordingDuration: 60, silenceDetection: true, silenceDuration: 3, silenceThreshold: 10, inputDevice: 'auto' },
             ui: { showStatusBar: true }
         });
 
-        // Очищаем кэш чтобы новая конфигурация загрузилась
+        // Clear cache for new configuration to load
         (configManager as any).invalidateCache();
         
         validation = configManager.validateConfiguration();
-        assert.ok(!validation.isValid, 'silenceThreshold=10 должно быть невалидным');
+        assert.ok(!validation.isValid, 'silenceThreshold=10 should be invalid');
     });
 
-    it('должен использовать правильные ключи для чтения настроек', () => {
-        // Создаем мок для loadConfiguration
+    it('should use correct keys for reading settings', () => {
+        // Create mock for loadConfiguration
         const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
         loadConfigurationStub.returns({
             whisper: {
@@ -116,13 +116,13 @@ describe('ConfigurationManager - Basic Tests', () => {
             }
         });
 
-        // Получаем конфигурацию
+        // Get configuration
         const config = configManager.getConfiguration();
 
-        // Проверяем что loadConfiguration был вызван (что подразумевает чтение правильных ключей)
-        assert.ok(loadConfigurationStub.called, 'loadConfiguration должен был быть вызван');
+        // Check that loadConfiguration was called (which implies correct keys were read)
+        assert.ok(loadConfigurationStub.called, 'loadConfiguration should have been called');
         
-        // Проверяем что в конфигурации правильные значения
+        // Check that configuration has correct values
         assert.strictEqual(config.whisper.apiKey, 'test-api-key');
         assert.strictEqual(config.audio.audioQuality, 'standard');
         assert.strictEqual(config.ui.showStatusBar, true);

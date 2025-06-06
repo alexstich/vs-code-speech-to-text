@@ -9,13 +9,13 @@ describe('Recording Debug Tests', () => {
     before(async function() {
         this.timeout(30000);
         
-        // Активируем расширение
+        // Activate the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
         if (extension && !extension.isActive) {
             await extension.activate();
         }
         
-        // Ждем немного для полной инициализации
+        // Wait a bit for full initialization
         await new Promise(resolve => setTimeout(resolve, 2000));
     });
 
@@ -32,7 +32,7 @@ describe('Recording Debug Tests', () => {
             this.timeout(15000);
             
             try {
-                // Импортируем FFmpegAudioRecorder для прямого тестирования
+                // Import FFmpegAudioRecorder for direct testing
                 const { FFmpegAudioRecorder } = await import('../../core/FFmpegAudioRecorder.js');
                 
                 console.log('🔍 Testing FFmpeg availability...');
@@ -123,7 +123,7 @@ describe('Recording Debug Tests', () => {
                 
                 console.log('🔍 Testing direct FFmpegAudioRecorder creation...');
                 
-                // Создаем события для тестирования
+                // Create events for testing
                 const testEvents = {
                     onRecordingStart: () => {
                         console.log('✅ Test: onRecordingStart called');
@@ -136,17 +136,17 @@ describe('Recording Debug Tests', () => {
                     }
                 };
                 
-                // Создаем экземпляр с минимальными настройками
+                // Create an instance with minimal settings
                 const recorder = new FFmpegAudioRecorder(testEvents, {
                     sampleRate: 16000,
                     channelCount: 1,
                     audioFormat: 'wav',
-                    maxDuration: 5 // 5 секунд максимум для теста
+                    maxDuration: 5 // 5 seconds maximum for test
                 });
                 
                 console.log('✅ FFmpegAudioRecorder instance created successfully');
                 
-                // Проверяем методы
+                // Check methods
                 assert.ok(typeof recorder.getIsRecording === 'function', 'Should have getIsRecording method');
                 assert.ok(typeof recorder.startRecording === 'function', 'Should have startRecording method');
                 assert.ok(typeof recorder.stopRecording === 'function', 'Should have stopRecording method');
@@ -186,7 +186,7 @@ describe('Recording Debug Tests', () => {
                 
             } catch (error) {
                 console.error('FFmpeg test recording failed:', error);
-                // Не делаем assert.fail здесь, так как это может быть ожидаемо в CI
+                // Do not assert.fail here, as this may be expected in CI
                 console.log('Test recording failed (may be expected in CI environment)');
             }
         });
@@ -196,7 +196,7 @@ describe('Recording Debug Tests', () => {
         it('should test recordAndInsertOrClipboard with detailed logging', async function() {
             this.timeout(15000);
             
-            // Перехватываем console.log для анализа
+            // Intercept console.log for analysis
             const originalLog = console.log;
             const originalError = console.error;
             const logs: string[] = [];
@@ -217,10 +217,10 @@ describe('Recording Debug Tests', () => {
             try {
                 console.log('🔍 Testing recordAndInsertOrClipboard command with detailed logging...');
                 
-                // Выполняем команду
+                // Execute command
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
                 console.log('=== COLLECTED LOGS ===');
@@ -233,7 +233,7 @@ describe('Recording Debug Tests', () => {
                     console.log(`${index + 1}: ${error}`);
                 });
                 
-                // Анализируем логи
+                // Analyze logs
                 const hasStartRecording = logs.some(log => log.includes('startRecording() called'));
                 const hasEnsureFFmpeg = logs.some(log => log.includes('ensureFFmpegAudioRecorder'));
                 const hasFFmpegCheck = logs.some(log => log.includes('Checking FFmpeg availability'));
@@ -247,14 +247,14 @@ describe('Recording Debug Tests', () => {
                 console.log(`- audioRecorder is null: ${hasAudioRecorderNull}`);
                 console.log(`- Initialization error: ${hasInitializationError}`);
                 
-                // Восстанавливаем console
+                // Restore console
                 console.log = originalLog;
                 console.error = originalError;
                 
                 assert.ok(true, 'Command execution completed with logging');
                 
             } catch (error) {
-                // Восстанавливаем console
+                // Restore console
                 console.log = originalLog;
                 console.error = originalError;
                 

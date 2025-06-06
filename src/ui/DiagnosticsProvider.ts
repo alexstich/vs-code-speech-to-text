@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { FFmpegAudioRecorder } from '../core/FFmpegAudioRecorder';
 
 /**
- * Провайдер данных для диагностики
+ * Data provider for diagnostics
  */
 export class DiagnosticsProvider implements vscode.TreeDataProvider<DiagnosticItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<DiagnosticItem | undefined | void> = new vscode.EventEmitter<DiagnosticItem | undefined | void>();
@@ -28,7 +28,7 @@ export class DiagnosticsProvider implements vscode.TreeDataProvider<DiagnosticIt
     private async getDiagnostics(): Promise<DiagnosticItem[]> {
         const items: DiagnosticItem[] = [];
 
-        // FFmpeg проверка
+        // FFmpeg check
         const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
         const ffmpegItem = new DiagnosticItem(
             'FFmpeg',
@@ -38,7 +38,7 @@ export class DiagnosticsProvider implements vscode.TreeDataProvider<DiagnosticIt
         ffmpegItem.iconPath = new vscode.ThemeIcon(ffmpegCheck.available ? 'check' : 'error');
         items.push(ffmpegItem);
 
-        // Аудио устройства
+        // Audio devices
         try {
             const devices = await FFmpegAudioRecorder.detectInputDevices();
             const deviceNames = devices.map(device => device.name);
@@ -59,7 +59,7 @@ export class DiagnosticsProvider implements vscode.TreeDataProvider<DiagnosticIt
             items.push(devicesItem);
         }
 
-        // API ключ
+        // API key
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         const apiKey = config.get<string>('apiKey');
         const apiItem = new DiagnosticItem(

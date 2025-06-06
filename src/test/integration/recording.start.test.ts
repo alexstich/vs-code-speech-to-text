@@ -9,13 +9,13 @@ describe('Recording Start Integration Tests', () => {
     before(async function() {
         this.timeout(30000);
         
-        // Активируем расширение
+        // Activate the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
         if (extension && !extension.isActive) {
             await extension.activate();
         }
         
-        // Ждем немного для полной инициализации
+        // Wait a bit for full initialization
         await new Promise(resolve => setTimeout(resolve, 2000));
     });
 
@@ -46,23 +46,23 @@ describe('Recording Start Integration Tests', () => {
             it(`should execute ${commandId} command without throwing`, async function() {
                 this.timeout(10000);
                 
-                // Мокаем showInformationMessage чтобы отследить вызовы
+                // Mock showInformationMessage to track calls
                 const showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage');
                 const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
                 const showWarningStub = sandbox.stub(vscode.window, 'showWarningMessage');
                 
                 try {
-                    // Выполняем команду
+                    // Execute the command
                     await vscode.commands.executeCommand(commandId);
                     
-                    // Проверяем, что было показано сообщение о начале записи или ошибке
+                    // Check if any messages were shown
                     const infoMessages = showInfoStub.getCalls().map(call => call.args[0]);
                     const errorMessages = showErrorStub.getCalls().map(call => call.args[0]);
                     const warningMessages = showWarningStub.getCalls().map(call => call.args[0]);
                     
                     const allMessages = [...infoMessages, ...errorMessages, ...warningMessages];
                     
-                    // Команда должна либо начать запись, либо показать ошибку
+                    // The command should either start recording or show an error
                     const hasRecordingMessage = allMessages.some(msg => 
                         msg.includes('Recording') || 
                         msg.includes('DEBUG') ||
@@ -78,7 +78,7 @@ describe('Recording Start Integration Tests', () => {
                     );
                     
                 } catch (error) {
-                    // Если команда выбросила исключение, это тоже нормально в тестовой среде
+                    // If the command threw an exception, that's also normal in the test environment
                     console.log(`Command ${commandId} threw error (expected in test environment):`, (error as Error).message);
                     assert.ok(true, 'Command execution attempted');
                 }
@@ -94,16 +94,16 @@ describe('Recording Start Integration Tests', () => {
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Пытаемся начать запись
+                // Try to start recording
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // Ждем немного
+                // Wait a bit
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Пытаемся остановить запись (повторный вызов команды)
+                // Try to stop recording (repeated command call)
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // Проверяем, что были вызовы
+                // Check if calls were made
                 const infoMessages = showInfoStub.getCalls().map(call => call.args[0]);
                 const errorMessages = showErrorStub.getCalls().map(call => call.args[0]);
                 
@@ -124,19 +124,19 @@ describe('Recording Start Integration Tests', () => {
             const showWarningStub = sandbox.stub(vscode.window, 'showWarningMessage');
             
             try {
-                // Быстро выполняем команду дважды
+                // Quickly execute the command twice
                 const promise1 = vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 const promise2 = vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
                 await Promise.allSettled([promise1, promise2]);
                 
-                // Ждем немного для обработки
+                // Wait a bit for processing
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Должно быть предупреждение о том, что запись уже идет или слишком частые попытки
+                // Should show warning about recording already in progress or too frequent attempts
                 const warningMessages = showWarningStub.getCalls().map(call => call.args[0]);
                 
-                // В тестовой среде может не быть предупреждения, но команды должны выполниться
+                // In the test environment, there might not be a warning, but the commands should still execute
                 assert.ok(true, 'Multiple recording prevention attempted');
                 
             } catch (error) {
@@ -153,13 +153,13 @@ describe('Recording Start Integration Tests', () => {
             const showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage');
             
             try {
-                // Выполняем команду записи
+                // Execute the recording command
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Проверяем, что были сообщения о записи
+                // Check if recording messages were shown
                 const infoMessages = showInfoStub.getCalls().map(call => call.args[0]);
                 
                 const hasRecordingStartMessage = infoMessages.some(msg => 
@@ -185,19 +185,19 @@ describe('Recording Start Integration Tests', () => {
             const showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage');
             
             try {
-                // Начинаем запись
+                // Start recording
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertToCurrentChat');
                 
-                // Ждем немного
+                // Wait a bit
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Останавливаем запись
+                // Stop recording
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertToCurrentChat');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 500));
                 
-                // Проверяем, что были сообщения о жизненном цикле записи
+                // Check if messages were shown during recording lifecycle
                 const infoMessages = showInfoStub.getCalls().map(call => call.args[0]);
                 
                 assert.ok(
@@ -221,7 +221,7 @@ describe('Recording Start Integration Tests', () => {
 
         shortcuts.forEach(({ command, key }) => {
             it(`should have keyboard shortcut ${key} for ${command}`, async () => {
-                // Проверяем, что команда зарегистрирована
+                // Check if the command is registered
                 const allCommands = await vscode.commands.getCommands(true);
                 assert.ok(
                     allCommands.includes(command),
@@ -235,11 +235,11 @@ describe('Recording Start Integration Tests', () => {
         it('should have extension activated and ready', async function() {
             this.timeout(5000);
             
-            // Проверяем, что расширение активировано
+            // Check if the extension is active
             assert.ok(extension?.isActive, 'Extension should be active');
             
-            // В тестовой среде мы не можем напрямую проверить статус-бар,
-            // но можем убедиться, что команды доступны
+            // In the test environment, we can't directly check the status bar,
+            // but we can ensure that commands are available
             const allCommands = await vscode.commands.getCommands(true);
             const hasRecordingCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
@@ -275,13 +275,13 @@ describe('Recording Start Integration Tests', () => {
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Выполняем команду записи
+                // Execute the recording command
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // В тестовой среде может быть ошибка FFmpeg - это нормально
+                // In the test environment, there might be an FFmpeg error - that's normal
                 assert.ok(true, 'Error handling attempted');
                 
             } catch (error) {
@@ -296,13 +296,13 @@ describe('Recording Start Integration Tests', () => {
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Выполняем команду записи
+                // Execute the recording command
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertToCurrentChat');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // В тестовой среде может быть ошибка микрофона - это нормально
+                // In the test environment, there might be a microphone error - that's normal
                 assert.ok(true, 'Microphone error handling attempted');
                 
             } catch (error) {
@@ -318,13 +318,13 @@ describe('Recording Start Integration Tests', () => {
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Выполняем команду тестирования FFmpeg
+                // Execute the FFmpeg test command
                 await vscode.commands.executeCommand('speechToTextWhisper.testFFmpeg');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Должно быть сообщение о результате тестирования
+                // Should show FFmpeg test result message
                 const infoMessages = showInfoStub.getCalls().map(call => call.args[0]);
                 const errorMessages = showErrorStub.getCalls().map(call => call.args[0]);
                 
@@ -354,13 +354,13 @@ describe('Recording Start Integration Tests', () => {
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Выполняем команду тестирования Audio Recorder
+                // Execute the Audio Recorder test command
                 await vscode.commands.executeCommand('speechToTextWhisper.testAudioRecorder');
                 
-                // Ждем обработки
+                // Wait for processing
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                // Должно быть сообщение о результате тестирования
+                // Should show Audio Recorder test result message
                 const infoMessages = showInfoStub.getCalls().map(call => call.args[0]);
                 const errorMessages = showErrorStub.getCalls().map(call => call.args[0]);
                 

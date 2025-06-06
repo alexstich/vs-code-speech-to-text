@@ -1,4 +1,4 @@
-// webAudioMocks.ts - моки для Web Audio API и DOM объектов для тестирования
+// webAudioMocks.ts - Mocks for Web Audio API and DOM objects for testing
 
 import * as sinon from 'sinon';
 
@@ -15,7 +15,7 @@ export class MockMediaRecorder {
 
     start(timeslice?: number): void {
         this.state = 'recording';
-        // Симулируем событие начала записи
+        // Simulate recording start event
         setTimeout(() => {
             if (this.ondataavailable) {
                 const mockBlob = new Blob(['mock audio data'], { type: this.mimeType });
@@ -41,9 +41,9 @@ export class MockMediaRecorder {
         this.state = 'recording';
     }
 
-    // Статический метод для проверки поддержки MIME типов
+    // Static method to check MIME type support
     static isTypeSupported(mimeType: string): boolean {
-        // Симулируем поддержку основных аудио форматов
+        // Simulate support for basic audio formats
         const supportedTypes = [
             'audio/webm',
             'audio/webm;codecs=opus',
@@ -150,17 +150,17 @@ export class MockFormData {
     }
 }
 
-// Глобальные моки для тестирования
+// Global mocks for testing
 export function setupWebAudioMocks(): void {
-    // Настройка глобальных объектов для браузерного API
+    // Configure global objects for browser API
     
-    // Мок MediaRecorder
+    // Mock MediaRecorder
     (global as any).MediaRecorder = MockMediaRecorder;
     (global as any).MediaStream = MockMediaStream;
     (global as any).Blob = MockBlob;
     (global as any).FormData = MockFormData;
     
-    // Мок для AbortSignal.timeout (Node.js 16+)
+    // Mock for AbortSignal.timeout (Node.js 16+)
     if (!(global as any).AbortSignal) {
         (global as any).AbortSignal = {
             timeout: (ms: number) => {
@@ -171,7 +171,7 @@ export function setupWebAudioMocks(): void {
         };
     }
     
-    // Мок AbortController
+    // Mock AbortController
     if (!(global as any).AbortController) {
         (global as any).AbortController = class {
             signal: any = { aborted: false };
@@ -181,43 +181,43 @@ export function setupWebAudioMocks(): void {
         };
     }
     
-    // Настройка navigator медиа API
+    // Configure navigator media API
     const mockNavigator = {
         mediaDevices: {
             getUserMedia: sinon.stub().resolves(new MockMediaStream())
         }
     };
     
-    // Используем Object.defineProperty вместо прямого присваивания
+    // Use Object.defineProperty instead of direct assignment
     Object.defineProperty(global, 'navigator', {
         value: mockNavigator,
         writable: true,
         configurable: true
     });
     
-    // Настройка fetch API
+    // Configure fetch API
     const fetchStub = sinon.stub();
     (global as any).fetch = fetchStub;
 }
 
 export function cleanupWebAudioMocks(): void {
-    // Очистка всех Sinon стабов
+    // Cleanup all Sinon stubs
     sinon.restore();
     
-    // Удаление глобальных моков
+    // Remove global mocks
     delete (global as any).MediaRecorder;
     delete (global as any).MediaStream;
     delete (global as any).Blob;
     delete (global as any).FormData;
     delete (global as any).fetch;
     
-    // Очистка navigator (если он был переопределен)
+    // Cleanup navigator (if it was overridden)
     if (global.hasOwnProperty('navigator')) {
         delete (global as any).navigator;
     }
 }
 
-// Хелперы для создания мок-данных
+// Helpers for creating mock data
 export function createMockAudioBlob(): Blob {
     return new Blob(['mock audio data'], { type: 'audio/webm' });
 }

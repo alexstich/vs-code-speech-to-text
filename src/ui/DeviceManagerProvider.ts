@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { FFmpegAudioRecorder, AudioDevice } from '../core/FFmpegAudioRecorder';
 
 /**
- * Провайдер данных для управления аудио устройствами
+ * Data provider for managing audio devices
  */
 export class DeviceManagerProvider implements vscode.TreeDataProvider<DeviceItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<DeviceItem | undefined | void> = new vscode.EventEmitter<DeviceItem | undefined | void>();

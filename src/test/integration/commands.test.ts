@@ -6,10 +6,10 @@ describe('Commands Integration Tests', () => {
     let extension: vscode.Extension<any> | undefined;
 
     before(async () => {
-        // Получаем расширение
+        // Get the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
         
-        // Активируем расширение если оно не активно
+        // Activate the extension if it is not active
         if (extension && !extension.isActive) {
             await extension.activate();
         }
@@ -46,7 +46,7 @@ describe('Commands Integration Tests', () => {
     });
 
     describe('Safe Command Execution', () => {
-        // Тестируем только безопасные команды, которые не требуют пользовательского ввода
+        // We only test safe commands that do not require user input
         const safeCommands = [
             'speechToTextWhisper.runDiagnostics',
             'speechToTextWhisper.testFFmpeg', 
@@ -56,18 +56,18 @@ describe('Commands Integration Tests', () => {
 
         safeCommands.forEach(commandId => {
             it(`should execute ${commandId} without errors`, async function() {
-                this.timeout(10000); // Увеличиваем таймаут для команд
+                this.timeout(10000); // Increase timeout for commands
                 
                 try {
                     await vscode.commands.executeCommand(commandId);
-                    // Если команда выполнилась без исключения, тест прошел
+                    // If the command executed without exception, the test passed
                     assert.ok(true, `Command ${commandId} executed successfully`);
                 } catch (error) {
-                    // Некоторые команды могут завершиться с ошибкой из-за отсутствия настроек
-                    // но важно, что они зарегистрированы и могут быть вызваны
+                    // Some commands may fail due to missing settings
+                    // but it's important that they are registered and callable
                     console.warn(`Command ${commandId} failed with:`, (error as Error).message);
                     
-                    // Проверяем, что это ожидаемая ошибка (например, отсутствие API ключа)
+                    // Check if this is an expected error (e.g., missing API key)
                     const errorMessage = (error as Error).message.toLowerCase();
                     const isExpectedError = errorMessage.includes('api key') || 
                                           errorMessage.includes('ffmpeg') ||
@@ -77,7 +77,7 @@ describe('Commands Integration Tests', () => {
                     if (isExpectedError) {
                         assert.ok(true, `Command ${commandId} failed with expected error: ${errorMessage}`);
                     } else {
-                        throw error; // Неожиданная ошибка
+                        throw error; // Unexpected error
                     }
                 }
             });
@@ -85,8 +85,8 @@ describe('Commands Integration Tests', () => {
     });
 
     describe('Recording Commands', () => {
-        // Для команд записи мы не можем их полностью выполнить в тестах,
-        // но можем проверить, что они зарегистрированы и доступны
+        // For recording commands, we cannot fully execute them in tests,
+        // but we can check that they are registered and available
         const recordingCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
             'speechToTextWhisper.recordAndInsertToCurrentChat',
@@ -104,28 +104,28 @@ describe('Commands Integration Tests', () => {
         });
 
         it('should not execute recording commands in test environment', async () => {
-            // В тестовой среде команды записи должны быть доступны, но не должны запускать реальную запись
-            // Это проверяет, что команды зарегистрированы, но не тестирует их полную функциональность
+            // In the test environment, recording commands should be available, but should not start actual recording
+            // This checks that the commands are registered, but does not test their full functionality
             for (const commandId of recordingCommands) {
                 try {
-                    // Пытаемся выполнить команду, но ожидаем, что она может завершиться с ошибкой
-                    // из-за отсутствия необходимых настроек или аудио устройств в тестовой среде
+                    // Attempt to execute the command, but expect that it may fail
+                    // due to missing necessary settings or audio devices in the test environment
                     await vscode.commands.executeCommand(commandId);
                 } catch (error) {
-                    // Это ожидаемо в тестовой среде
+                    // This is expected in the test environment
                     const errorMessage = (error as Error).message.toLowerCase();
                     console.log(`Recording command ${commandId} failed as expected in test environment:`, errorMessage);
                 }
             }
             
-            // Если мы дошли до этой точки, команды зарегистрированы
+            // If we reached this point, the commands are registered
             assert.ok(true, 'Recording commands are registered');
         });
     });
 
     describe('Context Commands', () => {
         it('should handle context setting commands', async () => {
-            // Тестируем команды, которые устанавливают контекст
+            // Testing commands that set context
             try {
                 await vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
                 assert.ok(true, 'Context setting command works');
@@ -134,4 +134,4 @@ describe('Commands Integration Tests', () => {
             }
         });
     });
-}); 
+});

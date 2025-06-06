@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 
 /**
- * Диагностика для проверки регистрации и работы команд
+ * Diagnostics for checking command registration and operation
  */
 export class CommandDiagnostics {
     
     /**
-     * Проверяет, зарегистрированы ли команды расширения
+     * Checks if extension commands are registered
      */
     static async checkCommandRegistration(): Promise<{ [commandId: string]: boolean }> {
         const expectedCommands = [
@@ -24,7 +24,7 @@ export class CommandDiagnostics {
         
         for (const commandId of expectedCommands) {
             try {
-                // Получаем список всех команд
+                // Get list of all commands
                 const allCommands = await vscode.commands.getCommands(true);
                 registrationStatus[commandId] = allCommands.includes(commandId);
             } catch (error) {
@@ -36,7 +36,7 @@ export class CommandDiagnostics {
     }
 
     /**
-     * Проверяет активацию расширения
+     * Checks extension activation
      */
     static async checkExtensionActivation(): Promise<{
         isActive: boolean;
@@ -66,7 +66,7 @@ export class CommandDiagnostics {
     }
 
     /**
-     * Пытается выполнить команду и проверить её работоспособность
+     * Attempts to execute a command and check its functionality
      */
     static async testCommandExecution(commandId: string): Promise<{
         success: boolean;
@@ -91,7 +91,7 @@ export class CommandDiagnostics {
     }
 
     /**
-     * Полная диагностика расширения
+     * Full extension diagnostics
      */
     static async runFullDiagnostics(): Promise<{
         extension: any;
@@ -99,17 +99,17 @@ export class CommandDiagnostics {
         commandTests: { [commandId: string]: any };
         keybindings: any[];
     }> {
-        console.log('🔍 Запуск полной диагностики расширения...');
+        console.log('🔍 Running full extension diagnostics...');
 
-        // Проверка активации расширения
+        // Check extension activation
         const extensionStatus = await this.checkExtensionActivation();
-        console.log('📊 Статус расширения:', extensionStatus);
+        console.log('📊 Extension status:', extensionStatus);
 
-        // Проверка регистрации команд
+        // Check command registration
         const commandStatus = await this.checkCommandRegistration();
-        console.log('📊 Статус команд:', commandStatus);
+        console.log('📊 Command status:', commandStatus);
 
-        // Тестирование выполнения команд (только безопасных)
+        // Test command execution (safe ones only)
         const safeCommandsToTest = [
             'speechToTextWhisper.runDiagnostics',
             'speechToTextWhisper.testFFmpeg',
@@ -126,7 +126,7 @@ export class CommandDiagnostics {
             }
         }
 
-        // Проверка клавиатурных привязок
+        // Check keybindings
         const keybindings = await this.getKeybindings();
 
         const result = {
@@ -136,18 +136,18 @@ export class CommandDiagnostics {
             keybindings
         };
 
-        console.log('📊 Результаты диагностики:', JSON.stringify(result, null, 2));
+        console.log('📊 Diagnostics results:', JSON.stringify(result, null, 2));
         
         return result;
     }
 
     /**
-     * Получает информацию о клавиатурных привязках
+     * Gets keybinding information
      */
     static async getKeybindings(): Promise<any[]> {
         try {
-            // VS Code API не предоставляет прямого доступа к keybindings
-            // Возвращаем ожидаемые привязки из package.json
+            // VS Code API does not provide direct access to keybindings
+            // Returning expected bindings from package.json
             const expectedKeybindings = [
                 { command: 'speechToTextWhisper.recordAndOpenNewChat', key: 'F9' },
                 { command: 'speechToTextWhisper.recordAndInsertOrClipboard', key: 'ctrl+shift+m', mac: 'cmd+shift+m' },
@@ -162,7 +162,7 @@ export class CommandDiagnostics {
 }
 
 /**
- * Команда для диагностики проблем с расширением
+ * Command for diagnosing extension issues
  */
 export async function registerDiagnosticCommand(context: vscode.ExtensionContext): Promise<void> {
     const disposable = vscode.commands.registerCommand(
@@ -171,49 +171,48 @@ export async function registerDiagnosticCommand(context: vscode.ExtensionContext
             try {
                 const diagnostics = await CommandDiagnostics.runFullDiagnostics();
                 
-                // Создаем отчет
+                // Create report
                 const report = [
-                    '🔍 Диагностика расширения Speech-to-Text Whisper',
+                    '🔍 Speech-to-Text Whisper Extension Diagnostics',
                     '=' .repeat(50),
                     '',
-                    '📊 Статус расширения:',
-                    `- Активно: ${diagnostics.extension.isActive}`,
-                    `- ID: ${diagnostics.extension.extensionId}`,
+                    '📊 Extension Status:',
+                    `- Active: ${diagnostics.extension.isActive}`,
                     '',
-                    '📋 Команды:',
+                    '📋 Commands:',
                     ...Object.entries(diagnostics.commands).map(([cmd, registered]) => 
                         `- ${cmd}: ${registered ? '✅' : '❌'}`
                     ),
                     '',
-                    '🧪 Тесты команд:',
+                    '🧪 Command Tests:',
                     ...Object.entries(diagnostics.commandTests).map(([cmd, result]) => 
                         `- ${cmd}: ${result.success ? '✅' : '❌'} ${result.error ? `(${result.error})` : ''}`
                     ),
                     '',
-                    '⌨️ Клавиатурные привязки:',
+                    '⌨️ Keybindings:',
                     ...diagnostics.keybindings.map(kb => 
                         `- ${kb.command}: ${kb.key}${kb.mac ? ` / ${kb.mac}` : ''}`
                     )
                 ].join('\n');
 
-                // Показываем отчет в новом документе
+                // Show report in a new document
                 const doc = await vscode.workspace.openTextDocument({
                     content: report,
                     language: 'plaintext'
                 });
                 await vscode.window.showTextDocument(doc);
 
-                // Также показываем краткий результат в уведомлении
+                // Also show a brief result in a notification
                 const registeredCount = Object.values(diagnostics.commands).filter(Boolean).length;
                 const totalCount = Object.keys(diagnostics.commands).length;
                 
                 vscode.window.showInformationMessage(
-                    `🔍 Диагностика завершена: ${registeredCount}/${totalCount} команд зарегистрировано`
+                    `🔍 Diagnostics complete: ${registeredCount}/${totalCount} commands registered`
                 );
 
             } catch (error) {
                 vscode.window.showErrorMessage(
-                    `❌ Ошибка диагностики: ${(error as Error).message}`
+                    `❌ Diagnostics error: ${(error as Error).message}`
                 );
             }
         }

@@ -2,18 +2,18 @@ import * as vscode from 'vscode';
 import { CursorIntegrationLog } from '../utils/GlobalOutput';
 
 /**
- * Стратегии интеграции с Cursor чатом
+ * Integration strategies with Cursor chat
  */
 export enum CursorIntegrationStrategy {
-    AICHAT_COMMAND = 'aichat_command',    // Через команду aichat.newfollowupaction (РЕКОМЕНДУЕТСЯ)
-    CLIPBOARD = 'clipboard',           // Через буфер обмена
-    COMMAND_PALETTE = 'command_palette', // Через палитру команд
-    FOCUS_CHAT = 'focus_chat',         // Автоматический фокус на чат
-    SEND_TO_CHAT = 'send_to_chat'      // Прямая отправка в чат
+    AICHAT_COMMAND = 'aichat_command',    // Through the aichat.newfollowupaction command (RECOMMENDED)
+    CLIPBOARD = 'clipboard',           // Through the clipboard
+    COMMAND_PALETTE = 'command_palette', // Through the command palette
+    FOCUS_CHAT = 'focus_chat',         // Automatic focus on the chat
+    SEND_TO_CHAT = 'send_to_chat'      // Direct sending to the chat
 }
 
 /**
- * Результат операции интеграции с Cursor
+ * Result of the integration operation with Cursor
  */
 export interface CursorIntegrationResult {
     success: boolean;
@@ -24,7 +24,7 @@ export interface CursorIntegrationResult {
 }
 
 /**
- * Настройки для CursorIntegration
+ * Settings for CursorIntegration
  */
 export interface CursorIntegrationOptions {
     primaryStrategy: CursorIntegrationStrategy;
@@ -37,7 +37,7 @@ export interface CursorIntegrationOptions {
 }
 
 /**
- * События CursorIntegration
+ * Events for CursorIntegration
  */
 export interface CursorIntegrationEvents {
     onChatSent?: (text: string, strategy: CursorIntegrationStrategy) => void;
@@ -46,7 +46,7 @@ export interface CursorIntegrationEvents {
 }
 
 /**
- * Интерфейс для vscode environment (для тестирования)
+ * Interface for vscode environment (for testing)
  */
 export interface VSCodeEnvironment {
     env: {
@@ -68,8 +68,8 @@ export interface VSCodeEnvironment {
 }
 
 /**
- * Интеграция с AI-чатом Cursor IDE
- * Реализует различные стратегии отправки транскрибированного текста в чат
+ * Integration with Cursor AI chat
+ * Implements different strategies for sending transcribed text to the chat
  */
 export class CursorIntegration {
     private options: CursorIntegrationOptions;
@@ -85,11 +85,11 @@ export class CursorIntegration {
         this.options = this.mergeDefaultOptions(options);
         this.events = events;
         
-        // Безопасная инициализация vscode environment
+        // Safe initialization of vscode environment
         if (vscodeEnvironment) {
             this.vscodeEnv = vscodeEnvironment;
         } else {
-            // Используем реальный vscode API если он доступен
+            // Use the real vscode API if it is available
             this.vscodeEnv = {
                 env: vscode.env,
                 window: vscode.window,
@@ -97,14 +97,14 @@ export class CursorIntegration {
             };
         }
         
-        // Проверяем доступность интеграции
+        // Check the availability of integration
         this.checkAvailability();
         
         CursorIntegrationLog.info(`🎯 CursorIntegration initialized, enabled: ${this.isEnabled}`);
     }
 
     /**
-     * Объединение настроек по умолчанию с пользовательскими
+     * Merging default settings with user settings
      */
     private mergeDefaultOptions(options: Partial<CursorIntegrationOptions>): CursorIntegrationOptions {
         return {
@@ -124,18 +124,18 @@ export class CursorIntegration {
     }
 
     /**
-     * Проверка доступности интеграции с Cursor
+     * Checking the availability of integration with Cursor
      */
     private checkAvailability(): void {
         try {
-            // Проверяем, что vscodeEnv и его свойства доступны
+            // Check that vscodeEnv and its properties are available
             if (!this.vscodeEnv || !this.vscodeEnv.env) {
                 CursorIntegrationLog.warn('⚠️ VS Code environment not available');
                 this.isEnabled = false;
                 return;
             }
             
-            // Проверяем, что мы действительно в Cursor IDE
+            // Check that we are really in Cursor IDE
             const appName = this.vscodeEnv.env.appName?.toLowerCase() || '';
             const uriScheme = this.vscodeEnv.env.uriScheme || '';
             
@@ -154,14 +154,14 @@ export class CursorIntegration {
     }
 
     /**
-     * Получение состояния интеграции
+     * Getting the state of integration
      */
     public isIntegrationEnabled(): boolean {
         return this.isEnabled;
     }
 
     /**
-     * Отправка текста в Cursor AI чат
+     * Sending text to Cursor AI chat
      */
     public async sendToChat(text: string): Promise<CursorIntegrationResult> {
         CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] sendToChat method called');
@@ -190,12 +190,12 @@ export class CursorIntegration {
         CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Sending text to Cursor chat, length: ${text.length}`);
         CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text preview: "${text.substring(0, 50)}..."`);
 
-        // Форматируем текст
+        // Format the text
         CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Formatting text for chat...');
         const formattedText = this.formatTextForChat(text);
         CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text formatted, new length: ${formattedText.length}`);
 
-        // Пробуем основную стратегию
+        // Try the main strategy
         try {
             CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Trying primary strategy: ${this.options.primaryStrategy}`);
             const result = await this.executeStrategy(this.options.primaryStrategy, formattedText);
@@ -203,7 +203,7 @@ export class CursorIntegration {
             if (result.success) {
                 CursorIntegrationLog.info(`✅ [CURSOR_INTEGRATION] Successfully sent via ${result.strategy}`);
                 
-                // Уведомляем о успешной отправке
+                // Notify about the successful sending
                 if (this.events.onChatSent) {
                     CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onChatSent event handler`);
                     this.events.onChatSent(text, result.strategy);
@@ -217,14 +217,14 @@ export class CursorIntegration {
             CursorIntegrationLog.error(`❌ [CURSOR_INTEGRATION] Primary strategy ${this.options.primaryStrategy} failed:`, error as Error);
             CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Error name: ${(error as Error).name}, message: ${(error as Error).message}`);
             
-            // Уведомляем об ошибке
+            // Notify about the error
             if (this.events.onError) {
                 CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onError event handler for primary strategy`);
                 this.events.onError(error as Error, this.options.primaryStrategy);
             }
         }
 
-        // Пробуем fallback стратегии
+        // Try the fallback strategies
         CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Trying ${this.options.fallbackStrategies.length} fallback strategies`);
         for (let i = 0; i < this.options.fallbackStrategies.length; i++) {
             const fallbackStrategy = this.options.fallbackStrategies[i];
@@ -235,13 +235,13 @@ export class CursorIntegration {
                 if (result.success) {
                     CursorIntegrationLog.info(`✅ [CURSOR_INTEGRATION] Fallback successful via ${fallbackStrategy}`);
                     
-                    // Уведомляем о использовании fallback
+                    // Notify about the use of fallback
                     if (this.events.onFallbackUsed) {
                         CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onFallbackUsed event handler`);
                         this.events.onFallbackUsed(this.options.primaryStrategy, fallbackStrategy);
                     }
                     
-                    // Уведомляем о успешной отправке
+                    // Notify about the successful sending
                     if (this.events.onChatSent) {
                         CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onChatSent event handler for fallback`);
                         this.events.onChatSent(text, fallbackStrategy);
@@ -259,7 +259,7 @@ export class CursorIntegration {
                 CursorIntegrationLog.error(`❌ [CURSOR_INTEGRATION] Fallback strategy ${fallbackStrategy} failed:`, error as Error);
                 CursorIntegrationLog.warn(`❌ [CURSOR_INTEGRATION] Error name: ${(error as Error).name}, message: ${(error as Error).message}`);
                 
-                // Уведомляем об ошибке fallback стратегии
+                // Notify about the error of fallback strategy
                 if (this.events.onError) {
                     CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Calling onError event handler for fallback strategy ${fallbackStrategy}`);
                     this.events.onError(error as Error, fallbackStrategy);
@@ -267,7 +267,7 @@ export class CursorIntegration {
             }
         }
 
-        // Все стратегии провалились
+        // All strategies failed
         CursorIntegrationLog.error('❌ [CURSOR_INTEGRATION] All integration strategies failed');
         return {
             success: false,
@@ -277,7 +277,7 @@ export class CursorIntegration {
     }
 
     /**
-     * Выполнение конкретной стратегии интеграции
+     * Execution of a specific integration strategy
      */
     private async executeStrategy(strategy: CursorIntegrationStrategy, text: string): Promise<CursorIntegrationResult> {
         switch (strategy) {
@@ -302,8 +302,8 @@ export class CursorIntegration {
     }
 
     /**
-     * Стратегия через команду aichat.newfollowupaction (РЕКОМЕНДУЕТСЯ для Cursor)
-     * Использует проверенный рабочий метод из сообщества Cursor
+     * Strategy through the aichat.newfollowupaction command (RECOMMENDED for Cursor)
+     * Uses a proven working method from the Cursor community
      */
     private async useAIChatCommandStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
@@ -311,32 +311,32 @@ export class CursorIntegration {
             CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text to send length: ${text.length}`);
             CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Text preview: ${text.substring(0, 100) + (text.length > 100 ? '...' : '')}`);
             
-            // 1. Сохраняем оригинальный буфер обмена
+            // 1. Save the original clipboard
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 1: Reading original clipboard...');
             const originalClipboard = await this.vscodeEnv.env.clipboard.readText();
             CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Step 1: Original clipboard saved, length: ${originalClipboard.length}`);
             
-            // 2. Открываем новый чат с помощью команды aichat.newfollowupaction
+            // 2. Open a new chat using the aichat.newfollowupaction command
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: Opening new chat...');
             await this.vscodeEnv.commands.executeCommand("aichat.newfollowupaction");
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: aichat.newfollowupaction command executed successfully');
             
-            // 3. Ждем, пока чат откроется (важно для стабильной работы)
+            // 3. Wait for the chat to open (important for stable operation)
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 3: Waiting for chat window (500ms)...');
             await new Promise((resolve) => setTimeout(resolve, 500));
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 3: Chat window wait completed');
             
-            // 4. Копируем наш текст в буфер обмена
+            // 4. Copy our text to the clipboard
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 4: Setting clipboard with transcribed text...');
             await this.vscodeEnv.env.clipboard.writeText(text);
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 4: Clipboard updated with transcribed text');
             
-            // 5. Вставляем содержимое в чат
+            // 5. Paste the content into the chat
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 5: Pasting content into chat...');
             await this.vscodeEnv.commands.executeCommand("editor.action.clipboardPasteAction");
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 5: Paste action completed successfully');
             
-            // 6. Восстанавливаем оригинальный буфер обмена
+            // 6. Restore the original clipboard
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 6: Restoring original clipboard...');
             await this.vscodeEnv.env.clipboard.writeText(originalClipboard);
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 6: Original clipboard restored');
@@ -357,19 +357,19 @@ export class CursorIntegration {
     }
 
     /**
-     * Стратегия через буфер обмена
+     * Strategy through the clipboard
      */
     private async useClipboardStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
-            // Копируем текст в буфер обмена
+            // Copy the text to the clipboard
             await this.vscodeEnv.env.clipboard.writeText(text);
             
-            // Пытаемся сфокусироваться на чате
+            // Try to focus on the chat
             if (this.options.autoFocusChat) {
                 await this.focusOnChat();
             }
             
-            // Показываем уведомление пользователю с таймаутом
+            // Show a notification to the user with a timeout
             try {
                 await Promise.race([
                     this.vscodeEnv.window.showInformationMessage(
@@ -395,15 +395,15 @@ export class CursorIntegration {
     }
 
     /**
-     * Стратегия через палитру команд
+     * Strategy through the command palette
      */
     private async useCommandPaletteStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
-            // Сначала копируем в буфер обмена
+            // First copy the text to the clipboard
             await this.vscodeEnv.env.clipboard.writeText(text);
             
-            // Пытаемся открыть палитру команд Cursor для чата
-            // Cursor может иметь специальные команды для AI чата
+            // Try to open the Cursor command palette for the chat
+            // Cursor may have special commands for the AI chat
             const cursorChatCommands = [
                 'cursor.chat.open',
                 'cursor.ai.chat',
@@ -422,12 +422,12 @@ export class CursorIntegration {
                     };
                     
                 } catch (commandError) {
-                    // Команда не существует, пробуем следующую
+                    // The command does not exist, try the next one
                     CursorIntegrationLog.info(`Command ${command} not available`);
                 }
             }
             
-            // Если специальные команды не работают, пробуем общую палитру команд
+            // If special commands do not work, try the general command palette
             await this.vscodeEnv.commands.executeCommand('workbench.action.showCommands');
             
             try {
@@ -455,14 +455,14 @@ export class CursorIntegration {
     }
 
     /**
-     * Стратегия фокусировки на чате
+     * Strategy of focusing on the chat
      */
     private async useFocusChatStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
-            // Копируем текст в буфер обмена
+            // Copy the text to the clipboard
             await this.vscodeEnv.env.clipboard.writeText(text);
             
-            // Пытаемся сфокусироваться на чате
+            // Try to focus on the chat
             const focusResult = await this.focusOnChat();
             
             if (focusResult) {
@@ -494,14 +494,14 @@ export class CursorIntegration {
     }
 
     /**
-     * Стратегия прямой отправки в чат
+     * Strategy of direct sending to the chat
      */
     private async useSendToChatStrategy(text: string): Promise<CursorIntegrationResult> {
         try {
-            // Это наиболее продвинутая стратегия, которая требует прямого API Cursor
-            // Пока Cursor не предоставляет публичного API для этого, используем fallback
+            // This is the most advanced strategy that requires a direct Cursor API
+            // Until Cursor does not provide a public API for this, we use fallback
             
-            // Пытаемся найти и использовать возможные команды Cursor для отправки в чат
+            // Try to find and use possible Cursor commands for sending to the chat
             const cursorSendCommands = [
                 'cursor.chat.sendMessage',
                 'cursor.ai.sendToChat',
@@ -519,12 +519,12 @@ export class CursorIntegration {
                     };
                     
                 } catch (commandError) {
-                    // Команда не существует, пробуем следующую
+                    // The command does not exist, try the next one
                     CursorIntegrationLog.info(`Direct send command ${command} not available`);
                 }
             }
             
-            // Если прямая отправка недоступна, используем clipboard как fallback
+            // If direct sending is not available, use clipboard as fallback
             return await this.useClipboardStrategy(text);
             
         } catch (error) {
@@ -533,11 +533,11 @@ export class CursorIntegration {
     }
 
     /**
-     * Попытка сфокусироваться на AI чате Cursor
+     * Try to focus on the AI chat in Cursor
      */
     private async focusOnChat(): Promise<boolean> {
         try {
-            // Список возможных команд для фокусировки на чате в Cursor
+            // List of possible commands to focus on the chat in Cursor
             const focusCommands = [
                 'cursor.chat.focus',
                 'cursor.ai.focus',
@@ -553,14 +553,14 @@ export class CursorIntegration {
                     return true;
                     
                 } catch (commandError) {
-                    // Команда не существует, пробуем следующую
+                    // The command does not exist, try the next one
                     CursorIntegrationLog.info(`Focus command ${command} not available`);
                 }
             }
             
-            // Если специальные команды не работают, пробуем общие с таймаутом
+            // If special commands do not work, try the general with timeout
             try {
-                // Создаём промис с таймаутом для команд
+                // Create a promise with timeout for commands
                 const executeWithTimeout = async (command: string, timeout: number = 1000): Promise<void> => {
                     return Promise.race([
                         this.vscodeEnv.commands.executeCommand(command),
@@ -570,7 +570,7 @@ export class CursorIntegration {
                     ]);
                 };
                 
-                // Пытаемся открыть боковую панель или нижнюю панель с таймаутом
+                // Try to open the sidebar or bottom panel with timeout
                 try {
                     await executeWithTimeout('workbench.action.toggleSidebarVisibility', 500);
                 } catch (error) {
@@ -600,28 +600,28 @@ export class CursorIntegration {
     }
 
     /**
-     * Форматирование текста для отправки в чат
+     * Formatting text for sending to the chat
      */
     private formatTextForChat(text: string): string {
         let formattedText = text.trim();
         
-        // Добавляем префикс
+        // Add prefix
         if (this.options.prefixText) {
             formattedText = this.options.prefixText + formattedText;
         }
         
-        // Добавляем суффикс
+        // Add suffix
         if (this.options.suffixText) {
             formattedText = formattedText + this.options.suffixText;
         }
         
-        // Форматируем как Markdown если включено
+        // Format as Markdown if enabled
         if (this.options.useMarkdownFormat) {
-            // Обрамляем в code block если это похоже на код
+            // Wrap in code block if it looks like code
             if (this.looksLikeCode(formattedText)) {
                 formattedText = '```\n' + formattedText + '\n```';
             } else {
-                // Или как цитату для обычного текста
+                // Or as a quote for normal text
                 formattedText = '> ' + formattedText.replace(/\n/g, '\n> ');
             }
         }
@@ -630,7 +630,7 @@ export class CursorIntegration {
     }
 
     /**
-     * Проверка, похож ли текст на код
+     * Checking if the text looks like code
      */
     private looksLikeCode(text: string): boolean {
         const codeIndicators = [
@@ -653,7 +653,7 @@ export class CursorIntegration {
     }
 
     /**
-     * Обновление настроек интеграции
+     * Updating integration settings
      */
     public updateOptions(newOptions: Partial<CursorIntegrationOptions>): void {
         this.options = { ...this.options, ...newOptions };
@@ -661,14 +661,14 @@ export class CursorIntegration {
     }
 
     /**
-     * Получение текущих настроек
+     * Getting current settings
      */
     public getOptions(): CursorIntegrationOptions {
         return { ...this.options };
     }
 
     /**
-     * Получение доступных стратегий интеграции
+     * Getting available integration strategies
      */
     public static getAvailableStrategies(): CursorIntegrationStrategy[] {
         return [
@@ -681,7 +681,7 @@ export class CursorIntegration {
     }
 
     /**
-     * Получение описания стратегии
+     * Getting the description of the strategy
      */
     public static getStrategyDescription(strategy: CursorIntegrationStrategy): string {
         const descriptions = {
@@ -696,13 +696,13 @@ export class CursorIntegration {
     }
 
     /**
-     * Освобождение ресурсов
+     * Releasing resources
      */
     dispose(): void {
         CursorIntegrationLog.info('🔌 Disposing CursorIntegration resources...');
         
-        // Здесь можно добавить очистку подписок, таймеров и других ресурсов
-        // В данной реализации специальных ресурсов для очистки нет
+        // Here you can add cleanup of subscriptions, timers, and other resources
+        // In this implementation, there are no special resources for cleanup
         
         CursorIntegrationLog.info('✅ CursorIntegration disposed successfully');
     }

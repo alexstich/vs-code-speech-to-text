@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Уровни логирования
+ * Logging levels
  */
 export enum LogLevel {
     DEBUG = '🔍',
@@ -12,32 +12,32 @@ export enum LogLevel {
 }
 
 /**
- * Глобальный outputChannel для всего расширения
+ * Global outputChannel for the entire extension
  */
 let globalOutputChannel: vscode.OutputChannel | null = null;
 
 /**
- * Инициализация глобального outputChannel
- * Должна вызываться в функции activate() расширения
+ * Initialization of the global outputChannel
+ * Must be called in the activate() function of the extension
  */
 export function initializeGlobalOutput(outputChannel: vscode.OutputChannel): void {
     globalOutputChannel = outputChannel;
 }
 
 /**
- * Получение глобального outputChannel
+ * Getting the global outputChannel
  */
 export function getGlobalOutputChannel(): vscode.OutputChannel | null {
     return globalOutputChannel;
 }
 
 /**
- * Базовая функция логирования
+ * Base logging function
  */
 function logMessage(level: LogLevel, component: string, message: string, data?: any, error?: Error): void {
     const timestamp = new Date().toISOString();
     
-    // Если есть дополнительные данные, добавляем их к сообщению
+    // If there are additional data, add them to the message
     let fullMessage = message;
     if (data !== undefined) {
         if (typeof data === 'string') {
@@ -51,7 +51,7 @@ function logMessage(level: LogLevel, component: string, message: string, data?: 
     
     const formattedMessage = `${timestamp} ${level} [${component}] ${fullMessage}`;
     
-    // Логируем в консоль (для отладки в DevTools)
+    // Log to the console (for debugging in DevTools)
     if (level === LogLevel.ERROR || level === LogLevel.CRITICAL) {
         console.error(formattedMessage);
         if (error) {
@@ -63,7 +63,7 @@ function logMessage(level: LogLevel, component: string, message: string, data?: 
         console.log(formattedMessage);
     }
     
-    // Логируем в VS Code Output Channel если доступен
+    // Log to the VS Code Output Channel if available
     if (globalOutputChannel) {
         globalOutputChannel.appendLine(formattedMessage);
         
@@ -74,7 +74,7 @@ function logMessage(level: LogLevel, component: string, message: string, data?: 
             }
         }
         
-        // Показываем панель для критических ошибок
+        // Show the panel for critical errors
         if (level === LogLevel.CRITICAL) {
             globalOutputChannel.show(true);
         }
@@ -82,87 +82,87 @@ function logMessage(level: LogLevel, component: string, message: string, data?: 
 }
 
 /**
- * Логирование отладочной информации
+ * Logging debug information
  */
 export function logDebug(component: string, message: string, data?: any): void {
     logMessage(LogLevel.DEBUG, component, message, data);
 }
 
 /**
- * Логирование информационных сообщений
+ * Logging informational messages
  */
 export function logInfo(component: string, message: string, data?: any): void {
     logMessage(LogLevel.INFO, component, message, data);
 }
 
 /**
- * Логирование предупреждений
+ * Logging warnings
  */
 export function logWarn(component: string, message: string, data?: any): void {
     logMessage(LogLevel.WARN, component, message, data);
 }
 
 /**
- * Логирование ошибок
+ * Logging errors
  */
 export function logError(component: string, message: string, data?: any, error?: Error): void {
     logMessage(LogLevel.ERROR, component, message, data, error);
 }
 
 /**
- * Логирование критических ошибок
+ * Logging critical errors
  */
 export function logCritical(component: string, message: string, data?: any, error?: Error): void {
     logMessage(LogLevel.CRITICAL, component, message, data, error);
 }
 
 /**
- * Универсальная функция логирования с произвольным уровнем
+ * Universal logging function with arbitrary level
  */
 export function log(level: LogLevel, component: string, message: string, data?: any, error?: Error): void {
     logMessage(level, component, message, data, error);
 }
 
 /**
- * Утилитарные функции для специфичных компонентов
+ * Utility functions for specific components
  */
 
-// Для AudioQualityManager
+// For AudioQualityManager
 export const AudioQualityManagerLog = {
     info: (message: string, data?: any) => logInfo('AudioQualityManager', message, data),
     warn: (message: string, data?: any) => logWarn('AudioQualityManager', message, data),
     error: (message: string, data?: any, error?: Error) => logError('AudioQualityManager', message, data, error)
 };
 
-// Для RecoveryActionHandler
+// For RecoveryActionHandler
 export const RecoveryActionHandlerLog = {
     info: (message: string, data?: any) => logInfo('RecoveryActionHandler', message, data),
     warn: (message: string, data?: any) => logWarn('RecoveryActionHandler', message, data),
     error: (message: string, data?: any, error?: Error) => logError('RecoveryActionHandler', message, data, error)
 };
 
-// Для ErrorHandler
+// For ErrorHandler
 export const ErrorHandlerLog = {
     info: (message: string, data?: any) => logInfo('ErrorHandler', message, data),
     warn: (message: string, data?: any) => logWarn('ErrorHandler', message, data),
     error: (message: string, data?: any, error?: Error) => logError('ErrorHandler', message, data, error)
 };
 
-// Для RetryManager
+// For RetryManager
 export const RetryManagerLog = {
     info: (message: string, data?: any) => logInfo('RetryManager', message, data),
     warn: (message: string, data?: any) => logWarn('RetryManager', message, data),
     error: (message: string, data?: any, error?: Error) => logError('RetryManager', message, data, error)
 };
 
-// Для ConfigurationManager
+// For ConfigurationManager
 export const ConfigurationManagerLog = {
     info: (message: string, data?: any) => logInfo('ConfigurationManager', message, data),
     warn: (message: string, data?: any) => logWarn('ConfigurationManager', message, data),
     error: (message: string, data?: any, error?: Error) => logError('ConfigurationManager', message, data, error)
 };
 
-// Для CursorIntegration
+// For CursorIntegration
 export const CursorIntegrationLog = {
     debug: (message: string, data?: any) => logDebug('CursorIntegration', message, data),
     info: (message: string, data?: any) => logInfo('CursorIntegration', message, data),
@@ -170,7 +170,7 @@ export const CursorIntegrationLog = {
     error: (message: string, data?: any, error?: Error) => logError('CursorIntegration', message, data, error)
 };
 
-// Для Extension (основного модуля)
+// For Extension (main module)
 export const ExtensionLog = {
     debug: (message: string, data?: any) => logDebug('Extension', message, data),
     info: (message: string, data?: any) => logInfo('Extension', message, data),
@@ -178,7 +178,7 @@ export const ExtensionLog = {
     error: (message: string, data?: any, error?: Error) => logError('Extension', message, data, error)
 };
 
-// Для FFmpegAudioRecorder
+// For FFmpegAudioRecorder
 export const FFmpegAudioRecorderLog = {
     debug: (message: string, data?: any) => logDebug('FFmpegAudioRecorder', message, data),
     info: (message: string, data?: any) => logInfo('FFmpegAudioRecorder', message, data),
@@ -187,7 +187,7 @@ export const FFmpegAudioRecorderLog = {
 };
 
 /**
- * Показать Output Channel пользователю
+ * Show Output Channel to the user
  */
 export function showOutputChannel(): void {
     if (globalOutputChannel) {
@@ -196,7 +196,7 @@ export function showOutputChannel(): void {
 }
 
 /**
- * Очистить Output Channel
+ * Clear Output Channel
  */
 export function clearOutputChannel(): void {
     if (globalOutputChannel) {
@@ -205,7 +205,7 @@ export function clearOutputChannel(): void {
 }
 
 /**
- * Освобождение ресурсов при деактивации расширения
+ * Release resources when the extension is deactivated
  */
 export function disposeGlobalOutput(): void {
     if (globalOutputChannel) {

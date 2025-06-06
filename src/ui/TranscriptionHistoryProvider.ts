@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { TranscriptionHistoryManager } from '../core/TranscriptionHistoryManager';
 import { TranscriptionEntry, DateGroupCategory } from '../types/TranscriptionHistory';
+import { CursorIntegration, CursorIntegrationStrategy } from '../integrations/CursorIntegration';
 
 /**
- * Элемент дерева для истории транскрипций
+ * Tree item for transcription history
  */
 export class TranscriptionHistoryItem extends vscode.TreeItem {
     constructor(
@@ -15,13 +16,13 @@ export class TranscriptionHistoryItem extends vscode.TreeItem {
         super(label, collapsibleState);
         
         if (entry) {
-            // Это элемент транскрипции
+            // This is a transcription entry
             this.description = this.formatEntryDescription(entry);
             this.tooltip = this.formatEntryTooltip(entry);
             this.contextValue = 'transcriptionEntry';
             this.iconPath = new vscode.ThemeIcon('file-text');
         } else {
-            // Это заголовок группы
+            // This is a group header
             this.iconPath = new vscode.ThemeIcon('folder');
             this.contextValue = 'transcriptionGroup';
         }
@@ -53,7 +54,7 @@ export class TranscriptionHistoryItem extends vscode.TreeItem {
 }
 
 /**
- * Провайдер данных для истории транскрипций
+ * Data provider for transcription history
  */
 export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<TranscriptionHistoryItem> {
     private _onDidChangeTreeData: vscode.EventEmitter<TranscriptionHistoryItem | undefined | void> = 
@@ -61,9 +62,25 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
     readonly onDidChangeTreeData: vscode.Event<TranscriptionHistoryItem | undefined | void> = 
         this._onDidChangeTreeData.event;
 
+    private cursorIntegration: CursorIntegration;
+
     constructor(
         private historyManager: TranscriptionHistoryManager
-    ) {}
+    ) {
+        // Initialize CursorIntegration for chat work
+        this.cursorIntegration = new CursorIntegration({
+            primaryStrategy: CursorIntegrationStrategy.AICHAT_COMMAND,
+            fallbackStrategies: [
+                CursorIntegrationStrategy.CLIPBOARD,
+                CursorIntegrationStrategy.COMMAND_PALETTE
+            ],
+            autoFocusChat: true,
+            prefixText: '',
+            suffixText: '',
+            useMarkdownFormat: false,
+            timeout: 5000
+        });
+    }
 
     refresh(): void {
         this._onDidChangeTreeData.fire();
@@ -75,10 +92,10 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
 
     async getChildren(element?: TranscriptionHistoryItem): Promise<TranscriptionHistoryItem[]> {
         if (!element) {
-            // Корневые элементы - группы по датам
+            // Root elements - date groups
             return this.getDateGroups();
         } else if (element.isGroupHeader) {
-            // Элементы внутри группы даты
+            // Elements inside date group
             return this.getEntriesForGroup(element.label);
         }
         return [];
@@ -96,7 +113,7 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
                 return [this.createEmptyItem()];
             }
 
-            // Группируем записи по категориям дат
+            // Group entries by date categories
             const groups = this.groupEntriesByDate(entries);
             const items: TranscriptionHistoryItem[] = [];
 
@@ -129,7 +146,7 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
             const entries = history.entries;
             const groups = this.groupEntriesByDate(entries);
 
-            // Извлекаем категорию из label группы
+            // Extract category from group label
             const category = this.getCategoryFromGroupLabel(groupLabel);
             const groupEntries = groups.get(category) || [];
 
@@ -157,7 +174,7 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
         const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
         const thisWeekStart = new Date(today.getTime() - (today.getDay() * 24 * 60 * 60 * 1000));
 
-        // Инициализируем все группы
+        // Initialize all groups
         Object.values(DateGroupCategory).forEach(category => {
             groups.set(category, []);
         });
@@ -234,10 +251,10 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
         return item;
     }
 
-    // Методы для команд
+    // Methods for commands
 
     /**
-     * Копирует текст записи в буфер обмена
+     * Copies the transcription text to the clipboard
      */
     async copyToClipboard(item: TranscriptionHistoryItem): Promise<void> {
         if (!item.entry) {
@@ -254,7 +271,7 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
     }
 
     /**
-     * Вставляет текст записи в чат Cursor
+     * Inserts the transcription text into Cursor chat
      */
     async insertAtCursor(item: TranscriptionHistoryItem): Promise<void> {
         if (!item.entry) {
@@ -263,35 +280,41 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
         }
 
         try {
-            // Показываем индикатор прогресса во время вставки
+            // Check the availability of the Cursor integration
+            if (!this.cursorIntegration.isIntegrationEnabled()) {
+                // If the integration is not available, use fallback
+                await this.fallbackToEditor(item.entry.text);
+                return;
+            }
+
+            // Show the progress indicator during insertion
             await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
                 title: "Inserting to Cursor chat...",
                 cancellable: false
             }, async (progress) => {
-                progress.report({ increment: 50, message: "Opening chat..." });
-                await this.insertToCursorChat(item.entry!.text);
-                progress.report({ increment: 50, message: "Text inserted!" });
+                progress.report({ increment: 30, message: "Preparing chat..." });
+                
+                // Use the verified CursorIntegration
+                const result = await this.cursorIntegration.sendToChat(item.entry!.text);
+                
+                progress.report({ increment: 70, message: "Text sent!" });
+                
+                if (result.success) {
+                    const strategyMessage = result.strategy === CursorIntegrationStrategy.AICHAT_COMMAND ? 
+                        'direct chat' : `${result.strategy} strategy`;
+                    vscode.window.showInformationMessage(`✅ Transcription sent to Cursor chat via ${strategyMessage}`);
+                } else {
+                    throw new Error(result.error || 'Unknown error occurred');
+                }
             });
             
-            vscode.window.showInformationMessage('✅ Transcription inserted to Cursor chat');
         } catch (error) {
-            // Если вставка в чат не удалась, пытаемся вставить в активный редактор как fallback
+            // If the insertion into the chat fails, try to insert into the active editor as fallback
             console.warn('Failed to insert to Cursor chat, trying fallback:', error);
             
             try {
-                const editor = vscode.window.activeTextEditor;
-                if (!editor) {
-                    vscode.window.showErrorMessage('Failed to insert to Cursor chat and no active editor available');
-                    return;
-                }
-
-                const position = editor.selection.active;
-                await editor.edit(editBuilder => {
-                    editBuilder.insert(position, item.entry!.text);
-                });
-                
-                vscode.window.showInformationMessage('✅ Transcription inserted at cursor (fallback mode)');
+                await this.fallbackToEditor(item.entry.text);
             } catch (fallbackError) {
                 vscode.window.showErrorMessage(`Failed to insert text: ${(error as Error).message}`);
             }
@@ -299,93 +322,27 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
     }
 
     /**
-     * Вставляет текст в чат Cursor
+     * Fallback method for inserting into the active editor
      */
-    private async insertToCursorChat(text: string): Promise<void> {
-        try {
-            // Наиболее вероятные команды Cursor для работы с чатом
-            const cursorChatCommands = [
-                'workbench.panel.chat.view.copilot.focus', // Фокус на чат Copilot
-                'workbench.action.chat.newChatEditor', // Новый чат редактор
-                'workbench.view.extension.cursor', // Открыть расширение Cursor
-                'workbench.action.chat.start', // Запуск чата
-                'workbench.action.toggleAuxiliaryBar', // Переключить боковую панель
-                'workbench.action.chat.openChatEditor' // Открыть чат редактор
-            ];
-
-            // Сначала копируем текст в буфер обмена
-            await vscode.env.clipboard.writeText(text);
-
-            // Пытаемся открыть чат Cursor различными способами
-            let chatOpened = false;
-            for (const command of cursorChatCommands) {
-                try {
-                    await vscode.commands.executeCommand(command);
-                    chatOpened = true;
-                    // Даем время на открытие чата
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    break;
-                } catch (cmdError) {
-                    // Команда не существует или не доступна, пробуем следующую
-                    continue;
-                }
-            }
-
-            // Если специфичные команды чата не сработали, пытаемся использовать универсальные методы
-            if (!chatOpened) {
-                try {
-                    // Пытаемся открыть Command Palette и найти команды чата
-                    await vscode.commands.executeCommand('workbench.action.showCommands');
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    // Отправляем последовательность символов для поиска чата
-                    await vscode.commands.executeCommand('type', { text: 'chat' });
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                    // Нажимаем Enter для выбора первой команды чата
-                    await vscode.commands.executeCommand('workbench.action.acceptSelectedQuickOpenItem');
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    
-                    chatOpened = true;
-                } catch (universalError) {
-                    // Если и это не сработало, пробуем альтернативный подход
-                    try {
-                        // Открываем боковую панель и ищем чат там
-                        await vscode.commands.executeCommand('workbench.action.toggleSidebar');
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        chatOpened = true;
-                    } catch (sidebarError) {
-                        // Последняя попытка - открыть терминал и использовать его
-                        await vscode.commands.executeCommand('workbench.action.terminal.focus');
-                        chatOpened = true;
-                    }
-                }
-            }
-
-            // Теперь пытаемся вставить текст
-            await new Promise(resolve => setTimeout(resolve, 100));
-            
-            // Пытаемся различные методы вставки
-            try {
-                // Основной метод - вставка через буфер обмена
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-            } catch (pasteError) {
-                try {
-                    // Альтернативный метод - прямая вставка через type
-                    await vscode.commands.executeCommand('type', { text: text });
-                } catch (typeError) {
-                    // Последний способ - симуляция нажатий клавиш
-                    await vscode.commands.executeCommand('editor.action.paste');
-                }
-            }
-
-        } catch (error) {
-            throw new Error(`Unable to insert text to Cursor chat: ${(error as Error).message}`);
+    private async fallbackToEditor(text: string): Promise<void> {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            vscode.window.showErrorMessage('Failed to insert to Cursor chat and no active editor available');
+            return;
         }
+
+        const position = editor.selection.active;
+        await editor.edit(editBuilder => {
+            editBuilder.insert(position, text);
+        });
+        
+        vscode.window.showInformationMessage('✅ Transcription inserted at cursor (fallback mode)');
     }
 
+
+
     /**
-     * Удаляет запись из истории
+     * Deletes the entry from the history
      */
     async deleteEntry(item: TranscriptionHistoryItem): Promise<void> {
         if (!item.entry) {
@@ -415,7 +372,7 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
     }
 
     /**
-     * Очищает всю историю транскрипций
+     * Clears the entire transcription history
      */
     async clearHistory(): Promise<void> {
         try {
@@ -436,6 +393,15 @@ export class TranscriptionHistoryProvider implements vscode.TreeDataProvider<Tra
             }
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to clear history: ${(error as Error).message}`);
+        }
+    }
+
+    /**
+     * Cleaning up resources
+     */
+    dispose(): void {
+        if (this.cursorIntegration) {
+            this.cursorIntegration.dispose();
         }
     }
 } 

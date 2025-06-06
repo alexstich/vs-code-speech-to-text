@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "0.1.9",
+  "version": "0.2.1",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -78,13 +78,13 @@
           "when": "true"
         },
         {
-          "id": "speechToTextWhisper.diagnostics",
-          "name": "Diagnostics",
+          "id": "speechToTextWhisper.transcriptionHistory",
+          "name": "Transcription History",
           "when": "true"
         },
         {
-          "id": "speechToTextWhisper.transcriptionHistory",
-          "name": "Transcription History",
+          "id": "speechToTextWhisper.diagnostics",
+          "name": "Diagnostics",
           "when": "true"
         }
       ]
@@ -350,7 +350,7 @@
         },
         "speechToTextWhisper.prompt": {
           "type": "string",
-          "default": "",
+          "default": "This is an audio recording for speech recognition. Use punctuation and proper spelling.",
           "description": "Optional context prompt to improve transcription accuracy",
           "order": 4
         },

@@ -7,15 +7,15 @@ describe('WhisperClient Language Settings Tests', () => {
     let lastRequestData: FormData | null = null;
 
     beforeEach(() => {
-        // Создаем мок для fetch
+        // Create mock for fetch
         originalFetch = global.fetch;
         global.fetch = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
-            // Сохраняем данные запроса для анализа
+            // Save request data for analysis
             if (init?.body instanceof FormData) {
                 lastRequestData = init.body;
             }
 
-            // Возвращаем успешный ответ
+            // Return a successful response
             return new Response(JSON.stringify({ text: 'Test transcription result' }), {
                 status: 200,
                 headers: { 'Content-Type': 'application/json' }
@@ -42,7 +42,7 @@ describe('WhisperClient Language Settings Tests', () => {
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем что язык передан в FormData
+        // Check that language is passed in FormData
         const languageValue = lastRequestData!.get('language');
         assert.strictEqual(languageValue, 'ru', 'Language should be set to "ru"');
     });
@@ -56,7 +56,7 @@ describe('WhisperClient Language Settings Tests', () => {
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем что язык НЕ передан в FormData при auto
+        // Check that language is NOT passed in FormData when auto
         const languageValue = lastRequestData!.get('language');
         assert.strictEqual(languageValue, null, 'Language should not be set when "auto"');
     });
@@ -65,12 +65,12 @@ describe('WhisperClient Language Settings Tests', () => {
         const audioBlob = new Blob(['test audio data'], { type: 'audio/wav' });
         
         await whisperClient.transcribe(audioBlob, {
-            // language не указан
+            // language is not specified
         });
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем что язык НЕ передан в FormData
+        // Check that language is NOT passed in FormData
         const languageValue = lastRequestData!.get('language');
         assert.strictEqual(languageValue, null, 'Language should not be set when undefined');
     });
@@ -88,7 +88,7 @@ describe('WhisperClient Language Settings Tests', () => {
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем все параметры
+        // Check all parameters
         assert.strictEqual(lastRequestData!.get('language'), 'en', 'Language should be "en"');
         assert.strictEqual(lastRequestData!.get('prompt'), 'This is a test prompt', 'Prompt should be set');
         assert.strictEqual(lastRequestData!.get('temperature'), '0.5', 'Temperature should be "0.5"');
@@ -117,12 +117,12 @@ describe('WhisperClient Language Settings Tests', () => {
         
         await whisperClient.transcribe(audioBlob, {
             language: 'en',
-            prompt: '' // Пустой prompt
+            prompt: '' // Empty prompt
         });
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем что пустой prompt НЕ передан
+        // Check that empty prompt is NOT passed
         const promptValue = lastRequestData!.get('prompt');
         assert.strictEqual(promptValue, null, 'Empty prompt should not be included');
     });
@@ -138,7 +138,7 @@ describe('WhisperClient Language Settings Tests', () => {
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем что prompt передан
+        // Check that prompt is passed
         const promptValue = lastRequestData!.get('prompt');
         assert.strictEqual(promptValue, testPrompt, 'Prompt should be included');
     });
@@ -146,11 +146,11 @@ describe('WhisperClient Language Settings Tests', () => {
     it('should use default values when options are not provided', async () => {
         const audioBlob = new Blob(['test audio data'], { type: 'audio/wav' });
         
-        await whisperClient.transcribe(audioBlob); // Без опций
+        await whisperClient.transcribe(audioBlob); // No options
 
         assert.ok(lastRequestData, 'Request data should be captured');
         
-        // Проверяем значения по умолчанию
+        // Check default values
         assert.strictEqual(lastRequestData!.get('model'), 'whisper-1', 'Default model should be "whisper-1"');
         assert.strictEqual(lastRequestData!.get('temperature'), '0', 'Default temperature should be "0"');
         assert.strictEqual(lastRequestData!.get('language'), null, 'Language should not be set by default');
@@ -160,7 +160,7 @@ describe('WhisperClient Language Settings Tests', () => {
 
 describe('WhisperClient Configuration Integration Tests', () => {
     it('should validate API key format', () => {
-        // Тест валидации API ключа
+        // API key validation test
         assert.strictEqual(WhisperClient.validateApiKey('sk-1234567890123456789012345678901234567890123456'), true, 'Valid API key should pass validation');
         assert.strictEqual(WhisperClient.validateApiKey('invalid-key'), false, 'Invalid API key should fail validation');
         assert.strictEqual(WhisperClient.validateApiKey(''), false, 'Empty API key should fail validation');
@@ -179,6 +179,34 @@ describe('WhisperClient Configuration Integration Tests', () => {
         const maxSize = WhisperClient.getMaxFileSize();
         assert.strictEqual(maxSize, 25 * 1024 * 1024, 'Max file size should be 25MB');
     });
+
+    it('should initialize with any API key (validation happens at runtime)', () => {
+        // WhisperClient does not check API key in the constructor
+        const whisperClient = new WhisperClient({
+            apiKey: 'invalid-key',
+            timeout: 5000
+        });
+        
+        assert.ok(whisperClient, 'WhisperClient should be initialized even with invalid key');
+    });
+
+    it('should initialize with empty API key (validation happens at runtime)', () => {
+        // WhisperClient does not check API key in the constructor
+        const whisperClient = new WhisperClient({
+            apiKey: '',
+            timeout: 5000
+        });
+        
+        assert.ok(whisperClient, 'WhisperClient should be initialized even with empty key');
+    });
+
+    it('should validate API key format using static method', () => {
+        // Test the static validation method
+        assert.strictEqual(WhisperClient.validateApiKey('sk-1234567890123456789012345678901234567890123456'), true, 'Valid API key should pass validation');
+        assert.strictEqual(WhisperClient.validateApiKey('invalid-key'), false, 'Invalid API key should fail validation');
+        assert.strictEqual(WhisperClient.validateApiKey(''), false, 'Empty API key should fail validation');
+        assert.strictEqual(WhisperClient.validateApiKey('sk-short'), false, 'Short API key should fail validation');
+    });
 });
 
 describe('WhisperClient Initialization Tests', () => {
@@ -191,40 +219,12 @@ describe('WhisperClient Initialization Tests', () => {
         assert.ok(whisperClient, 'WhisperClient should be initialized');
     });
 
-    it('should initialize with any API key (validation happens at runtime)', () => {
-        // WhisperClient не проверяет API ключ в конструкторе
-        const whisperClient = new WhisperClient({
-            apiKey: 'invalid-key',
-            timeout: 5000
-        });
-        
-        assert.ok(whisperClient, 'WhisperClient should be initialized even with invalid key');
-    });
-
-    it('should initialize with empty API key (validation happens at runtime)', () => {
-        // WhisperClient не проверяет API ключ в конструкторе
-        const whisperClient = new WhisperClient({
-            apiKey: '',
-            timeout: 5000
-        });
-        
-        assert.ok(whisperClient, 'WhisperClient should be initialized even with empty key');
-    });
-
     it('should use default timeout when not specified', () => {
         const whisperClient = new WhisperClient({
             apiKey: 'sk-1234567890123456789012345678901234567890123456'
         });
         
         assert.ok(whisperClient, 'WhisperClient should be initialized with default timeout');
-    });
-
-    it('should validate API key format using static method', () => {
-        // Тестируем статический метод валидации
-        assert.strictEqual(WhisperClient.validateApiKey('sk-1234567890123456789012345678901234567890123456'), true, 'Valid API key should pass validation');
-        assert.strictEqual(WhisperClient.validateApiKey('invalid-key'), false, 'Invalid API key should fail validation');
-        assert.strictEqual(WhisperClient.validateApiKey(''), false, 'Empty API key should fail validation');
-        assert.strictEqual(WhisperClient.validateApiKey('sk-short'), false, 'Short API key should fail validation');
     });
 });
 
@@ -275,14 +275,14 @@ describe('WhisperClient Error Handling Tests', () => {
             assert.fail('Should have thrown an error');
         } catch (error) {
             assert.ok(error instanceof Error, 'Should throw Error instance');
-            // Проверяем что ошибка содержит информацию о статусе или сообщении API
+            // Check that the error contains information about the API status or message
             const errorMessage = error.message.toLowerCase();
             assert.ok(
                 errorMessage.includes('rate limit') || 
                 errorMessage.includes('429') || 
                 errorMessage.includes('api error') ||
-                errorMessage.includes('лимит') ||
-                errorMessage.includes('превышен'),
+                errorMessage.includes('limit') ||
+                errorMessage.includes('exceeded'),
                 `Should include API error information, got: ${error.message}`
             );
         }
@@ -291,11 +291,11 @@ describe('WhisperClient Error Handling Tests', () => {
     it('should handle timeout errors', async () => {
         const shortTimeoutClient = new WhisperClient({
             apiKey: 'sk-1234567890123456789012345678901234567890123456',
-            timeout: 100 // Очень короткий timeout
+            timeout: 100 // Very short timeout
         });
 
         global.fetch = async () => {
-            // Имитируем долгий запрос
+            // Simulate a long request
             await new Promise(resolve => setTimeout(resolve, 200));
             return new Response(JSON.stringify({ text: 'Test' }), { status: 200 });
         };

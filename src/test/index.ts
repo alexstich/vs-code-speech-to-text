@@ -2,7 +2,7 @@ import * as path from 'path';
 import { glob } from 'glob';
 
 export function run(): Promise<void> {
-    // Создаем новый экземпляр Mocha
+    // Create a new Mocha instance
     const Mocha = require('mocha');
     const mocha = new Mocha({
         ui: 'bdd',
@@ -11,7 +11,7 @@ export function run(): Promise<void> {
         reporter: 'spec'
     });
 
-    // Устанавливаем глобальные функции Mocha
+    // Set up global Mocha functions
     (global as any).suite = mocha.suite.bind(mocha);
     (global as any).test = mocha.test.bind(mocha);
     (global as any).beforeEach = mocha.beforeEach.bind(mocha);
@@ -23,11 +23,11 @@ export function run(): Promise<void> {
 
     return new Promise((c, e) => {
         glob('**/**.test.js', { cwd: testsRoot }).then((files: string[]) => {
-            // Добавляем файлы в test suite
+            // Add files to the test suite
             files.forEach((f: string) => mocha.addFile(path.resolve(testsRoot, f)));
 
             try {
-                // Запускаем тесты
+                // Run the tests
                 mocha.run((failures: number) => {
                     if (failures > 0) {
                         e(new Error(`${failures} tests failed.`));

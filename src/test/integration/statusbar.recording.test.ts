@@ -10,7 +10,7 @@ describe('Status Bar Recording Indication Tests', () => {
     let mockStatusBarItem: any;
 
     beforeEach(() => {
-        // Создаем мок для StatusBarItem
+        // Create mock for StatusBarItem
         mockStatusBarItem = {
             text: '',
             tooltip: '',
@@ -22,16 +22,16 @@ describe('Status Bar Recording Indication Tests', () => {
             dispose: sinon.stub()
         };
 
-        // Мокаем создание StatusBarItem
+        // Mock creating StatusBarItem
         createStatusBarItemStub = sinon.stub(vscode.window, 'createStatusBarItem')
             .returns(mockStatusBarItem);
 
-        // Создаем мок событий
+        // Create mock events
         mockEvents = {
             onRecordingToggle: sinon.stub()
         };
 
-        // Создаем StatusBarManager
+        // Create StatusBarManager
         statusBarManager = new StatusBarManager(mockEvents, {
             enableAnimations: true,
             showTooltips: true,
@@ -71,7 +71,7 @@ describe('Status Bar Recording Indication Tests', () => {
 
     describe('Recording State Indication', () => {
         it('should update to recording state when recording starts', () => {
-            // Начинаем запись
+            // Start recording
             statusBarManager.updateRecordingState(true);
 
             const status = statusBarManager.getStatus();
@@ -82,7 +82,7 @@ describe('Status Bar Recording Indication Tests', () => {
         it('should show recording icon and background when recording', () => {
             statusBarManager.updateRecordingState(true);
 
-            // Проверяем, что показывается иконка записи (может быть анимированной)
+            // Check that the recording icon is shown (possibly animated)
             const hasRecordIcon = mockStatusBarItem.text === '$(record)' || 
                                  mockStatusBarItem.text.includes('$(record)');
             assert.ok(hasRecordIcon, 'Should show record icon (possibly animated)');
@@ -98,11 +98,11 @@ describe('Status Bar Recording Indication Tests', () => {
         });
 
         it('should return to idle state when recording stops', () => {
-            // Начинаем запись
+            // Start recording
             statusBarManager.updateRecordingState(true);
             assert.strictEqual(statusBarManager.getStatus().state, 'recording', 'Should be recording');
 
-            // Останавливаем запись
+            // Stop recording
             statusBarManager.updateRecordingState(false);
 
             const status = statusBarManager.getStatus();
@@ -111,7 +111,7 @@ describe('Status Bar Recording Indication Tests', () => {
         });
 
         it('should restore idle appearance when recording stops', () => {
-            // Начинаем и останавливаем запись
+            // Start and stop recording
             statusBarManager.updateRecordingState(true);
             statusBarManager.updateRecordingState(false);
 
@@ -174,23 +174,23 @@ describe('Status Bar Recording Indication Tests', () => {
 
     describe('Animation and Progress', () => {
         it('should support animated states', function(done) {
-            this.timeout(2000); // Увеличиваем таймаут для анимации
+            this.timeout(2000); // Increase timeout for animation
 
             statusBarManager.updateRecordingState(true);
 
-            // Проверяем, что анимация работает (текст может изменяться)
+            // Check that animation works (text may change)
             setTimeout(() => {
                 const hasAnimation = mockStatusBarItem.text.includes('Recording') || 
                                    mockStatusBarItem.text === '$(record)';
                 assert.ok(hasAnimation, 'Should show animated recording text or icon');
                 done();
-            }, 600); // Ждем больше чем интервал анимации (500ms)
+            }, 600); // Wait longer than animation interval (500ms)
         });
 
         it('should update progress indication', () => {
             statusBarManager.updateProgress(50, 'Processing audio...');
 
-            // Проверяем, что tooltip обновился с прогрессом
+            // Check that tooltip has been updated with progress
             assert.ok(mockStatusBarItem.tooltip.includes('50%') || 
                      mockStatusBarItem.tooltip.includes('Processing'), 
                      'Should show progress in tooltip');
@@ -226,33 +226,33 @@ describe('Status Bar Recording Indication Tests', () => {
 
     describe('State Transitions', () => {
         it('should handle complete recording workflow', () => {
-            // 1. Начинаем запись
+            // 1. Start recording
             statusBarManager.updateRecordingState(true);
             assert.strictEqual(statusBarManager.getStatus().state, 'recording', 'Should start recording');
 
-            // 2. Обрабатываем аудио
+            // 2. Process audio
             statusBarManager.showProcessing();
             assert.strictEqual(statusBarManager.getStatus().state, 'processing', 'Should show processing');
 
-            // 3. Транскрибируем
+            // 3. Transcribe
             statusBarManager.showTranscribing();
             assert.strictEqual(statusBarManager.getStatus().state, 'transcribing', 'Should show transcribing');
 
-            // 4. Вставляем текст
+            // 4. Insert text
             statusBarManager.showInserting();
             assert.strictEqual(statusBarManager.getStatus().state, 'inserting', 'Should show inserting');
 
-            // 5. Показываем успех
+            // 5. Show success
             statusBarManager.showSuccess();
             assert.strictEqual(statusBarManager.getStatus().state, 'success', 'Should show success');
         });
 
         it('should handle error during recording workflow', () => {
-            // Начинаем запись
+            // Start recording
             statusBarManager.updateRecordingState(true);
             assert.strictEqual(statusBarManager.getStatus().state, 'recording', 'Should start recording');
 
-            // Ошибка во время обработки
+            // Error during processing
             statusBarManager.showError('Network error');
             assert.strictEqual(statusBarManager.getStatus().state, 'error', 'Should show error');
             assert.strictEqual(statusBarManager.getStatus().lastError, 'Network error', 'Should store error message');
@@ -262,10 +262,10 @@ describe('Status Bar Recording Indication Tests', () => {
             statusBarManager.updateRecordingState(true);
             const initialCallCount = mockStatusBarItem.show.callCount;
 
-            // Пытаемся установить то же состояние
+            // Try to set the same state
             statusBarManager.updateRecordingState(true);
 
-            // UI не должен обновляться повторно для того же состояния
+            // UI should not update again for the same state
             assert.strictEqual(statusBarManager.getStatus().state, 'recording', 'Should remain in recording state');
         });
     });
@@ -277,13 +277,13 @@ describe('Status Bar Recording Indication Tests', () => {
         });
 
         it('should clear timers on disposal', () => {
-            // Устанавливаем состояние с таймером
+            // Set state with timer
             statusBarManager.showSuccess();
             
-            // Dispose должен очистить таймеры
+            // Dispose should clear timers
             statusBarManager.dispose();
             
-            // Проверяем, что dispose был вызван
+            // Check that dispose was called
             assert.ok(mockStatusBarItem.dispose.called, 'Should dispose status bar item and clear timers');
         });
     });

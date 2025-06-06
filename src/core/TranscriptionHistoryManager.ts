@@ -1,6 +1,6 @@
 /**
- * Менеджер истории транскрипции
- * Управляет сохранением, загрузкой и миграцией данных истории транскрипции
+ * Transcription history manager
+ * Manages saving, loading, and migrating transcription history data
  */
 
 import * as vscode from 'vscode';
@@ -16,7 +16,7 @@ import { ExtensionLog } from '../utils/GlobalOutput';
 import { ErrorHandler, ErrorType, ErrorContext } from '../utils/ErrorHandler';
 
 /**
- * Класс для управления историей транскрипций
+ * Class for managing transcription history
  */
 export class TranscriptionHistoryManager {
 	private context: vscode.ExtensionContext;
@@ -31,7 +31,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Инициализация менеджера - загрузка истории из storage
+	 * Initialization of the manager - loading history from storage
 	 */
 	public async initialize(): Promise<HistoryOperationResult> {
 		try {
@@ -44,7 +44,7 @@ export class TranscriptionHistoryManager {
 			const errorMsg = `Failed to initialize TranscriptionHistoryManager: ${error instanceof Error ? error.message : String(error)}`;
 			ExtensionLog.error(errorMsg);
 			
-			// Создаем новую пустую историю при ошибке инициализации
+			// Create a new empty history on initialization error
 			this._history = this.createEmptyHistory();
 			
 			return {
@@ -56,7 +56,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Добавление новой записи в историю
+	 * Adding a new entry to the history
 	 */
 	public async addEntry(options: AddEntryOptions): Promise<HistoryOperationResult> {
 		try {
@@ -64,7 +64,7 @@ export class TranscriptionHistoryManager {
 				await this.initialize();
 			}
 
-			// Создаем новую запись
+			// Create a new entry
 			const entry: TranscriptionEntry = {
 				id: this.generateEntryId(),
 				text: options.text.trim(),
@@ -74,16 +74,16 @@ export class TranscriptionHistoryManager {
 				mode: options.mode
 			};
 
-			// Добавляем в начало массива (новые записи сверху)
+			// Add to the beginning of the array (new entries on top)
 			this._history!.entries.unshift(entry);
 
-			// Применяем лимит на количество записей
+			// Apply the limit on the number of entries
 			this.enforceMaxEntries();
 
-			// Обновляем время последнего изменения
+			// Update the time of the last change
 			this._history!.lastUpdated = new Date().toISOString();
 
-			// Сохраняем в storage
+			// Save to storage
 			const saveResult = await this.saveHistory();
 			if (saveResult.success) {
 				ExtensionLog.info(`Transcription entry added. ID: ${entry.id}, Length: ${entry.text.length} chars`);
@@ -106,7 +106,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Удаление записи по ID
+	 * Deleting an entry by ID
 	 */
 	public async removeEntry(entryId: string): Promise<HistoryOperationResult> {
 		try {
@@ -150,7 +150,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Очистка всей истории
+	 * Clearing all history
 	 */
 	public async clearHistory(): Promise<HistoryOperationResult> {
 		try {
@@ -173,7 +173,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Получение всей истории
+	 * Getting all history
 	 */
 	public async getHistory(): Promise<TranscriptionHistory> {
 		if (!this._history) {
@@ -184,7 +184,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Получение записи по ID
+	 * Getting an entry by ID
 	 */
 	public async getEntry(entryId: string): Promise<TranscriptionEntry | null> {
 		const history = await this.getHistory();
@@ -192,7 +192,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Получение количества записей
+	 * Getting the number of entries
 	 */
 	public async getEntriesCount(): Promise<number> {
 		const history = await this.getHistory();
@@ -200,7 +200,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Загрузка истории из VS Code storage
+	 * Loading history from VS Code storage
 	 */
 	private async loadHistory(): Promise<HistoryOperationResult> {
 		try {
@@ -212,7 +212,7 @@ export class TranscriptionHistoryManager {
 				return { success: true, data: { newHistory: true } };
 			}
 
-			// Попытка миграции данных при необходимости
+			// Attempt to migrate data if necessary
 			const migrationResult = this.migrateData(savedData);
 			this._history = migrationResult.data;
 
@@ -229,7 +229,7 @@ export class TranscriptionHistoryManager {
 			const errorMsg = `Failed to load history: ${error instanceof Error ? error.message : String(error)}`;
 			ExtensionLog.error(errorMsg);
 			
-			// Fallback к пустой истории
+			// Fallback to an empty history
 			this._history = this.createEmptyHistory();
 			
 			return {
@@ -241,7 +241,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Сохранение истории в VS Code storage
+	 * Saving history to VS Code storage
 	 */
 	private async saveHistory(): Promise<HistoryOperationResult> {
 		try {
@@ -266,17 +266,17 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Миграция данных из старых форматов
+	 * Migration of data from old formats
 	 */
 	private migrateData(savedData: any): { data: TranscriptionHistory; migrated: boolean } {
-		// Если данные уже в текущем формате
+		// If the data is already in the current format
 		if (savedData.version === TRANSCRIPTION_HISTORY_CONSTANTS.CURRENT_VERSION) {
 			return { data: savedData as TranscriptionHistory, migrated: false };
 		}
 
 		ExtensionLog.info(`Migrating history data from version ${savedData.version || 'unknown'} to ${TRANSCRIPTION_HISTORY_CONSTANTS.CURRENT_VERSION}`);
 
-		// Миграция из старого формата (если есть просто массив записей)
+		// Migration from the old format (if there is just an array of entries)
 		if (Array.isArray(savedData)) {
 			const migratedHistory: TranscriptionHistory = {
 				version: TRANSCRIPTION_HISTORY_CONSTANTS.CURRENT_VERSION,
@@ -294,7 +294,7 @@ export class TranscriptionHistoryManager {
 			return { data: migratedHistory, migrated: true };
 		}
 
-		// Миграция из формата без версии
+		// Migration from the format without a version
 		if (savedData.entries && !savedData.version) {
 			const migratedHistory: TranscriptionHistory = {
 				version: TRANSCRIPTION_HISTORY_CONSTANTS.CURRENT_VERSION,
@@ -312,13 +312,13 @@ export class TranscriptionHistoryManager {
 			return { data: migratedHistory, migrated: true };
 		}
 
-		// Если формат неизвестен, создаем пустую историю
+		// If the format is unknown, create an empty history
 		ExtensionLog.warn('Unknown data format during migration, creating empty history');
 		return { data: this.createEmptyHistory(), migrated: true };
 	}
 
 	/**
-	 * Создание пустой истории
+	 * Creating an empty history
 	 */
 	private createEmptyHistory(): TranscriptionHistory {
 		return {
@@ -329,7 +329,7 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Применение лимита максимального количества записей
+	 * Applying the limit on the maximum number of entries
 	 */
 	private enforceMaxEntries(): void {
 		if (!this._history) {
@@ -346,14 +346,14 @@ export class TranscriptionHistoryManager {
 	}
 
 	/**
-	 * Генерация уникального ID для записи
+	 * Generating a unique ID for an entry
 	 */
 	private generateEntryId(): string {
 		return `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 	}
 
 	/**
-	 * Обработка ошибок
+	 * Handling errors
 	 */
 	private handleError(error: any, context: ErrorContext): HistoryOperationResult {
 		const errorMsg = error instanceof Error ? error.message : String(error);

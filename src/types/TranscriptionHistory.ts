@@ -1,102 +1,102 @@
 /**
- * Типы и интерфейсы для истории транскрипции
+ * Types and interfaces for the transcription history
  */
 
 /**
- * Режимы записи (дублируем из extension.ts для избежания циклических зависимостей)
+ * Recording modes (duplicated from extension.ts to avoid circular dependencies)
  */
 export enum RecordingMode {
-	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - вставка в курсор или буфер обмена
-	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - вставка в текущий чат Cursor
+	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - insert into cursor or clipboard
+	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - insert into the current chat Cursor
 }
 
 /**
- * Запись истории транскрипции
+ * Transcription history entry
  */
 export interface TranscriptionEntry {
-	/** Уникальный идентификатор записи */
+	/** Unique identifier of the entry */
 	id: string;
 	
-	/** Полный текст транскрипции */
+	/** Full transcription text */
 	text: string;
 	
-	/** Время создания транскрипции (ISO string) */
+	/** Creation time of the transcription (ISO string) */
 	timestamp: string;
 	
-	/** Длительность аудио записи в миллисекундах */
+	/** Duration of the audio recording in milliseconds */
 	duration: number;
 	
-	/** Язык транскрипции */
+	/** Language of the transcription */
 	language: string;
 	
-	/** Режим записи во время транскрипции */
+	/** Recording mode during transcription */
 	mode: RecordingMode;
 }
 
 /**
- * Группа записей по дате
+ * Group of entries by date
  */
 export interface TranscriptionGroup {
-	/** Название группы (сегодня, вчера, текущая неделя, старше) */
+	/** Group name (today, yesterday, current week, older) */
 	label: string;
 	
-	/** Записи в группе */
+	/** Entries in the group */
 	entries: TranscriptionEntry[];
 	
-	/** Ключ для сортировки */
+	/** Sorting key */
 	sortKey: number;
 }
 
 /**
- * Структура для хранения истории транскрипции
+ * Structure for storing the transcription history
  */
 export interface TranscriptionHistory {
-	/** Версия формата данных */
+	/** Version of the data format */
 	version: string;
 	
-	/** Массив записей транскрипции (максимум 100) */
+	/** Array of transcription entries (maximum 100) */
 	entries: TranscriptionEntry[];
 	
-	/** Время последнего обновления */
+	/** Time of the last update */
 	lastUpdated: string;
 }
 
 /**
- * Опции для добавления записи в историю
+ * Options for adding an entry to the history
  */
 export interface AddEntryOptions {
-	/** Текст транскрипции */
+	/** Transcription text */
 	text: string;
 	
-	/** Длительность аудио в миллисекундах */
+	/** Duration of the audio in milliseconds */
 	duration: number;
 	
-	/** Язык транскрипции */
+	/** Language of the transcription */
 	language: string;
 	
-	/** Режим записи */
+	/** Recording mode */
 	mode: RecordingMode;
 	
-	/** Опционально - пользовательский timestamp */
+	/** Optional - user timestamp */
 	timestamp?: string;
 }
 
 /**
- * Результат операции с историей
+ * Result of the history operation
  */
 export interface HistoryOperationResult {
-	/** Успешность операции */
+	/** Success of the operation */
 	success: boolean;
 	
-	/** Сообщение об ошибке, если есть */
+	/** Error message, if any */
 	error?: string;
 	
-	/** Дополнительные данные */
+	/** Additional data */
 	data?: any;
 }
 
 /**
- * Категории группировки по дате
+ * Categories of grouping by date
  */
 export enum DateGroupCategory {
 	TODAY = 'today',
@@ -106,38 +106,38 @@ export enum DateGroupCategory {
 }
 
 /**
- * Метаданные записи для отображения
+ * Metadata for display of the entry
  */
 export interface TranscriptionEntryMetadata {
-	/** Краткое отображение (первые 50 символов) */
+	/** Short display (first 50 characters) */
 	preview: string;
 	
-	/** Полный текст для tooltip */
+	/** Full text for tooltip */
 	fullText: string;
 	
-	/** Отформатированное время */
+	/** Formatted time */
 	formattedTime: string;
 	
-	/** Относительное время (например, "2 часа назад") */
+	/** Relative time (e.g., "2 hours ago") */
 	relativeTime: string;
 	
-	/** Информация о длительности */
+	/** Information about the duration */
 	durationText: string;
 }
 
 /**
- * Константы для истории транскрипции
+ * Constants for the transcription history
  */
 export const TRANSCRIPTION_HISTORY_CONSTANTS = {
-	/** Максимальное количество записей в истории */
+	/** Maximum number of entries in the history */
 	MAX_ENTRIES: 100,
 	
-	/** Версия текущего формата данных */
+	/** Version of the current data format */
 	CURRENT_VERSION: '1.0.0',
 	
-	/** Максимальная длина preview текста */
+	/** Maximum length of the preview text */
 	PREVIEW_LENGTH: 50,
 	
-	/** Ключ для хранения в VS Code storage */
+	/** Key for storing in VS Code storage */
 	STORAGE_KEY: 'transcriptionHistory'
 } as const; 

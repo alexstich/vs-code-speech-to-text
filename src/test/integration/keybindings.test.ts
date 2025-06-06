@@ -5,10 +5,10 @@ describe('Keybindings Integration Tests', () => {
     let extension: vscode.Extension<any> | undefined;
 
     before(async () => {
-        // Получаем расширение
+        // Get the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
         
-        // Активируем расширение если оно не активно
+        // Activate the extension if it's not active
         if (extension && !extension.isActive) {
             await extension.activate();
         }
@@ -74,8 +74,8 @@ describe('Keybindings Integration Tests', () => {
 
     describe('Keybinding Functionality', () => {
         it('should be able to simulate keybinding execution', async () => {
-            // Мы не можем напрямую тестировать нажатие клавиш в VS Code тестах,
-            // но можем проверить, что команды, связанные с клавишами, выполняются
+            // We cannot directly test key presses in VS Code tests,
+            // but we can check that the commands associated with the keys are executed
             
             const testCommands = [
                 'speechToTextWhisper.recordAndOpenNewChat',
@@ -85,17 +85,17 @@ describe('Keybindings Integration Tests', () => {
 
             for (const commandId of testCommands) {
                 try {
-                    // Пытаемся выполнить команду
+                    // Attempt to execute the command
                     await vscode.commands.executeCommand(commandId);
-                    // В тестовой среде команды могут завершиться с ошибкой, но важно что они вызываются
+                    // In the test environment, commands might fail, but it's important that they are called
                 } catch (error) {
-                    // Ожидаемо в тестовой среде без настроенного API ключа и аудио устройств
+                    // Expected in a test environment without a configured API key and audio devices
                     const errorMessage = (error as Error).message.toLowerCase();
                     console.log(`Keybinding command ${commandId} failed as expected:`, errorMessage);
                 }
             }
             
-            // Если мы дошли до этой точки, команды доступны для выполнения
+            // If we reached this point, the commands are available for execution
             assert.ok(true, 'All keybinding commands are executable');
         });
     });
@@ -107,11 +107,11 @@ describe('Keybindings Integration Tests', () => {
             const packageJson = extension!.packageJSON;
             const keybindings = packageJson.contributes.keybindings;
             
-            // Проверяем, что есть Mac-специфичные привязки
+            // Check for Mac-specific bindings
             const macBindings = keybindings.filter((kb: any) => kb.mac);
             assert.ok(macBindings.length > 0, 'Should have Mac-specific keybindings');
             
-            // Проверяем, что Mac привязки используют cmd вместо ctrl
+            // Check that Mac bindings use cmd instead of ctrl
             for (const binding of macBindings) {
                 if (binding.mac) {
                     assert.ok(
@@ -128,7 +128,7 @@ describe('Keybindings Integration Tests', () => {
             const packageJson = extension!.packageJSON;
             const keybindings = packageJson.contributes.keybindings;
             
-            // Проверяем, что все привязки используют согласованные модификаторы
+            // Check that all bindings use consistent modifiers
             for (const binding of keybindings) {
                 if (binding.key && binding.key.includes('shift')) {
                     assert.ok(
@@ -142,7 +142,7 @@ describe('Keybindings Integration Tests', () => {
 
     describe('Keybinding Conflicts', () => {
         it('should not conflict with common VS Code keybindings', () => {
-            // Список общих VS Code клавиатурных привязок, с которыми не должно быть конфликтов
+            // List of common VS Code keybindings that should not conflict
             const commonVSCodeKeys = [
                 'ctrl+c', 'ctrl+v', 'ctrl+x', 'ctrl+z', 'ctrl+y',
                 'ctrl+s', 'ctrl+o', 'ctrl+n', 'ctrl+w', 'ctrl+t',

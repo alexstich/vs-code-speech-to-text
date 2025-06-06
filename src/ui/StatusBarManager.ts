@@ -1,4 +1,4 @@
-// StatusBarManager.ts - управление элементами интерфейса в статус-баре VS Code
+// StatusBarManager.ts - managing the interface elements in the VS Code status bar
 
 import * as vscode from 'vscode';
 
@@ -45,8 +45,8 @@ export interface StatusBarError extends Error {
 }
 
 /**
- * Управление элементами интерфейса в статус-баре VS Code
- * Предоставляет визуальную обратную связь о состоянии записи и обработки речи
+ * Managing the interface elements in the VS Code status bar
+ * Provides visual feedback on the recording and speech processing state
  */
 export class StatusBarManager implements vscode.Disposable {
     private statusBarItem!: vscode.StatusBarItem;
@@ -60,7 +60,7 @@ export class StatusBarManager implements vscode.Disposable {
 
     private readonly config: Required<StatusBarConfiguration>;
     
-    // Конфигурация для различных состояний
+    // Configuration for different states
     private readonly stateConfig: Record<StatusBarState, StatusBarInfo> = {
         idle: {
             text: '$(mic)',
@@ -139,7 +139,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Создает элемент статус-бара
+     * Creates a status bar item
      */
     private createStatusBarItem(): void {
         const alignment = this.config.position === 'left' 
@@ -153,21 +153,21 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Обновляет состояние записи
+     * Updates the recording state
      */
     updateRecordingState(isRecording: boolean): void {
         this.isRecording = isRecording;
         if (isRecording) {
             this.setState('recording');
-            this.startProgressAnimation(); // Запускаем анимацию для записи
+            this.startProgressAnimation(); // Start the animation for recording
         } else {
-            this.clearProgressAnimation(); // Останавливаем анимацию при остановке записи
+            this.clearProgressAnimation(); // Stop the animation when recording is stopped
             this.setState('idle');
         }
     }
 
     /**
-     * Показывает состояние обработки аудио
+     * Shows the processing state of audio
      */
     showProcessing(): void {
         this.setState('processing');
@@ -175,7 +175,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Показывает состояние транскрибации
+     * Shows the transcription state
      */
     showTranscribing(): void {
         this.setState('transcribing');
@@ -183,14 +183,14 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Показывает состояние вставки текста
+     * Shows the inserting state of text
      */
     showInserting(): void {
         this.setState('inserting');
     }
 
     /**
-     * Показывает состояние успеха
+     * Shows the success state
      */
     showSuccess(message?: string): void {
         this.clearTimers();
@@ -208,7 +208,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Показывает состояние ошибки
+     * Shows the error state
      */
     showError(message: string, severity: 'warning' | 'error' | 'critical' = 'error'): void {
         this.clearTimers();
@@ -225,14 +225,14 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Показывает предупреждение
+     * Shows the warning state
      */
     showWarning(message: string): void {
         this.showError(message, 'warning');
     }
 
     /**
-     * Обновляет прогресс операции
+     * Updates the progress of the operation
      */
     updateProgress(percentage: number, message?: string): void {
         if (!this.config.showProgress) {return;}
@@ -248,7 +248,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Получает информацию о текущем состоянии
+     * Gets the information about the current state
      */
     getStatus(): {
         state: StatusBarState;
@@ -267,12 +267,12 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Обновляет конфигурацию
+     * Updates the configuration
      */
     updateConfiguration(newConfig: Partial<StatusBarConfiguration>): void {
         Object.assign(this.config, newConfig);
         
-        // Пересоздаем элемент если изменилась позиция
+        // Recreate the element if the position has changed
         if (newConfig.position || newConfig.priority !== undefined) {
             const wasVisible = this.statusBarItem ? true : false;
             this.dispose();
@@ -286,7 +286,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Показывает элемент статус-бара
+     * Shows the status bar item
      */
     show(): void {
         if (this.statusBarItem) {
@@ -295,7 +295,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Скрывает элемент статус-бара
+     * Hides the status bar item
      */
     hide(): void {
         if (this.statusBarItem) {
@@ -304,19 +304,19 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Переключает видимость элемента
+     * Toggles the visibility of the item
      */
     toggle(): void {
-        // VS Code API не предоставляет прямой способ проверить видимость
-        // Поэтому мы отслеживаем состояние самостоятельно
+        // VS Code API does not provide a direct way to check visibility
+        // So we track the state ourselves
         if (this.statusBarItem) {
-            // Простая реализация: всегда показываем
+            // Simple implementation: always show
             this.show();
         }
     }
 
     /**
-     * Устанавливает новое состояние
+     * Sets a new state
      */
     private setState(newState: StatusBarState): void {
         if (this.currentState === newState) {return;}
@@ -326,35 +326,35 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Обновляет UI элемента
+     * Updates the UI of the item
      */
     private updateUI(): void {
         if (!this.statusBarItem) {return;}
 
         const config = this.stateConfig[this.currentState];
         
-        // Обновляем текст с анимацией если включена
+        // Update the text with animation if enabled
         if (this.config.enableAnimations && this.isAnimatedState()) {
             this.statusBarItem.text = this.getAnimatedText(config);
         } else {
             this.statusBarItem.text = config.text;
         }
 
-        // Обновляем tooltip если включен
+        // Update the tooltip if enabled
         if (this.config.showTooltips) {
             this.statusBarItem.tooltip = this.buildTooltip(config);
         }
 
-        // Обновляем цвета
+        // Update the colors
         this.statusBarItem.backgroundColor = config.backgroundColor;
         this.statusBarItem.color = config.color;
         
-        // Обновляем команду
+        // Update the command
         this.statusBarItem.command = config.command;
     }
 
     /**
-     * Обновляет tooltip
+     * Updates the tooltip
      */
     private updateTooltip(tooltip: string): void {
         if (this.config.showTooltips && this.statusBarItem) {
@@ -363,7 +363,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Создает строку прогресса
+     * Creates a progress bar
      */
     private createProgressBar(percentage: number): string {
         const totalBlocks = 10;
@@ -374,14 +374,14 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Проверяет является ли состояние анимированным
+     * Checks if the state is animated
      */
     private isAnimatedState(): boolean {
         return ['recording', 'processing', 'transcribing'].includes(this.currentState);
     }
 
     /**
-     * Получает анимированный текст
+     * Gets the animated text
      */
     private getAnimatedText(config: StatusBarInfo): string {
         if (this.currentState === 'recording') {
@@ -396,12 +396,12 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Строит полный tooltip
+     * Builds the full tooltip
      */
     private buildTooltip(config: StatusBarInfo): string {
         let tooltip = config.tooltip;
         
-        // Добавляем дополнительную информацию для разных состояний
+        // Add additional information for different states
         switch (this.currentState) {
             case 'idle':
                 tooltip += '\n\nHotkey: F9 (hold to record)';
@@ -422,7 +422,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Запускает анимацию прогресса
+     * Starts the progress animation
      */
     private startProgressAnimation(): void {
         if (!this.config.enableAnimations) {return;}
@@ -437,7 +437,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Останавливает анимацию прогресса
+     * Stops the progress animation
      */
     private clearProgressAnimation(): void {
         if (this.progressInterval) {
@@ -447,7 +447,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Очищает все таймеры
+     * Clears all timers
      */
     private clearTimers(): void {
         if (this.successTimer) {
@@ -464,14 +464,14 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Делает первую букву заглавной
+     * Makes the first letter uppercase
      */
     private capitalizeFirst(str: string): string {
         return str.charAt(0).toUpperCase() + str.slice(1);
     }
 
     /**
-     * Освобождает ресурсы
+     * Releases resources
      */
     dispose(): void {
         this.clearTimers();
@@ -482,11 +482,11 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Статические методы для создания стандартных конфигураций
+     * Static methods for creating standard configurations
      */
     
     /**
-     * Создает минимальную конфигурацию
+     * Creates a minimal configuration
      */
     static createMinimalConfig(): StatusBarConfiguration {
         return {
@@ -497,7 +497,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Создает полную конфигурацию
+     * Creates a full configuration
      */
     static createFullConfig(): StatusBarConfiguration {
         return {
@@ -513,7 +513,7 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     /**
-     * Создает конфигурацию для разработки
+     * Creates a configuration for development
      */
     static createDebugConfig(): StatusBarConfiguration {
         return {

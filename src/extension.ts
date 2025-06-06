@@ -18,15 +18,15 @@ import { ConfigurationManager } from './core/ConfigurationManager';
 import { initializeGlobalOutput, ExtensionLog, disposeGlobalOutput } from './utils/GlobalOutput';
 
 /**
- * Режимы записи для новой архитектуры команд
+ * Recording modes for the new command architecture
  */
 enum RecordingMode {
-	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - вставка в курсор или буфер обмена
-	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - вставка в текущий чат Cursor
+	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - insert into cursor or clipboard
+	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - insert into current chat Cursor
 }
 
 /**
- * Состояние записи
+ * Recording state
  */
 interface RecordingState {
 	isRecording: boolean;
@@ -34,7 +34,7 @@ interface RecordingState {
 	startTime: number | null;
 }
 
-// Глобальные переменные для компонентов
+// Global variables for components
 let audioRecorder: FFmpegAudioRecorder | null = null;
 let whisperClient: WhisperClient;
 let textInserter: TextInserter;
@@ -46,65 +46,65 @@ let modeSelectorProvider: ModeSelectorProvider;
 let transcriptionHistoryProvider: TranscriptionHistoryProvider;
 let transcriptionHistoryManager: TranscriptionHistoryManager;
 
-// Глобальный output канал для всего расширения
+// Global output channel for the entire extension
 let outputChannel: vscode.OutputChannel;
 
-// Система обработки ошибок
+// Error handling system
 let errorHandler: ErrorHandler;
 let retryManager: RetryManager;
 
-// Менеджер конфигурации
+// Configuration manager
 let configurationManager: ConfigurationManager;
 
-// Контекст расширения для глобального доступа
+// Extension context for global access
 let extensionContext: vscode.ExtensionContext;
 
-// Переменная для отслеживания состояния записи (заменяет currentRecordingMode)
+// Variable for tracking recording state (replaces currentRecordingMode)
 let recordingState: RecordingState = {
 	isRecording: false,
 	mode: null,
 	startTime: null
 };
 
-// Время последнего запуска записи для предотвращения частых попыток
+// Time of the last recording start to prevent frequent attempts
 let lastRecordingStartTime = 0;
-const MIN_RECORDING_INTERVAL = 100; // минимум 100ms между попытками (было 200ms)
+const MIN_RECORDING_INTERVAL = 100; // minimum 100ms between attempts (was 200ms)
 
-// Переменная для хранения последней транскрибации
+// Variable for storing the last transcription
 let lastTranscribedText: string | null = null;
 
-// Интеграция с Cursor чатом
+// Cursor chat integration
 let cursorIntegration: CursorIntegration;
 
 /**
- * Утилиты для управления состоянием записи
+ * Utilities for managing the recording state
  */
 class RecordingStateManager {
 	/**
-	 * Проверка, идет ли запись
+	 * Checking if recording is in progress
 	 */
 	static isRecording(): boolean {
 		return recordingState.isRecording;
 	}
 
 	/**
-	 * Получение текущего режима записи
+	 * Getting the current recording mode
 	 */
 	static getCurrentMode(): RecordingMode | null {
 		return recordingState.mode;
 	}
 
 	/**
-	 * Начало записи с указанным режимом
+	 * Starting recording with the specified mode
 	 */
 	static startRecording(mode: RecordingMode): boolean {
-		// Проверяем, не идет ли уже запись
+		// Checking if recording is already in progress
 		if (recordingState.isRecording) {
 			ExtensionLog.warn('⚠️ Recording already in progress');
 			return false;
 		}
 
-		// Устанавливаем состояние
+		// Setting the state
 		const now = Date.now();
 		recordingState = {
 			isRecording: true,
@@ -117,7 +117,7 @@ class RecordingStateManager {
 	}
 
 	/**
-	 * Остановка записи
+	 * Stopping recording
 	 */
 	static stopRecording(): RecordingMode | null {
 		if (!recordingState.isRecording) {
@@ -137,7 +137,7 @@ class RecordingStateManager {
 	}
 
 	/**
-	 * Остановка записи с сохранением режима (для транскрибации)
+	 * Stopping recording with mode preservation (for transcription)
 	 */
 	static stopRecordingKeepMode(): RecordingMode | null {
 		if (!recordingState.isRecording) {
@@ -147,14 +147,14 @@ class RecordingStateManager {
 
 		const mode = recordingState.mode;
 		recordingState.isRecording = false;
-		// mode и startTime остаются для обработки транскрибации
+		// mode and startTime remain for transcription processing
 
 		ExtensionLog.info(`⏹️ Recording stopped, mode preserved for transcription: ${mode}`);
 		return mode;
 	}
 
 	/**
-	 * Принудительный сброс состояния (для ошибок)
+	 * Forced state reset (for errors)
 	 */
 	static resetState(): void {
 		recordingState = {
@@ -166,7 +166,7 @@ class RecordingStateManager {
 	}
 
 	/**
-	 * Получение длительности текущей записи в ms
+	 * Getting the duration of the current recording in ms
 	 */
 	static getRecordingDuration(): number {
 		if (!recordingState.isRecording || !recordingState.startTime) {
@@ -176,7 +176,7 @@ class RecordingStateManager {
 	}
 
 	/**
-	 * Получение состояния записи
+	 * Getting the recording state
 	 */
 	static getState(): RecordingState {
 		return recordingState;
@@ -184,54 +184,54 @@ class RecordingStateManager {
 }
 
 /**
- * Функция активации расширения
- * Вызывается при первом использовании команды расширения
+ * Activation function for the extension
+ * Called when the extension is first used
  */
 export async function activate(context: vscode.ExtensionContext) {
-	// Создаем output channel для логирования
+	// Create an output channel for logging
 	outputChannel = vscode.window.createOutputChannel('Speech to Text Whisper');
 	outputChannel.appendLine('🚀 Extension activation started');
-	outputChannel.show(); // Автоматически показываем в Output panel
+	outputChannel.show(); // Automatically show in the Output panel
 	
-	// Инициализируем глобальную систему логирования
+	// Initialize the global logging system
 	initializeGlobalOutput(outputChannel);
 	ExtensionLog.info('SpeechToTextWhisper extension activation started! NEW VERSION 2024');
 	ExtensionLog.info(`VS Code version: ${vscode.version}`);
 	ExtensionLog.info(`Extension folder: ${context.extensionPath}`);
 	
-	// Сохраняем контекст для глобального использования
+	// Save the context for global use
 	extensionContext = context;
 
 	try {
-		// Инициализируем систему обработки ошибок
+		// Initialize the error handling system
 		initializeErrorHandling();
 		
-		// Инициализируем компоненты
+		// Initialize the components
 		initializeComponents();
 		
-		// Инициализируем TranscriptionHistoryManager
+		// Initialize the TranscriptionHistoryManager
 		await transcriptionHistoryManager.initialize();
 		
-		// Регистрируем все команды
+		// Register all commands
 		registerCommands(context);
 		
-		// Инициализируем WhisperClient при первом использовании
+		// Initialize the WhisperClient on first use
 		initializeWhisperClient();
 		
-		// Показываем приветственное сообщение и StatusBar
+		// Show the welcome message and StatusBar
 		showWelcomeMessage();
 		
-		// Добавляем слушатель изменений конфигурации
+		// Add a listener for configuration changes
 		configurationManager.addChangeListener((config) => {
 			ExtensionLog.info('🔧 Configuration changed, reinitializing components...');
 			
-			// Переинициализируем WhisperClient при изменении настроек
+			// Reinitialize the WhisperClient when settings change
 			initializeWhisperClient();
 			
-			// Сбрасываем audioRecorder при изменении аудио настроек
+			// Reset the audioRecorder when audio settings change
 			audioRecorder = null;
 			
-			// Обновляем видимость StatusBar
+			// Update the visibility of the StatusBar
 			if (config.ui.showStatusBar) {
 				statusBarManager.show();
 			} else {
@@ -249,55 +249,55 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 /**
- * Инициализация системы обработки ошибок
+ * Initializing the error handling system
  */
 function initializeErrorHandling(): void {
 	ExtensionLog.info('🔧 Initializing error handling system...');
 	
-	// Создаем ErrorHandler с VS Code display handler
+	// Create an ErrorHandler with the VS Code display handler
 	errorHandler = new ErrorHandler(new VSCodeErrorDisplayHandler());
 	
-	// Создаем RetryManager
+	// Create a RetryManager
 	retryManager = new RetryManager(errorHandler);
 	
 	ExtensionLog.info('✅ Error handling system initialized');
 }
 
 /**
- * Инициализация всех компонентов расширения
+ * Initializing all extension components
  */
 function initializeComponents(): void {
 	ExtensionLog.info('🔧 Initializing SpeechToTextWhisper components...');
 	
-	// Инициализируем ConfigurationManager
+	// Initialize the ConfigurationManager
 	configurationManager = ConfigurationManager.getInstance();
 	ExtensionLog.info('✅ ConfigurationManager initialized');
 	
-	// Инициализируем CursorIntegration
+	// Initialize the CursorIntegration
 	initializeCursorIntegration();
 	
-	// Инициализируем TextInserter
+	// Initialize the TextInserter
 	textInserter = new TextInserter();
 	
-	// Инициализируем DiagnosticsProvider
+	// Initialize the DiagnosticsProvider
 	diagnosticsProvider = new DiagnosticsProvider();
 	
-	// Инициализируем DeviceManagerProvider
+	// Initialize the DeviceManagerProvider
 	deviceManagerProvider = new DeviceManagerProvider();
 	
-	// Инициализируем SettingsProvider
+	// Initialize the SettingsProvider
 	settingsProvider = new SettingsProvider();
 	
-	// Инициализируем ModeSelectorProvider
+	// Initialize the ModeSelectorProvider
 	modeSelectorProvider = new ModeSelectorProvider();
 	
-	// Инициализируем TranscriptionHistoryManager
+	// Initialize the TranscriptionHistoryManager
 	transcriptionHistoryManager = new TranscriptionHistoryManager(extensionContext, errorHandler);
 	
-	// Инициализируем TranscriptionHistoryProvider
+	// Initialize the TranscriptionHistoryProvider
 	transcriptionHistoryProvider = new TranscriptionHistoryProvider(transcriptionHistoryManager);
 	
-	// События для StatusBar
+	// Events for the StatusBar
 	const statusBarEvents: StatusBarEvents = {
 		onRecordingToggle: () => {
 			ExtensionLog.info('📊 Status bar clicked');
@@ -305,7 +305,7 @@ function initializeComponents(): void {
 		}
 	};
 	
-	// Конфигурация StatusBar
+	// Configuration for the StatusBar
 	const statusBarConfig: StatusBarConfiguration = {
 		position: 'right',
 		priority: 100,
@@ -313,25 +313,25 @@ function initializeComponents(): void {
 		enableAnimations: true
 	};
 	
-	// Инициализируем StatusBarManager
+	// Initialize the StatusBarManager
 	statusBarManager = new StatusBarManager(statusBarEvents, statusBarConfig);
 	
 	ExtensionLog.info('✅ Components initialized');
 }
 
 /**
- * Регистрация команд расширения
+ * Registering extension commands
  */
 function registerCommands(context: vscode.ExtensionContext): void {
 	ExtensionLog.info('📝 Registering commands...');
 	
 	const commands = [
-		// Основные команды записи
+		// Main recording commands
 		vscode.commands.registerCommand('speechToTextWhisper.recordAndInsertOrClipboard', recordAndInsertOrClipboard),
 		vscode.commands.registerCommand('speechToTextWhisper.recordAndOpenNewChat', recordAndOpenNewChat),
-		// Команда диагностики
+		// Diagnostics command
 		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', () => diagnosticsProvider.runAllDiagnostics()),
-		// Команда тестирования FFmpeg
+		// FFmpeg test command
 		vscode.commands.registerCommand('speechToTextWhisper.testFFmpeg', async () => {
 			try {
 				ExtensionLog.info('🔍 Testing FFmpeg availability...');
@@ -345,7 +345,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 					vscode.window.showErrorMessage(`❌ FFmpeg not available: ${ffmpegCheck.error}`);
 				}
 				
-				// Пробуем диагностику
+				// Try diagnostics
 				const diagnostics = await FFmpegAudioRecorder.runDiagnostics();
 				ExtensionLog.info(`🔍 FFmpeg diagnostics: ${JSON.stringify(diagnostics)}`);
 				
@@ -361,15 +361,15 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				vscode.window.showErrorMessage(errorMsg);
 			}
 		}),
-		// Команда тестирования инициализации audioRecorder
+		// AudioRecorder initialization test command
 		vscode.commands.registerCommand('speechToTextWhisper.testAudioRecorder', async () => {
 			try {
 				ExtensionLog.info('🔍 Testing audioRecorder initialization...');
 				
-				// Сбрасываем текущий audioRecorder
+				// Reset the current audioRecorder
 				audioRecorder = null;
 				
-				// Пробуем инициализировать
+				// Try to initialize
 				await ensureFFmpegAudioRecorder();
 				
 				if (audioRecorder) {
@@ -386,14 +386,14 @@ function registerCommands(context: vscode.ExtensionContext): void {
 				vscode.window.showErrorMessage(errorMsg);
 			}
 		}),
-		// Команды для управления устройствами
+		// Commands for device management
 		vscode.commands.registerCommand('speechToTextWhisper.audioSettings.selectDevice', (deviceId: string) => deviceManagerProvider.selectDevice(deviceId)),
-		// Команды для настроек
+		// Commands for settings
 		vscode.commands.registerCommand('speechToTextWhisper.openSettings', () => settingsProvider.openSettings()),
-		// Команды для переключения режима
+		// Commands for mode switching
 		vscode.commands.registerCommand('speechToTextWhisper.toggleMode', () => modeSelectorProvider.toggleMode()),
 		vscode.commands.registerCommand('speechToTextWhisper.setMode', (mode: string) => modeSelectorProvider.setMode(mode as 'insert' | 'clipboard')),
-		// Команды для истории транскрипций
+		// Commands for transcription history
 		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.copyToClipboard', (item) => transcriptionHistoryProvider.copyToClipboard(item)),
 		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.insertAtCursor', (item) => transcriptionHistoryProvider.insertAtCursor(item)),
 		vscode.commands.registerCommand('speechToTextWhisper.transcriptionHistory.deleteEntry', (item) => transcriptionHistoryProvider.deleteEntry(item)),
@@ -403,29 +403,29 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
 	ExtensionLog.info(`📝 Created ${commands.length} command registrations`);
 
-	// Регистрируем DiagnosticsProvider как TreeDataProvider
+	// Register DiagnosticsProvider as TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.diagnostics', diagnosticsProvider);
 
-	// Регистрируем DeviceManagerProvider как TreeDataProvider
+	// Register DeviceManagerProvider as TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.deviceManager', deviceManagerProvider);
 
-	// Регистрируем SettingsProvider как TreeDataProvider
+	// Register SettingsProvider as TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.settings', settingsProvider);
 
-	// Регистрируем ModeSelectorProvider как TreeDataProvider
+	// Register ModeSelectorProvider as TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.modeSelector', modeSelectorProvider);
 
-	// Регистрируем TranscriptionHistoryProvider как TreeDataProvider
+	// Register TranscriptionHistoryProvider as TreeDataProvider
 	vscode.window.registerTreeDataProvider('speechToTextWhisper.transcriptionHistory', transcriptionHistoryProvider);
 
-	// Добавляем все команды в подписки
+	// Add all commands to subscriptions
 	context.subscriptions.push(...commands, statusBarManager);
 	
 	ExtensionLog.info(`✅ Registered ${commands.length} commands and added to subscriptions`);
 }
 
 /**
- * Обработка транскрибации
+ * Handling transcription
  */
 async function handleTranscription(audioBlob: Blob): Promise<void> {
 	ExtensionLog.info('🎯 [TRANSCRIPTION] Processing transcription...');
@@ -450,12 +450,12 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			throw new Error('WhisperClient not initialized');
 		}
 
-		// Показываем состояние транскрибации
+		// Show transcription state
 		if (statusBarManager) {
 			statusBarManager.showTranscribing();
 		}
 
-		// Получаем настройки из конфигурации
+		// Get settings from configuration
 		const whisperConfig = configurationManager.getWhisperConfiguration();
 
 		ExtensionLog.info('🎯 [TRANSCRIPTION] Starting transcription...');
@@ -474,7 +474,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 		if (transcriptionResult && transcriptionResult.trim().length > 0) {
 			lastTranscribedText = transcriptionResult.trim();
 			
-			// Добавляем запись в историю транскрипций
+			// Add entry to transcription history
 			try {
 				const duration = recordingState.startTime ? Date.now() - recordingState.startTime : 0;
 				const language = whisperConfig.language === 'auto' ? 'auto' : whisperConfig.language;
@@ -483,44 +483,44 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					text: lastTranscribedText,
 					duration: duration,
 					language: language,
-					mode: recordingState.mode as any // приводим к типу из TranscriptionHistory
+					mode: recordingState.mode as any // cast to type from TranscriptionHistory
 				});
 				
-				// Обновляем UI истории
+				// Update UI history
 				transcriptionHistoryProvider.refresh();
 				
 				ExtensionLog.info('📚 [HISTORY] Transcription added to history');
 			} catch (error) {
 				ExtensionLog.error('❌ [HISTORY] Failed to add transcription to history:', error);
-				// Не прерываем выполнение, если не удалось добавить в историю
+				// Do not interrupt execution if failed to add to history
 			}
 			
-			// Показываем состояние вставки
+			// Show inserting state
 			statusBarManager.showInserting();
 			
 			if (recordingState.mode === RecordingMode.INSERT_OR_CLIPBOARD) {
 				ExtensionLog.info('📝 Processing insertOrClipboard mode...');
 				
 				try {
-					// Читаем режим вставки из ModeSelectorProvider
+					// Read insert mode from ModeSelectorProvider
 					const insertMode = modeSelectorProvider.getCurrentMode();
 					
 					if (insertMode === 'insert') {
-						// Режим вставки в позицию курсора
+						// Insert mode at cursor position
 						ExtensionLog.info('📝 Inserting into active editor at cursor position');
 						await insertTranscribedTextWithErrorHandling(lastTranscribedText, 'cursor', context);
 						
-						// Показываем успех
+						// Show success
 						const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
 						statusBarManager.showSuccess(`Inserted: "${truncatedText}"`);
 						vscode.window.showInformationMessage(`✅ Transcribed and inserted at cursor: "${truncatedText}"`);
 						
 					} else if (insertMode === 'clipboard') {
-						// Режим копирования в буфер обмена
+						// Copy to clipboard mode
 						ExtensionLog.info('📋 [CLIPBOARD_MODE] Copying to clipboard');
 						await vscode.env.clipboard.writeText(lastTranscribedText);
 						
-						// Показываем успех
+						// Show success
 						const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
 						statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
 						vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
@@ -529,7 +529,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 						vscode.window.showErrorMessage(`Unknown insert mode: ${insertMode}`);
 					}
 					
-					// Сбрасываем режим
+					// Reset mode
 					RecordingStateManager.resetState();
 					return;
 					
@@ -542,42 +542,42 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			} else if (recordingState.mode === RecordingMode.NEW_CHAT) {
 				ExtensionLog.info('🎯 [CHAT] Starting NEW_CHAT mode processing');
 				
-				// Проверяем режим вставки - если clipboard, то не отправляем в чат
+				// Check insert mode - if clipboard, then do not send to chat
 				const insertMode = modeSelectorProvider.getCurrentMode();
 				
 				if (insertMode === 'clipboard') {
-					// Режим копирования в буфер обмена - игнорируем чат
+					// Copy to clipboard mode - ignore chat
 					ExtensionLog.info('📋 [CLIPBOARD_MODE] F9/Ctrl+Shift+N in clipboard mode - copying to clipboard instead of chat');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
 					
-					// Показываем успех
+					// Show success
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
 					statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
 					vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
 					
-					// Сбрасываем режим
+					// Reset mode
 					RecordingStateManager.resetState();
 					return;
 				}
 				
 				try {
-					// Выполняем команду открытия нового чата
+					// Execute command to open new chat
 					ExtensionLog.info('🎯 [CHAT] Executing aichat.newfollowupaction...');
 					await vscode.commands.executeCommand('aichat.newfollowupaction');
 					
-					// Задержка 300ms
+					// Delay 300ms
 					await new Promise(resolve => setTimeout(resolve, 300));
 					
-					// Вставляем текст в новый чат
+					// Insert text into new chat
 					await vscode.env.clipboard.writeText(lastTranscribedText);
 					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
 					
-					// Показываем успех
+					// Show success
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
 					statusBarManager.showSuccess(`Opened new chat: "${truncatedText}"`);
 					vscode.window.showInformationMessage(`✅ Transcribed and opened new chat: "${truncatedText}"`);
 					
-					// Сбрасываем режим
+					// Reset mode
 					RecordingStateManager.resetState();
 					return;
 					
@@ -590,7 +590,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			}
 			
 		} else {
-			// Обработка пустой транскрибации
+			// Empty transcription processing
 			await errorHandler.handleError(ErrorType.TRANSCRIPTION_EMPTY, context);
 		}
 		
@@ -601,7 +601,7 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 }
 
 /**
- * Вставка транскрибированного текста с обработкой ошибок
+ * Insert transcribed text with error handling
  */
 async function insertTranscribedTextWithErrorHandling(text: string, mode: string, parentContext: ErrorContext): Promise<void> {
 	const context: ErrorContext = {
@@ -618,7 +618,7 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 	try {
 		ExtensionLog.info(`📝 Inserting text with mode: ${mode}`);
 		
-		// Используем retry для вставки текста
+		// Use retry for text insertion
 		const insertResult = await retryManager.retry(
 			() => textInserter.insertText(text, { mode: mode as 'cursor' | 'clipboard' }),
 			'text_insertion'
@@ -638,7 +638,7 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 }
 
 /**
- * Вставка последней транскрибации
+ * Inserting the last transcription
  */
 async function insertLastTranscription(mode: string): Promise<void> {
 	if (!lastTranscribedText) {
@@ -657,7 +657,7 @@ async function insertLastTranscription(mode: string): Promise<void> {
 		ExtensionLog.info(`📝 Inserting last transcription with mode: ${mode}`);
 		
 		if (mode === 'currentChat') {
-			// Отправляем в Cursor чат
+			// Send to Cursor chat
 			if (!cursorIntegration || !cursorIntegration.isIntegrationEnabled()) {
 				throw new Error('Cursor integration not available');
 			}
@@ -666,12 +666,12 @@ async function insertLastTranscription(mode: string): Promise<void> {
 			ExtensionLog.info('✅ Text sent to Cursor chat');
 			
 		} else if (mode === 'newChat') {
-			// Отправляем в новый чат через CursorIntegration
+			// Send to new chat through CursorIntegration
 			await cursorIntegration.sendToChat(lastTranscribedText);
 			ExtensionLog.info('✅ Text sent to new chat');
 			
 		} else {
-			// Вставляем в редактор
+			// Insert into editor
 			await insertTranscribedTextWithErrorHandling(lastTranscribedText, mode, context);
 		}
 		
@@ -682,7 +682,7 @@ async function insertLastTranscription(mode: string): Promise<void> {
 }
 
 /**
- * Инициализация WhisperClient
+ * Initializing WhisperClient
  */
 function initializeWhisperClient(): void {
 	ExtensionLog.info('🔧 Initializing WhisperClient...');
@@ -717,7 +717,7 @@ function initializeWhisperClient(): void {
 }
 
 function showWelcomeMessage(): void {
-	// Принудительно показываем StatusBar
+	// Force show StatusBar
 	statusBarManager.show();
 	
 	const uiConfig = configurationManager.getUIConfiguration();
@@ -726,7 +726,7 @@ function showWelcomeMessage(): void {
 		statusBarManager.hide();
 	}
 	
-	// Показываем краткую справку при первом запуске
+	// Show a brief guide on first launch
 	if (extensionContext && extensionContext.globalState) {
 		const hasShownWelcome = extensionContext.globalState.get<boolean>('hasShownWelcome', false);
 		if (!hasShownWelcome) {
@@ -743,17 +743,17 @@ function showWelcomeMessage(): void {
 }
 
 /**
- * Функция деактивации расширения
+ * Deactivation function for the extension
  */
 export function deactivate() {
 	ExtensionLog.info('Extension deactivating...');
 	
-	// Останавливаем запись если активна
+	// Stop recording if active
 	if (audioRecorder && audioRecorder.getIsRecording()) {
 		audioRecorder.stopRecording();
 	}
 
-	// Очищаем ресурсы
+	// Clean up resources
 	if (statusBarManager) {
 		statusBarManager.dispose();
 	}
@@ -766,24 +766,28 @@ export function deactivate() {
 		cursorIntegration.dispose();
 	}
 	
-	// Освобождаем ресурсы глобального логирования
+	if (transcriptionHistoryProvider) {
+		transcriptionHistoryProvider.dispose();
+	}
+	
+	// Release global logging resources
 	disposeGlobalOutput();
 	
 	ExtensionLog.info('Extension deactivated');
 }
 
 /**
- * Инициализация интеграции с Cursor
+ * Initializing Cursor integration
  */
 function initializeCursorIntegration(): void {
 	ExtensionLog.info('🔧 Initializing Cursor integration...');
 	
-	// Используем стратегию по умолчанию
+	// Use default strategy
 	const primaryStrategy = CursorIntegrationStrategy.AICHAT_COMMAND;
 	
 	ExtensionLog.info(`🎯 Using Cursor integration strategy: ${primaryStrategy}`);
 	
-	// Создаем экземпляр CursorIntegration
+	// Create CursorIntegration instance
 	cursorIntegration = new CursorIntegration({
 		primaryStrategy: primaryStrategy,
 		fallbackStrategies: [
@@ -812,7 +816,7 @@ function initializeCursorIntegration(): void {
 }
 
 /**
- * Команда записи с вставкой в курсор или буфер обмена (Ctrl+Shift+M)
+ * Command to record and insert into cursor or clipboard (Ctrl+Shift+M)
  */
 async function recordAndInsertOrClipboard(): Promise<void> {
 	ExtensionLog.info('🎤 recordAndInsertOrClipboard called!');
@@ -824,15 +828,15 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 	};
 
 	try {
-		// Проверяем, идет ли уже запись
+		// Check if recording is already in progress
 		if (RecordingStateManager.isRecording()) {
-			// Останавливаем запись
+			// Stop recording
 			ExtensionLog.info('⏹️ Stopping recording (recordAndInsertOrClipboard)');
 			stopRecording();
 			return;
 		}
 
-		// Проверяем минимальный интервал между попытками
+		// Check minimum interval between attempts
 		const now = Date.now();
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
 			ExtensionLog.info('⚠️ Too frequent recording attempts, skipping');
@@ -842,11 +846,11 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 
 		ExtensionLog.info('🎤 Starting record and insert or clipboard...');
 		
-		// Начинаем запись с режимом INSERT_OR_CLIPBOARD
+		// Start recording with INSERT_OR_CLIPBOARD mode
 		if (RecordingStateManager.startRecording(RecordingMode.INSERT_OR_CLIPBOARD)) {
-			// НЕ обновляем StatusBar здесь - будет обновлен в onRecordingStart событии
+			// Do not update StatusBar here - will be updated in onRecordingStart event
 			
-			// Устанавливаем время попытки записи
+			// Set the time of the recording attempt
 			lastRecordingStartTime = now;
 			
 			await startRecording();
@@ -857,7 +861,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 	} catch (error) {
 		ExtensionLog.error('❌ Record and insert or clipboard failed:', error);
 		RecordingStateManager.resetState();
-		// Сбрасываем StatusBar при ошибке
+		// Reset StatusBar on error
 		if (statusBarManager) {
 			statusBarManager.updateRecordingState(false);
 		}
@@ -866,7 +870,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 }
 
 /**
- * Команда записи в текущий чат Cursor(Ctrl+Shift+N)
+ * Command to record and open new chat in Cursor (Ctrl+Shift+N)
  */
 async function recordAndOpenNewChat(): Promise<void> {
 	ExtensionLog.info('🎤 [COMMAND] recordAndOpenNewChat called!');
@@ -878,14 +882,14 @@ async function recordAndOpenNewChat(): Promise<void> {
 	};
 
 	try {
-		// Проверяем, идет ли уже запись
+		// Check if recording is already in progress
 		if (RecordingStateManager.isRecording()) {
 			ExtensionLog.info('⏹️ [COMMAND] Stopping recording (recordAndOpenNewChat)');
 			stopRecording();
 			return;
 		}
 
-		// Проверяем минимальный интервал между попытками
+		// Check minimum interval between attempts
 		const now = Date.now();
 		if (now - lastRecordingStartTime < MIN_RECORDING_INTERVAL) {
 			ExtensionLog.info('⚠️ [COMMAND] Too frequent recording attempts, skipping');
@@ -895,11 +899,11 @@ async function recordAndOpenNewChat(): Promise<void> {
 
 		ExtensionLog.info('🎤 [COMMAND] Starting record and open new chat...');
 		
-		// Начинаем запись с режимом NEW_CHAT
+		// Start recording with NEW_CHAT mode
 		if (RecordingStateManager.startRecording(RecordingMode.NEW_CHAT)) {
-			// НЕ обновляем StatusBar здесь - будет обновлен в onRecordingStart событии
+			// Do not update StatusBar here - will be updated in onRecordingStart event
 			
-			// Устанавливаем время попытки записи
+			// Set the time of the recording attempt
 			lastRecordingStartTime = now;
 			
 			await startRecording();
@@ -912,10 +916,10 @@ async function recordAndOpenNewChat(): Promise<void> {
 	} catch (error) {
 		ExtensionLog.error('❌ [COMMAND] recordAndOpenNewChat failed:', error);
 		
-		// Сбрасываем состояние при ошибке
+		// Reset state on error
 		RecordingStateManager.resetState();
 		
-		// Сбрасываем StatusBar при ошибке
+		// Reset StatusBar on error
 		if (statusBarManager) {
 			statusBarManager.updateRecordingState(false);
 		}
@@ -925,7 +929,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 }
 
 /**
- * Команды записи
+ * Recording commands
  */
 async function startRecording(): Promise<void> {
 	ExtensionLog.info('▶️ [RECORDING] Starting recording process...');
@@ -937,12 +941,12 @@ async function startRecording(): Promise<void> {
 	};
 
 	try {
-		// Обеспечиваем инициализацию FFmpeg Audio Recorder
+		// Ensure initialization of FFmpeg Audio Recorder
 		console.time('ensureFFmpegAudioRecorder');
 		await ensureFFmpegAudioRecorder();
 		console.timeEnd('ensureFFmpegAudioRecorder');
 		
-		// Проверяем, что audioRecorder инициализирован
+		// Check that audioRecorder is initialized
 		if (!audioRecorder) {
 			ExtensionLog.error('❌ [RECORDING] audioRecorder is null after initialization');
 			RecordingStateManager.resetState();
@@ -950,13 +954,13 @@ async function startRecording(): Promise<void> {
 			return;
 		}
 		
-		// Проверяем, не идет ли уже запись
+		// Check if recording is already in progress
 		if (audioRecorder.getIsRecording()) {
 			ExtensionLog.info('⚠️ [RECORDING] Recording already in progress, skipping');
 			return;
 		}
 		
-		// Проверяем состояние микрофона с retry
+		// Check microphone state with retry
 		console.time('microphone.permission.check');
 		
 		const microphoneResult = await retryManager.retryMicrophoneOperation(
@@ -988,7 +992,7 @@ async function startRecording(): Promise<void> {
 	} catch (error) {
 		ExtensionLog.error('❌ [RECORDING] Failed to start recording:', error);
 		
-		// Сбрасываем состояние записи при любой ошибке
+		// Reset recording state on any error
 		RecordingStateManager.resetState();
 		
 		await errorHandler.handleErrorFromException(error as Error, context);
@@ -999,10 +1003,10 @@ function stopRecording(): void {
 	try {
 		ExtensionLog.info('⏹️ [RECORDING] Stopping recording...');
 		
-		// Останавливаем запись но сохраняем режим для транскрибации
+		// Stop recording but keep mode for transcription
 		const previousMode = RecordingStateManager.stopRecordingKeepMode();
 		
-		// Обновляем StatusBar
+		// Update StatusBar
 		if (statusBarManager) {
 			statusBarManager.updateRecordingState(false);
 		}
@@ -1019,9 +1023,9 @@ function stopRecording(): void {
 		
 	} catch (error) {
 		ExtensionLog.error('❌ [RECORDING] Failed to stop recording:', error);
-		// Сбрасываем состояние только при ошибке
+		// Reset state only on error
 		RecordingStateManager.resetState();
-		// Обновляем StatusBar при ошибке
+		// Update StatusBar on error
 		if (statusBarManager) {
 			statusBarManager.updateRecordingState(false);
 		}
@@ -1030,17 +1034,17 @@ function stopRecording(): void {
 }
 
 /**
- * Обеспечение инициализации FFmpeg Audio Recorder
+ * Ensuring initialization of FFmpeg Audio Recorder
  */
 async function ensureFFmpegAudioRecorder(): Promise<void> {
-	if (audioRecorder) {
-		return; // Уже инициализирован
+	if (audioRecorder) { // Already initialized
+		return; // Already initialized
 	}
 
 	ExtensionLog.info('🔧 Initializing FFmpeg Audio Recorder...');
 	
 	try {
-		// Проверяем доступность FFmpeg
+		// Check FFmpeg availability
 		const ffmpegCheck = await FFmpegAudioRecorder.checkFFmpegAvailability();
 		
 		if (!ffmpegCheck.available) {
@@ -1052,10 +1056,10 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		
 		ExtensionLog.info('✅ FFmpeg is available, version:', ffmpegCheck.version);
 		
-		// Получаем настройки аудио
+		// Get audio settings
 		const audioConfig = configurationManager.getAudioConfiguration();
 		
-		// Определяем параметры качества
+		// Define quality parameters
 		let sampleRate = 16000;
 		let bitrate = '64k';
 		
@@ -1076,7 +1080,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		
 		ExtensionLog.info(`⚙️ Audio settings: ${audioConfig.audioQuality} quality, ${sampleRate}Hz sample rate`);
 		
-		// События для AudioRecorder
+		// Events for AudioRecorder
 		const audioRecorderEvents: AudioRecorderEvents = {
 			onRecordingStart: () => {
 				ExtensionLog.info('🎤 AudioRecorder event: onRecordingStart');
@@ -1087,7 +1091,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 			onRecordingStop: async (audioBlob: Blob) => {
 				ExtensionLog.info('⏹️ AudioRecorder event: onRecordingStop, blob size:', audioBlob.size);
 				
-				// Обновляем StatusBar
+				// Update StatusBar
 				if (statusBarManager) {
 					statusBarManager.updateRecordingState(false);
 				}
@@ -1113,17 +1117,17 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		
 		const recorderOptions = {
 			sampleRate: sampleRate,
-			channelCount: 1, // Моно для речи
+			channelCount: 1, // Mono for speech
 			audioFormat: 'wav' as const,
 			codec: 'pcm_s16le',
 			maxDuration: audioConfig.maxRecordingDuration,
 			ffmpegPath: audioConfig.ffmpegPath || undefined,
 			silenceDetection: audioConfig.silenceDetection,
 			silenceDuration: audioConfig.silenceDuration,
-			silenceThreshold: audioConfig.silenceThreshold // Убрал автоматическое применение минуса
+			silenceThreshold: audioConfig.silenceThreshold // Removed automatic minus
 		};
 		
-		// Создаем новый экземпляр аудио рекордера
+		// Create new instance of audio recorder
 		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions, outputChannel);
 		ExtensionLog.info('✅ FFmpegAudioRecorder instance created successfully');
 		

@@ -1,4 +1,4 @@
-// TextInserter.ts - компонент для вставки транскрибированного текста в редактор
+// TextInserter.ts - component for inserting transcribed text into the editor
 
 import * as vscode from 'vscode';
 import { ExtensionLog } from '../utils/GlobalOutput';
@@ -26,11 +26,11 @@ export interface LanguageInfo {
 }
 
 /**
- * Компонент для вставки транскрибированного текста в редактор VS Code
+ * Component for inserting transcribed text into the VS Code editor
  */
 export class TextInserter {
     
-    // Расширенная карта языков программирования
+    // Extended language map
     private readonly languageMap: Record<string, LanguageInfo> = {
         // Web Technologies
         'javascript': {
@@ -290,7 +290,7 @@ export class TextInserter {
     };
 
     /**
-     * Вставляет текст в позицию курсора
+     * Inserts text at the cursor position
      */
     async insertAtCursor(text: string, options: InsertOptions = {}): Promise<void> {
         const editor = this.getActiveEditor();
@@ -305,13 +305,13 @@ export class TextInserter {
             editBuilder.insert(position, indentedText);
         });
 
-        // Перемещаем курсор в конец вставленного текста
+        // Move the cursor to the end of the inserted text
         const newPosition = position.translate(0, indentedText.length);
         editor.selection = new vscode.Selection(newPosition, newPosition);
     }
 
     /**
-     * Вставляет текст как комментарий
+     * Inserts text as a comment
      */
     async insertAsComment(text: string, options: InsertOptions = {}): Promise<void> {
         const editor = this.getActiveEditor();
@@ -329,13 +329,13 @@ export class TextInserter {
         
         await this.insertAtCursor(finalText, { 
             ...options, 
-            formatText: false,  // Уже отформатировали как комментарий
-            addNewLine: false   // Уже добавили новую строку если нужно
+            formatText: false,  // Already formatted as a comment
+            addNewLine: false   // Already added a new line if needed
         });
     }
 
     /**
-     * Заменяет выделенный текст
+     * Replaces the selected text
      */
     async replaceSelection(text: string, options: InsertOptions = {}): Promise<void> {
         const editor = this.getActiveEditor();
@@ -343,7 +343,7 @@ export class TextInserter {
         
         if (selection.isEmpty) {
             throw this.createError(
-                'Нет выделенного текста для замены', 
+                'No selected text to replace', 
                 'NO_SELECTION', 
                 'replace'
             );
@@ -357,13 +357,13 @@ export class TextInserter {
     }
 
     /**
-     * Вставляет текст на новую строку
+     * Inserts text on a new line
      */
     async insertOnNewLine(text: string, options: InsertOptions = {}): Promise<void> {
         const editor = this.getActiveEditor();
         const position = editor.selection.active;
         
-        // Переходим в конец текущей строки
+        // Move to the end of the current line
         const lineEndPosition = new vscode.Position(position.line, editor.document.lineAt(position.line).text.length);
         const newLineText = '\n' + this.formatText(text, options);
 
@@ -373,19 +373,19 @@ export class TextInserter {
     }
 
     /**
-     * Копирует текст в буфер обмена
+     * Copies text to the clipboard
      */
     async copyToClipboard(text: string, options: InsertOptions = {}): Promise<void> {
         const formattedText = this.formatText(text, options);
         await vscode.env.clipboard.writeText(formattedText);
         
         vscode.window.showInformationMessage(
-            `Скопировано в буфер: "${formattedText.substring(0, 50)}${formattedText.length > 50 ? '...' : ''}"`
+            `Copied to clipboard: "${formattedText.substring(0, 50)}${formattedText.length > 50 ? '...' : ''}"`
         );
     }
 
     /**
-     * Универсальный метод вставки текста
+     * Universal method for inserting text
      */
     async insertText(text: string, options: InsertOptions = {}): Promise<void> {
         const mode = options.mode || 'cursor';
@@ -402,13 +402,13 @@ export class TextInserter {
                 break;
             default:
                 ExtensionLog.error(`❌ [TextInserter] Unknown mode: ${mode}`);
-                throw this.createError(`Неподдерживаемый режим вставки: ${mode}`, 'INVALID_MODE', mode);
+                throw this.createError(`Unsupported insertion mode: ${mode}`, 'INVALID_MODE', mode);
         }
         ExtensionLog.info(`✅ [TextInserter] insertText completed for mode: ${mode}`);
     }
 
     /**
-     * Получает информацию о текущем контексте
+     * Gets information about the current context
      */
     getActiveContext(): {
         type: 'editor' | 'terminal' | 'unknown';
@@ -420,7 +420,7 @@ export class TextInserter {
         const editor = vscode.window.activeTextEditor;
         
         if (!editor) {
-            // Проверяем активный терминал
+            // Check the active terminal
             const terminal = vscode.window.activeTerminal;
             return {
                 type: terminal ? 'terminal' : 'unknown',
@@ -441,7 +441,7 @@ export class TextInserter {
     }
 
     /**
-     * Получает информацию о языке программирования
+     * Gets information about the programming language
      */
     private getLanguageInfo(languageId: string): LanguageInfo {
         return this.languageMap[languageId] || {
@@ -453,19 +453,19 @@ export class TextInserter {
     }
 
     /**
-     * Определяет нужно ли использовать многострочный комментарий
+     * Determines if a multiline comment is needed
      */
     private shouldUseMultilineComment(text: string, options: InsertOptions, languageInfo: LanguageInfo): boolean {
         if (options.forceMultilineComment) {
             return languageInfo.hasBlockComments;
         }
 
-        // Используем многострочный комментарий для текста с переносами строк
+        // Use a multiline comment for text with line breaks
         return text.includes('\n') && languageInfo.hasBlockComments;
     }
 
     /**
-     * Создает однострочный комментарий
+     * Creates a single line comment
      */
     private createSingleLineComment(text: string, languageInfo: LanguageInfo): string {
         const lines = text.split('\n');
@@ -477,7 +477,7 @@ export class TextInserter {
     }
 
     /**
-     * Создает многострочный комментарий
+     * Creates a multiline comment
      */
     private createMultilineComment(text: string, languageInfo: LanguageInfo): string {
         if (!languageInfo.multiLineCommentStart || !languageInfo.multiLineCommentEnd) {
@@ -487,32 +487,32 @@ export class TextInserter {
         const start = languageInfo.multiLineCommentStart;
         const end = languageInfo.multiLineCommentEnd;
 
-        // Специальная обработка для HTML/XML комментариев
+        // Special handling for HTML/XML comments
         if (start === '<!--') {
             return `${start} ${text} ${end}`;
         }
 
-        // Для языков с /* */ стилем
+        // For languages with /* */ style
         if (start === '/*') {
             return `${start}\n${text}\n${end}`;
         }
 
-        // Для языков с специфичными блочными комментариями (Python, Ruby)
+        // For languages with specific block comments (Python, Ruby)
         return `${start}\n${text}\n${end}`;
     }
 
     /**
-     * Форматирует текст согласно опциям
+     * Formats text according to the options
      */
     private formatText(text: string, options: InsertOptions): string {
         if (!options.formatText) {
             return text;
         }
 
-        // Базовое форматирование
+        // Basic formatting
         let formatted = text.trim();
         
-        // Добавляем новую строку в конец если нужно
+        // Add a new line at the end if needed
         if (options.addNewLine) {
             formatted += '\n';
         }
@@ -521,7 +521,7 @@ export class TextInserter {
     }
 
     /**
-     * Добавляет отступы к тексту согласно текущему положению курсора
+     * Adds indentation to the text according to the current cursor position
      */
     private addIndentation(text: string, editor: vscode.TextEditor, position: vscode.Position): string {
         const currentLine = editor.document.lineAt(position.line);
@@ -534,13 +534,13 @@ export class TextInserter {
     }
 
     /**
-     * Получает активный редактор или выбрасывает ошибку
+     * Gets the active editor or throws an error
      */
     private getActiveEditor(): vscode.TextEditor {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             throw this.createError(
-                'Нет активного редактора. Откройте файл для редактирования.', 
+                'No active editor. Open a file for editing.', 
                 'NO_ACTIVE_EDITOR', 
                 'editor'
             );
@@ -549,7 +549,7 @@ export class TextInserter {
     }
 
     /**
-     * Создает типизированную ошибку
+     * Creates a typed error
      */
     private createError(message: string, code: string, context?: string): TextInserterError {
         const error = new Error(message) as TextInserterError;
@@ -559,14 +559,14 @@ export class TextInserter {
     }
 
     /**
-     * Получает поддерживаемые языки
+     * Gets supported languages
      */
     static getSupportedLanguages(): string[] {
         return Object.keys(new TextInserter().languageMap);
     }
 
     /**
-     * Проверяет поддерживается ли язык
+     * Checks if the language is supported
      */
     static isLanguageSupported(languageId: string): boolean {
         return languageId in new TextInserter().languageMap;

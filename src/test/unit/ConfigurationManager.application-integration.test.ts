@@ -7,13 +7,13 @@ describe('ConfigurationManager - Application Integration Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
-        // Создаем песочницу sinon
+        // Create sinon sandbox
         sandbox = sinon.createSandbox();
         
-        // Сбрасываем синглтон
+        // Reset singleton
         (ConfigurationManager as any).instance = null;
         
-        // Создаем новый экземпляр
+        // Create new instance
         configManager = ConfigurationManager.getInstance();
     });
 
@@ -23,14 +23,14 @@ describe('ConfigurationManager - Application Integration Tests', () => {
     });
 
     describe('WhisperClient Configuration Usage', () => {
-        it('должен предоставлять правильные настройки для WhisperClient', () => {
+        it('should provide correct settings for WhisperClient', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'sk-test123456789',
                     language: 'ru', 
                     whisperModel: 'whisper-1',
-                    prompt: 'Это тест',
+                    prompt: 'This is a test',
                     temperature: 0.2,
                     timeout: 45000,
                     maxRetries: 5
@@ -57,7 +57,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(whisperConfig.timeout, 45000);
         });
 
-        it('должен валидировать API key для WhisperClient', () => {
+        it('should validate API key for WhisperClient', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -84,11 +84,11 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Конфигурация должна быть невалидна без API key');
-            assert.ok(validation.errors.some(err => err.includes('API key')), 'Должна быть ошибка API key');
+            assert.ok(!validation.isValid, 'Configuration should be invalid without API key');
+            assert.ok(validation.errors.some(err => err.includes('API key')), 'There should be an API key error');
         });
 
-        it('должен валидировать timeout для WhisperClient', () => {
+        it('should validate timeout for WhisperClient', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -97,7 +97,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
                     whisperModel: 'whisper-1',
                     prompt: '',
                     temperature: 0.1,
-                    timeout: 0, // Нулевой timeout
+                    timeout: 0, // Zero timeout
                     maxRetries: 3
                 },
                 audio: {
@@ -115,13 +115,13 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Нулевой timeout должен быть невалиден');
-            assert.ok(validation.errors.some(err => err.includes('Timeout')), 'Должна быть ошибка timeout');
+            assert.ok(!validation.isValid, 'Zero timeout should be invalid');
+            assert.ok(validation.errors.some(err => err.includes('Timeout')), 'There should be a timeout error');
         });
     });
 
     describe('Audio Recorder Configuration Usage', () => {
-        it('должен предоставлять правильные настройки для AudioRecorder', () => {
+        it('should provide correct settings for AudioRecorder', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -155,7 +155,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(audioConfig.silenceThreshold, 40);
         });
 
-        it('должен валидировать silence threshold с правильным диапазоном', () => {
+        it('should validate silence threshold with correct range', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -173,7 +173,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
                     maxRecordingDuration: 60,
                     silenceDetection: true,
                     silenceDuration: 3,
-                    silenceThreshold: 10, // Невалидное значение
+                    silenceThreshold: 10, // Invalid value
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -182,11 +182,11 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Значение silenceThreshold=10 должно быть невалидным в ConfigurationManager');
-            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'Должна быть ошибка для silenceThreshold');
+            assert.ok(!validation.isValid, 'silenceThreshold=10 should be invalid in ConfigurationManager');
+            assert.ok(validation.errors.some(err => err.includes('Silence threshold')), 'There should be an error for silenceThreshold');
         });
 
-        it('должен проверять граничные значения длительности записи - нулевое значение', () => {
+        it('should check boundary values for recording duration - zero value', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -213,10 +213,10 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'нулевое значение (0) должно быть невалидным');
+            assert.ok(!validation.isValid, 'zero value (0) should be invalid');
         });
 
-        it('должен проверять граничные значения длительности записи - отрицательное значение', () => {
+        it('should check boundary values for recording duration - negative value', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -243,10 +243,10 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'отрицательное значение (-10) должно быть невалидным');
+            assert.ok(!validation.isValid, 'negative value (-10) should be invalid');
         });
 
-        it('должен проверять граничные значения длительности записи - валидные значения', () => {
+        it('should check boundary values for recording duration - valid values', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -273,9 +273,9 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             let validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'минимальное валидное значение (1) должно быть валидным');
+            assert.ok(validation.isValid, 'minimum valid value (1) should be valid');
 
-            // Тестируем большое валидное значение
+            // Testing large valid value
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: 'test-key',
@@ -302,12 +302,12 @@ describe('ConfigurationManager - Application Integration Tests', () => {
 
             (configManager as any).invalidateCache();
             validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'большое валидное значение (300) должно быть валидным');
+            assert.ok(validation.isValid, 'large valid value (300) should be valid');
         });
     });
 
     describe('UI Configuration Usage', () => {
-        it('должен правильно обрабатывать изменения showStatusBar', () => {
+        it('should handle changes to showStatusBar correctly', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -339,7 +339,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
     });
 
     describe('Real-world Configuration Scenarios', () => {
-        it('должен обрабатывать полную конфигурацию для production использования', () => {
+        it('should handle full configuration for production usage', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -371,7 +371,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(config.ui.showStatusBar, false);
         });
 
-        it('должен обрабатывать конфигурацию для разработки', () => {
+        it('should handle configuration for development', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -402,25 +402,25 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(config.audio.maxRecordingDuration, 30);
         });
 
-        it('должен выявлять проблемы в некорректной конфигурации', () => {
+        it('should detect issues with incorrect configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
-                    apiKey: '', // Пустой API key
+                    apiKey: '', // Empty API key
                     language: 'auto', 
                     whisperModel: 'whisper-1',
                     prompt: '',
-                    temperature: 2.0, // Невалидная температура
-                    timeout: -1000, // Невалидный timeout
-                    maxRetries: -5 // Невалидные retry
+                    temperature: 2.0, // Invalid temperature
+                    timeout: -1000, // Invalid timeout
+                    maxRetries: -5 // Invalid retry
                 },
                 audio: {
                     audioQuality: 'standard',
                     ffmpegPath: '',
-                    maxRecordingDuration: -10, // Невалидная длительность
+                    maxRecordingDuration: -10, // Invalid duration
                     silenceDetection: true,
-                    silenceDuration: -1, // Невалидная длительность тишины
-                    silenceThreshold: 100, // Невалидный порог
+                    silenceDuration: -1, // Invalid silence duration
+                    silenceThreshold: 100, // Invalid threshold
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -429,13 +429,13 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Некорректная конфигурация должна быть невалидна');
-            assert.ok(validation.errors.length > 0, 'Должны быть ошибки валидации');
+            assert.ok(!validation.isValid, 'Incorrect configuration should be invalid');
+            assert.ok(validation.errors.length > 0, 'There should be validation errors');
         });
     });
 
     describe('Configuration Persistence and Caching', () => {
-        it('должен кэшировать конфигурацию для производительности', () => {
+        it('should cache configuration for performance', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: { apiKey: 'test-key', language: 'auto', whisperModel: 'whisper-1', prompt: '', temperature: 0.1, timeout: 30000, maxRetries: 3 },
@@ -443,23 +443,23 @@ describe('ConfigurationManager - Application Integration Tests', () => {
                 ui: { showStatusBar: true }
             });
 
-            // Первый вызов должен загрузить конфигурацию
+            // First call should load configuration
             const config1 = configManager.getConfiguration();
             
-            // Второй вызов должен использовать кэш
+            // Second call should use cache
             const config2 = configManager.getConfiguration();
             
-            // Проверяем что loadConfiguration был вызван только один раз
-            assert.strictEqual(loadConfigurationStub.callCount, 1, 'loadConfiguration должен был быть вызван только один раз');
+            // Check that loadConfiguration was called only once
+            assert.strictEqual(loadConfigurationStub.callCount, 1, 'loadConfiguration should have been called only once');
             
-            // Конфигурации должны быть идентичными (один объект)
-            assert.strictEqual(config1, config2, 'Конфигурации должны быть кэшированы');
+            // Configurations should be identical (same object)
+            assert.strictEqual(config1, config2, 'Configurations should be cached');
         });
 
-        it('должен сбрасывать кэш при обновлении конфигурации', () => {
+        it('should invalidate cache when updating configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             
-            // Первая конфигурация
+            // First configuration
             loadConfigurationStub.returns({
                 whisper: { apiKey: 'test-key', language: 'auto', whisperModel: 'whisper-1', prompt: '', temperature: 0.1, timeout: 30000, maxRetries: 3 },
                 audio: { audioQuality: 'standard', ffmpegPath: '', maxRecordingDuration: 60, silenceDetection: true, silenceDuration: 3, silenceThreshold: 50, inputDevice: 'auto' },
@@ -468,25 +468,25 @@ describe('ConfigurationManager - Application Integration Tests', () => {
 
             const config1 = configManager.getConfiguration();
             
-            // Изменяем конфигурацию в моке
+            // Change configuration in mock
             loadConfigurationStub.returns({
                 whisper: { apiKey: 'test-key', language: 'auto', whisperModel: 'whisper-1', prompt: '', temperature: 0.1, timeout: 30000, maxRetries: 3 },
                 audio: { audioQuality: 'standard', ffmpegPath: '', maxRecordingDuration: 60, silenceDetection: true, silenceDuration: 3, silenceThreshold: 50, inputDevice: 'auto' },
                 ui: { showStatusBar: true }
             });
 
-            // Сбрасываем кэш
+            // Invalidate cache
             (configManager as any).invalidateCache();
             
             const config2 = configManager.getConfiguration();
             
-            // Проверяем что конфигурация перезагружена
-            assert.strictEqual(loadConfigurationStub.callCount, 2, 'loadConfiguration должен был быть вызван дважды');
+            // Check that configuration is reloaded
+            assert.strictEqual(loadConfigurationStub.callCount, 2, 'loadConfiguration should have been called twice');
         });
     });
 
     describe('Environment Simulation Tests', () => {
-        it('должен работать в development environment', () => {
+        it('should work in development environment', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -517,7 +517,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(config.whisper.timeout, 15000);
         });
 
-        it('должен работать в production environment', () => {
+        it('should work in production environment', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -547,7 +547,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(config.whisper.apiKey, 'sk-prod-key-example');
         });
 
-        it('должен работать в test environment', () => {
+        it('should work in test environment', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -577,7 +577,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(config.whisper.apiKey, 'sk-dev-test-key');
         });
 
-        it('должен обрабатывать отсутствующую конфигурацию', () => {
+        it('should handle missing configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -607,10 +607,10 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             assert.strictEqual(config.whisper.apiKey, '');
             
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Конфигурация без API key должна быть невалидна');
+            assert.ok(!validation.isValid, 'Configuration without API key should be invalid');
         });
 
-        it('должен обрабатывать частично поврежденную конфигурацию', () => {
+        it('should handle partially corrupted configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -618,7 +618,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
                     language: 'auto', 
                     whisperModel: 'whisper-1',
                     prompt: '',
-                    temperature: 5.0, // Невалидная температура
+                    temperature: 5.0, // Invalid temperature
                     timeout: 30000,
                     maxRetries: 3
                 },
@@ -628,7 +628,7 @@ describe('ConfigurationManager - Application Integration Tests', () => {
                     maxRecordingDuration: 60,
                     silenceDetection: true,
                     silenceDuration: 3,
-                    silenceThreshold: 5, // Невалидный порог
+                    silenceThreshold: 5, // Invalid threshold
                     inputDevice: 'auto'
                 },
                 ui: {
@@ -637,9 +637,8 @@ describe('ConfigurationManager - Application Integration Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Конфигурация должна быть невалидной');
-            assert.ok(validation.errors.length > 0, 'Должны быть ошибки валидации');
+            assert.ok(!validation.isValid, 'Configuration should be invalid');
+            assert.ok(validation.errors.length > 0, 'There should be validation errors');
         });
-    });
-}); 
+    }); 
 

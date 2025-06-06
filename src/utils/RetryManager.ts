@@ -2,7 +2,7 @@ import { ErrorType, ErrorHandler } from './ErrorHandler';
 import { RetryManagerLog } from './GlobalOutput';
 
 /**
- * Стратегии повторных попыток
+ * Retry strategies
  */
 export enum RetryStrategy {
     EXPONENTIAL_BACKOFF = 'exponential_backoff',
@@ -12,19 +12,19 @@ export enum RetryStrategy {
 }
 
 /**
- * Конфигурация повторных попыток
+ * Retry configuration
  */
 export interface RetryConfig {
     maxAttempts: number;
     strategy: RetryStrategy;
-    baseDelay: number;         // Базовая задержка в мс
-    maxDelay: number;          // Максимальная задержка в мс
-    multiplier: number;        // Множитель для экспоненциального backoff
-    jitter: boolean;           // Добавлять случайность к задержке
+    baseDelay: number;         // Base delay in ms
+    maxDelay: number;          // Maximum delay in ms
+    multiplier: number;        // Multiplier for exponential backoff
+    jitter: boolean;           // Add randomness to the delay
 }
 
 /**
- * Результат операции с повторными попытками
+ * Result of the operation with retries
  */
 export interface RetryResult<T> {
     success: boolean;
@@ -35,7 +35,7 @@ export interface RetryResult<T> {
 }
 
 /**
- * Менеджер повторных попыток
+ * Retry manager
  */
 export class RetryManager {
     private readonly defaultConfig: RetryConfig = {
@@ -54,7 +54,7 @@ export class RetryManager {
     }
 
     /**
-     * Выполнение операции с повторными попытками
+     * Execution of the operation with retries
      */
     async retry<T>(
         operation: () => Promise<T>,
@@ -83,26 +83,26 @@ export class RetryManager {
                 };
                 
             } catch (error) {
-                // Правильно обрабатываем non-Error объекты
+                // Correctly handle non-Error objects
                 lastError = error instanceof Error 
                     ? error 
                     : new Error(String(error));
                 
                 RetryManagerLog.warn(`❌ ${operationName} failed on attempt ${attempt}: ${lastError.message}`);
                 
-                // Если это последняя попытка, не делаем задержку
+                // If this is the last attempt, do not make a delay
                 if (attempt === finalConfig.maxAttempts) {
                     break;
                 }
                 
-                // Проверяем, можно ли повторить эту ошибку
+                // Check if we can retry this error
                 const errorType = this.classifyError(lastError);
                 if (!this.errorHandler.isRetryable(errorType)) {
                     RetryManagerLog.warn(`🚫 Error type ${errorType} is not retryable, stopping attempts`);
                     break;
                 }
                 
-                // Вычисляем задержку и ждем
+                // Calculate the delay and wait
                 const delay = this.calculateDelay(attempt, finalConfig);
                 RetryManagerLog.info(`⏳ Waiting ${delay}ms before next attempt...`);
                 await this.sleep(delay);
@@ -121,7 +121,7 @@ export class RetryManager {
     }
 
     /**
-     * Retry специально для API запросов с детектированием сетевых ошибок
+     * Retry specifically for API requests with network error detection
      */
     async retryApiRequest<T>(
         operation: () => Promise<T>,
@@ -144,7 +144,7 @@ export class RetryManager {
     }
 
     /**
-     * Retry для операций с микрофоном
+     * Retry for microphone operations
      */
     async retryMicrophoneOperation<T>(
         operation: () => Promise<T>,
@@ -167,7 +167,7 @@ export class RetryManager {
     }
 
     /**
-     * Классификация ошибки (упрощенная версия)
+     * Error classification (simplified version)
      */
     private classifyError(error: Error): ErrorType {
         const message = error.message.toLowerCase();
@@ -193,7 +193,7 @@ export class RetryManager {
     }
 
     /**
-     * Вычисление задержки на основе стратегии
+     * Calculating the delay based on the strategy
      */
     private calculateDelay(attempt: number, config: RetryConfig): number {
         let delay: number;
@@ -225,9 +225,9 @@ export class RetryManager {
                 delay = config.baseDelay;
         }
         
-        // Добавляем jitter если включен
+        // Add jitter if enabled
         if (config.jitter) {
-            const jitterAmount = delay * 0.1; // 10% от задержки
+            const jitterAmount = delay * 0.1; // 10% of the delay
             const randomJitter = (Math.random() - 0.5) * 2 * jitterAmount;
             delay = Math.max(0, delay + randomJitter);
         }
@@ -236,14 +236,14 @@ export class RetryManager {
     }
 
     /**
-     * Утилита для ожидания
+     * Utility for waiting
      */
     private sleep(ms: number): Promise<void> {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     /**
-     * Создание предконфигурированного RetryManager для разных типов операций
+     * Creating a pre-configured RetryManager for different types of operations
      */
     static createForApiOperations(errorHandler: ErrorHandler): RetryManager {
         const manager = new RetryManager(errorHandler);
@@ -257,7 +257,7 @@ export class RetryManager {
 }
 
 /**
- * Декоратор для автоматического retry
+ * Decorator for automatic retry
  */
 export function withRetry<T extends any[], R>(
     retryManager: RetryManager,

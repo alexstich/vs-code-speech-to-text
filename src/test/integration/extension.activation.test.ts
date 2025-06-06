@@ -5,7 +5,7 @@ describe('Extension Activation Tests', () => {
     let extension: vscode.Extension<any> | undefined;
 
     before(async () => {
-        // Получаем расширение
+        // Get the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
     });
 
@@ -29,7 +29,7 @@ describe('Extension Activation Tests', () => {
 
     describe('Extension Activation', () => {
         it('should activate successfully', async function() {
-            this.timeout(10000); // Увеличиваем таймаут для активации
+            this.timeout(10000); // Increase timeout for activation
             
             assert.ok(extension, 'Extension should be found');
             
@@ -48,7 +48,7 @@ describe('Extension Activation Tests', () => {
             assert.ok(Array.isArray(packageJson.activationEvents), 'Activation events should be an array');
             assert.ok(packageJson.activationEvents.length > 0, 'Should have at least one activation event');
             
-            // Проверяем наличие ключевых событий активации
+            // Check for key activation events
             const activationEvents = packageJson.activationEvents;
             assert.ok(
                 activationEvents.includes('onStartupFinished'),
@@ -92,7 +92,7 @@ describe('Extension Activation Tests', () => {
             assert.ok(packageJson.contributes.configuration, 'Should contribute configuration');
             assert.ok(packageJson.contributes.configuration.properties, 'Should have configuration properties');
             
-            // Проверяем наличие ключевых настроек
+            // Check for key settings
             const properties = packageJson.contributes.configuration.properties;
             assert.ok(properties['speechToTextWhisper.apiKey'], 'Should have API key setting');
         });
@@ -106,11 +106,11 @@ describe('Extension Activation Tests', () => {
                 await extension!.activate();
             }
             
-            // Проверяем, что расширение активировалось без ошибок
-            // Экспорты могут быть undefined, это нормально для многих расширений
+            // Check that the extension activated without errors
+            // Exports can be undefined, which is normal for many extensions
             const exports = extension!.exports;
             
-            // Если есть экспорты, они должны быть объектом
+            // If there are exports, they should be an object
             if (exports) {
                 assert.strictEqual(typeof exports, 'object', 'Exports should be an object if present');
             }
@@ -125,7 +125,7 @@ describe('Extension Activation Tests', () => {
             assert.ok(packageJson.engines, 'Should specify engines');
             assert.ok(packageJson.engines.vscode, 'Should specify VS Code engine version');
             
-            // Проверяем, что версия VS Code соответствует требованиям
+            // Check that the VS Code version meets the requirements
             const requiredVersion = packageJson.engines.vscode;
             assert.ok(requiredVersion.startsWith('^'), 'VS Code version should use caret range');
         });
@@ -135,7 +135,7 @@ describe('Extension Activation Tests', () => {
             
             const packageJson = extension!.packageJSON;
             
-            // Если есть зависимости от других расширений, проверяем их
+            // If there are dependencies on other extensions, check them
             if (packageJson.extensionDependencies) {
                 assert.ok(
                     Array.isArray(packageJson.extensionDependencies),
@@ -147,14 +147,14 @@ describe('Extension Activation Tests', () => {
 
     describe('Extension Health Check', () => {
         it('should not have critical errors in console', async () => {
-            // Этот тест проверяет, что расширение активируется без критических ошибок
+            // This test checks that the extension activates without critical errors
             assert.ok(extension, 'Extension should be found');
             
             if (!extension!.isActive) {
                 await extension!.activate();
             }
             
-            // Если мы дошли до этой точки без исключений, активация прошла успешно
+            // If we reached this point without exceptions, activation was successful
             assert.ok(true, 'Extension activated without throwing critical errors');
         });
 

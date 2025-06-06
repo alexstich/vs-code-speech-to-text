@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 
-// Импортируем ConfigurationManager без моков vscode
+// Import ConfigurationManager without vscode mocks
 import { ConfigurationManager } from '../../core/ConfigurationManager';
 
 describe('ConfigurationManager - Simple Tests', () => {
@@ -9,13 +9,13 @@ describe('ConfigurationManager - Simple Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
-        // Создаем песочницу sinon
+        // Create sinon sandbox
         sandbox = sinon.createSandbox();
         
-        // Сбрасываем синглтон
+        // Reset singleton
         (ConfigurationManager as any).instance = null;
         
-        // Создаем новый экземпляр
+        // Create new instance
         configManager = ConfigurationManager.getInstance();
     });
 
@@ -25,7 +25,7 @@ describe('ConfigurationManager - Simple Tests', () => {
     });
 
     describe('Basic Configuration Access', () => {
-        it('должен вернуть конфигурацию Whisper', () => {
+        it('should return Whisper configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -58,7 +58,7 @@ describe('ConfigurationManager - Simple Tests', () => {
             assert.strictEqual(whisperConfig.temperature, 0.1);
         });
 
-        it('должен вернуть конфигурацию Audio', () => {
+        it('should return Audio configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -92,7 +92,7 @@ describe('ConfigurationManager - Simple Tests', () => {
             assert.strictEqual(audioConfig.inputDevice, 'Built-in Microphone');
         });
 
-        it('должен вернуть конфигурацию UI', () => {
+        it('should return UI configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -122,7 +122,7 @@ describe('ConfigurationManager - Simple Tests', () => {
             assert.strictEqual(uiConfig.showStatusBar, false);
         });
 
-        it('должен вернуть полную конфигурацию', () => {
+        it('should return full configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -150,29 +150,29 @@ describe('ConfigurationManager - Simple Tests', () => {
 
             const fullConfig = configManager.getConfiguration();
             
-            // Проверяем whisper секцию
+            // Check whisper section
             assert.strictEqual(fullConfig.whisper.apiKey, 'full-config-key');
             assert.strictEqual(fullConfig.whisper.language, 'en');
             assert.strictEqual(fullConfig.whisper.temperature, 0.5);
             
-            // Проверяем audio секцию
+            // Check audio section
             assert.strictEqual(fullConfig.audio.audioQuality, 'ultra');
             assert.strictEqual(fullConfig.audio.maxRecordingDuration, 180);
             
-            // Проверяем UI секцию
+            // Check UI section
             assert.strictEqual(fullConfig.ui.showStatusBar, true);
         });
     });
 
     describe('Default Values', () => {
-        it('должен использовать значения по умолчанию при отсутствии конфигурации', () => {
+        it('should use default values when configuration is missing', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
                     apiKey: '',
                     language: 'auto', 
                     whisperModel: 'whisper-1',
-                    prompt: '',
+                    prompt: 'This is audio for speech recognition. Use punctuation and correct spelling.',
                     temperature: 0.0,
                     timeout: 30000,
                     maxRetries: 3
@@ -193,7 +193,7 @@ describe('ConfigurationManager - Simple Tests', () => {
 
             const config = configManager.getConfiguration();
             
-            // Проверяем default значения
+            // Check default values
             assert.strictEqual(config.whisper.language, 'auto');
             assert.strictEqual(config.whisper.whisperModel, 'whisper-1');
             assert.strictEqual(config.whisper.temperature, 0.0);
@@ -204,16 +204,16 @@ describe('ConfigurationManager - Simple Tests', () => {
     });
 
     describe('Singleton Pattern', () => {
-        it('должен возвращать тот же экземпляр при повторных вызовах getInstance', () => {
+        it('should return the same instance on repeated calls to getInstance', () => {
             const instance1 = ConfigurationManager.getInstance();
             const instance2 = ConfigurationManager.getInstance();
             
-            assert.strictEqual(instance1, instance2, 'getInstance должен возвращать тот же экземпляр');
+            assert.strictEqual(instance1, instance2, 'getInstance should return the same instance');
         });
     });
 
     describe('Configuration Validation', () => {
-        it('должен успешно валидировать корректную конфигурацию', () => {
+        it('should successfully validate correct configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
@@ -240,19 +240,19 @@ describe('ConfigurationManager - Simple Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(validation.isValid, 'Корректная конфигурация должна проходить валидацию');
-            assert.strictEqual(validation.errors.length, 0, 'Не должно быть ошибок валидации');
+            assert.ok(validation.isValid, 'Correct configuration should pass validation');
+            assert.strictEqual(validation.errors.length, 0, 'Should be no validation errors');
         });
 
-        it('должен обнаруживать проблемы в некорректной конфигурации', () => {
+        it('should detect problems in incorrect configuration', () => {
             const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
             loadConfigurationStub.returns({
                 whisper: {
-                    apiKey: '', // Пустой API key
+                    apiKey: '', // Empty API key
                     language: 'auto', 
                     whisperModel: 'whisper-1',
                     prompt: '',
-                    temperature: 2.0, // Невалидная температура > 1
+                    temperature: 2.0, // Invalid temperature > 1
                     timeout: 30000,
                     maxRetries: 3
                 },
@@ -271,12 +271,12 @@ describe('ConfigurationManager - Simple Tests', () => {
             });
 
             const validation = configManager.validateConfiguration();
-            assert.ok(!validation.isValid, 'Некорректная конфигурация должна быть невалидна');
-            assert.ok(validation.errors.length > 0, 'Должны быть ошибки валидации');
+            assert.ok(!validation.isValid, 'Incorrect configuration should be invalid');
+            assert.ok(validation.errors.length > 0, 'Should be validation errors');
             
             const errorText = validation.errors.join(' ');
-            assert.ok(errorText.includes('API key'), 'Должна быть ошибка для пустого API key');
-            assert.ok(errorText.includes('Temperature'), 'Должна быть ошибка для температуры');
+            assert.ok(errorText.includes('API key'), 'Should be an error for empty API key');
+            assert.ok(errorText.includes('Temperature'), 'Should be an error for temperature');
         });
     });
 }); 

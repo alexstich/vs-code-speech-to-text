@@ -1,4 +1,4 @@
-// vscodeMocks.ts - моки для VS Code API для тестирования
+// vscodeMocks.ts - VS Code API mocks for testing
 
 import * as sinon from 'sinon';
 
@@ -78,10 +78,10 @@ export class MockWorkspaceConfiguration {
     public get: sinon.SinonStub;
 
     constructor() {
-        // Создаем стаб для метода get
+        // Create stub for get method
         this.get = sinon.stub();
         
-        // Настройки по умолчанию для расширения с правильным префиксом speechToTextWhisper
+        // Default settings for the extension with the correct speechToTextWhisper prefix
         this.config.set('speechToTextWhisper.apiKey', '');
         this.config.set('speechToTextWhisper.language', 'auto');
         this.config.set('speechToTextWhisper.whisperModel', 'whisper-1');
@@ -89,7 +89,7 @@ export class MockWorkspaceConfiguration {
         this.config.set('speechToTextWhisper.ffmpegPath', '');
         this.config.set('speechToTextWhisper.showStatusBar', true);
         this.config.set('speechToTextWhisper.maxRecordingDuration', 60);
-        this.config.set('speechToTextWhisper.prompt', '');
+        this.config.set('speechToTextWhisper.prompt', 'This is audio for speech recognition. Use punctuation and correct spelling.');
         this.config.set('speechToTextWhisper.temperature', 0.1);
         this.config.set('speechToTextWhisper.timeout', 30000);
         this.config.set('speechToTextWhisper.maxRetries', 3);
@@ -98,7 +98,7 @@ export class MockWorkspaceConfiguration {
         this.config.set('speechToTextWhisper.silenceThreshold', 50);
         this.config.set('speechToTextWhisper.inputDevice', 'auto');
         
-        // Настраиваем стаб для возврата значений по умолчанию
+        // Configure stub to return default values
         this.get.callsFake((key: string, defaultValue?: any) => {
             const fullKey = `speechToTextWhisper.${key}`;
             return this.config.get(fullKey) ?? defaultValue;
@@ -155,13 +155,13 @@ export class MockEvent {
     private listeners: Array<(e: any) => void> = [];
 
     constructor() {
-        // Возвращаем функцию, которая добавляет слушателя
+        // Return a function that adds a listener
         const eventFunction = (listener: (e: any) => void): MockDisposable => {
             this.listeners.push(listener);
             return new MockDisposable();
         };
 
-        // Копируем методы в функцию
+        // Copy methods to the function
         Object.setPrototypeOf(eventFunction, MockEvent.prototype);
         (eventFunction as any).listeners = this.listeners;
         (eventFunction as any).emit = this.emit.bind(this);
@@ -174,13 +174,13 @@ export class MockEvent {
         return new MockDisposable();
     }
 
-    // Метод для тестов - эмитирует событие
+    // Method for tests - emits an event
     emit(data: any): void {
         this.listeners.forEach(listener => listener(data));
     }
 }
 
-// Основной объект для мокирования VS Code API
+// Main object for mocking VS Code API
 export const mockVscode = {
     StatusBarAlignment: {
         Left: 1,
@@ -223,7 +223,7 @@ export const mockVscode = {
 
     workspace: {
         getConfiguration: sinon.stub().callsFake((section?: string) => {
-            // Возвращаем разные конфигурации в зависимости от секции
+            // Return different configurations depending on the section
             if (section === 'speechToText') {
                 return new MockWorkspaceConfiguration();
             } else if (section === 'speechToTextWhisper') {
@@ -293,21 +293,21 @@ export const mockVscode = {
 };
 
 export function setupVSCodeMocks(): void {
-    // НЕ устанавливаем активный редактор по умолчанию - тесты должны это делать явно
+    // DO NOT set the active editor by default - tests should do this explicitly
     mockVscode.window.activeTextEditor = null;
     mockVscode.window.activeTerminal = null;
     mockVscode.window.visibleTextEditors = [];
     
-    // Очищаем debug session
+    // Clear debug session
     Object.defineProperty(mockVscode.debug, 'activeDebugSession', {
         value: null,
         writable: true,
         configurable: true
     });
     
-    // Создаем новый стаб для getConfiguration
+    // Create a new stub for getConfiguration
     mockVscode.workspace.getConfiguration = sinon.stub().callsFake((section?: string) => {
-        // Возвращаем разные конфигурации в зависимости от секции
+        // Return different configurations depending on the section
         if (section === 'speechToText') {
             return new MockWorkspaceConfiguration();
         } else if (section === 'speechToTextWhisper') {
@@ -317,33 +317,33 @@ export function setupVSCodeMocks(): void {
         }
     });
     
-    // Сброс всех стабов
+    // Reset all stubs
     resetVSCodeMocks();
 }
 
 export function resetVSCodeMocks(): void {
-    // Сброс стабов в window
+    // Reset stubs in window
     (mockVscode.window.showInformationMessage as sinon.SinonStub).resetHistory();
     (mockVscode.window.showWarningMessage as sinon.SinonStub).resetHistory();
     (mockVscode.window.showErrorMessage as sinon.SinonStub).resetHistory();
     (mockVscode.window.createStatusBarItem as sinon.SinonStub).resetHistory();
 
-    // Сброс стабов в workspace
+    // Reset stubs in workspace
     (mockVscode.workspace.getConfiguration as sinon.SinonStub).resetHistory();
     (mockVscode.workspace.onDidChangeConfiguration as sinon.SinonStub).resetHistory();
 
-    // Сброс стабов в commands
+    // Reset stubs in commands
     (mockVscode.commands.registerCommand as sinon.SinonStub).resetHistory();
     (mockVscode.commands.executeCommand as sinon.SinonStub).resetHistory();
     (mockVscode.commands.getCommands as sinon.SinonStub).resetHistory();
 
-    // Сброс стабов в clipboard
+    // Reset stubs in clipboard
     (mockVscode.env.clipboard.writeText as sinon.SinonStub).resetHistory();
 
-    // Сброс стабов в Uri
+    // Reset stubs in Uri
     (mockVscode.Uri.parse as sinon.SinonStub).resetHistory();
 
-    // Сброс стабов в extensions
+    // Reset stubs in extensions
     (mockVscode.extensions.getExtension as sinon.SinonStub).resetHistory();
 }
 

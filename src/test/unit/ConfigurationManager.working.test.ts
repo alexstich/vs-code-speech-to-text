@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
 
-// Импортируем ConfigurationManager без моков vscode
+// Import ConfigurationManager without mocking vscode
 import { ConfigurationManager } from '../../core/ConfigurationManager';
 
 describe('ConfigurationManager - Working Tests', () => {
@@ -9,19 +9,19 @@ describe('ConfigurationManager - Working Tests', () => {
     let sandbox: sinon.SinonSandbox;
 
     beforeEach(() => {
-        // Создаем песочницу sinon
+        // Create sinon sandbox
         sandbox = sinon.createSandbox();
         
-        // Сбрасываем синглтон
+        // Reset singleton
         (ConfigurationManager as any).instance = null;
         
-        // Создаем новый экземпляр
+        // Create new instance
         configManager = ConfigurationManager.getInstance();
         
-        // Мокаем методы VS Code напрямую через приватные методы
+        // Mock VS Code methods directly through private methods
         const loadConfigurationStub = sandbox.stub(configManager as any, 'loadConfiguration');
         
-        // Возвращаем нашу тестовую конфигурацию
+        // Return our test configuration
         loadConfigurationStub.returns({
             whisper: {
                 apiKey: 'test-api-key',
@@ -52,17 +52,17 @@ describe('ConfigurationManager - Working Tests', () => {
         sandbox.restore();
     });
 
-    it('должен возвращать замоканную конфигурацию', () => {
-        console.log('🧪 Test: должен возвращать замоканную конфигурацию');
+    it('should return mocked configuration', () => {
+        console.log('🧪 Test: should return mocked configuration');
         
         const config = configManager.getConfiguration();
         
-        // Проверяем что конфигурация имеет правильную структуру
-        assert.ok(config.whisper, 'Должна быть секция whisper');
-        assert.ok(config.audio, 'Должна быть секция audio');
-        assert.ok(config.ui, 'Должна быть секция ui');
+        // Check that configuration has the correct structure
+        assert.ok(config.whisper, 'Whisper section should exist');
+        assert.ok(config.audio, 'Audio section should exist');
+        assert.ok(config.ui, 'UI section should exist');
 
-        // Проверяем значения из нашего мока
+        // Check values from our mock
         console.log('🔍 Actual apiKey:', config.whisper.apiKey);
         assert.strictEqual(config.whisper.apiKey, 'test-api-key');
         assert.strictEqual(config.whisper.language, 'auto');
@@ -71,51 +71,51 @@ describe('ConfigurationManager - Working Tests', () => {
         assert.strictEqual(config.ui.showStatusBar, true);
     });
 
-    it('должен возвращать отдельные секции конфигурации', () => {
-        console.log('🧪 Test: должен возвращать отдельные секции конфигурации');
+    it('should return individual configuration sections', () => {
+        console.log('🧪 Test: should return individual configuration sections');
         
         const whisperConfig = configManager.getWhisperConfiguration();
         const audioConfig = configManager.getAudioConfiguration();
         const uiConfig = configManager.getUIConfiguration();
 
-        // Проверяем что возвращаются правильные секции
+        // Check that the correct sections are returned
         assert.strictEqual(whisperConfig.apiKey, 'test-api-key');
         assert.strictEqual(whisperConfig.language, 'auto');
         assert.strictEqual(audioConfig.audioQuality, 'standard');
         assert.strictEqual(uiConfig.showStatusBar, true);
     });
 
-    it('должен валидировать корректную конфигурацию', () => {
-        console.log('🧪 Test: должен валидировать корректную конфигурацию');
+    it('should validate a valid configuration', () => {
+        console.log('🧪 Test: should validate a valid configuration');
         
         const validation = configManager.validateConfiguration();
         console.log('🔍 Validation result:', validation);
         
-        // У нас есть валидный API key, поэтому должно быть валидно
-        assert.ok(validation.isValid, 'Конфигурация должна быть валидной');
-        assert.strictEqual(validation.errors.length, 0, 'Не должно быть ошибок валидации');
+        // We have a valid API key, so it should be valid
+        assert.ok(validation.isValid, 'Configuration should be valid');
+        assert.strictEqual(validation.errors.length, 0, 'There should be no validation errors');
     });
 
-    it('должен работать с кэшем конфигурации', () => {
-        console.log('🧪 Test: должен работать с кэшем конфигурации');
+    it('should work with configuration cache', () => {
+        console.log('🧪 Test: should work with configuration cache');
         
-        // Первый вызов загружает конфигурацию
+        // First call loads the configuration
         const config1 = configManager.getConfiguration();
         
-        // Второй вызов должен использовать кэш
+        // Second call should use cache
         const config2 = configManager.getConfiguration();
         
-        // Они должны быть одинаковыми (тот же объект)
-        assert.strictEqual(config1, config2, 'Конфигурация должна кэшироваться');
+        // They should be the same (same object)
+        assert.strictEqual(config1, config2, 'Configuration should be cached');
         
-        // Очищаем кэш
+        // Clear cache
         (configManager as any).invalidateCache();
         
-        // Изменяем существующий стаб чтобы он возвращал новые данные
+        // Change existing stub to return new data
         const loadConfigurationStub = (configManager as any).loadConfiguration;
         loadConfigurationStub.returns({
             whisper: {
-                apiKey: 'test-api-key-2', // Изменяем значение
+                apiKey: 'test-api-key-2', // Change value
                 language: 'auto', 
                 whisperModel: 'whisper-1',
                 prompt: '',
@@ -137,44 +137,44 @@ describe('ConfigurationManager - Working Tests', () => {
             }
         });
         
-        // Теперь должен быть новый объект с новыми значениями
+        // Now it should be a new object with new values
         const config3 = configManager.getConfiguration();
-        assert.notStrictEqual(config1, config3, 'После очистки кэша должен быть новый объект');
+        assert.notStrictEqual(config1, config3, 'After clearing cache, there should be a new object');
         
-        // И значения должны отличаться
+        // And values should be different
         assert.strictEqual(config3.whisper.apiKey, 'test-api-key-2');
-        assert.notStrictEqual(config1.whisper.apiKey, config3.whisper.apiKey, 'Значения должны отличаться');
+        assert.notStrictEqual(config1.whisper.apiKey, config3.whisper.apiKey, 'Values should be different');
     });
 
-    it('должен управлять слушателями изменений', () => {
-        console.log('🧪 Test: должен управлять слушателями изменений');
+    it('should manage change listeners', () => {
+        console.log('🧪 Test: should manage change listeners');
         
         const listener1 = sandbox.spy();
         const listener2 = sandbox.spy();
         
-        // Добавляем слушателей
+        // Add listeners
         configManager.addChangeListener(listener1);
         configManager.addChangeListener(listener2);
         
-        // Имитируем изменение конфигурации
+        // Simulate configuration change
         (configManager as any).notifyListeners();
         
-        // Проверяем что оба слушателя были вызваны
-        assert.ok(listener1.called, 'Первый слушатель должен был быть вызван');
-        assert.ok(listener2.called, 'Второй слушатель должен был быть вызван');
+        // Check that both listeners were called
+        assert.ok(listener1.called, 'First listener should have been called');
+        assert.ok(listener2.called, 'Second listener should have been called');
         
-        // Удаляем одного слушателя
+        // Remove one listener
         configManager.removeChangeListener(listener1);
         
-        // Сбрасываем spy
+        // Reset spy
         listener1.resetHistory();
         listener2.resetHistory();
         
-        // Имитируем новое изменение
+        // Simulate new change
         (configManager as any).notifyListeners();
         
-        // Проверяем что только второй слушатель был вызван
-        assert.ok(!listener1.called, 'Первый слушатель не должен был быть вызван');
-        assert.ok(listener2.called, 'Второй слушатель должен был быть вызван');
+        // Check that only the second listener was called
+        assert.ok(!listener1.called, 'First listener should not have been called');
+        assert.ok(listener2.called, 'Second listener should have been called');
     });
 }); 

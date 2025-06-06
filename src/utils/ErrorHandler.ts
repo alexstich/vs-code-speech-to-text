@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ErrorHandlerLog } from './GlobalOutput';
 
 /**
- * Типы ошибок в системе SpeechToTextWhisper
+ * Types of errors in the SpeechToTextWhisper system
  */
 export enum ErrorType {
     MICROPHONE_ACCESS = 'microphone_access',
@@ -23,16 +23,16 @@ export enum ErrorType {
 }
 
 /**
- * Уровни серьезности ошибок
+ * Levels of error severity
  */
 export enum ErrorSeverity {
-    WARNING = 'warning',    // Предупреждения, не критично
-    ERROR = 'error',        // Ошибки, требуют внимания
-    CRITICAL = 'critical'   // Критические ошибки, блокируют работу
+    WARNING = 'warning',    // Warnings, not critical
+    ERROR = 'error',        // Errors, require attention
+    CRITICAL = 'critical'   // Critical errors, block work
 }
 
 /**
- * Действия восстановления
+ * Recovery actions
  */
 export enum RecoveryAction {
     NONE = 'none',
@@ -45,17 +45,17 @@ export enum RecoveryAction {
 }
 
 /**
- * Стратегии отображения ошибок
+ * Strategies for displaying errors
  */
 export enum DisplayStrategy {
-    POPUP = 'popup',           // Показать popup уведомление
-    STATUS_BAR = 'status_bar', // Показать только в status bar
-    CONSOLE = 'console',       // Только в консоли
-    SILENT = 'silent'          // Тихая обработка
+    POPUP = 'popup',           // Show popup notification
+    STATUS_BAR = 'status_bar', // Show only in status bar
+    CONSOLE = 'console',       // Only in console
+    SILENT = 'silent'          // Silent processing
 }
 
 /**
- * Конфигурация ошибки
+ * Error configuration
  */
 export interface ErrorConfig {
     type: ErrorType;
@@ -69,7 +69,7 @@ export interface ErrorConfig {
 }
 
 /**
- * Контекст выполнения для ошибки
+ * Execution context for an error
  */
 export interface ErrorContext {
     operation: string;
@@ -80,7 +80,7 @@ export interface ErrorContext {
 }
 
 /**
- * Интерфейс для отображения ошибок (dependency injection)
+ * Interface for displaying errors (dependency injection)
  */
 export interface ErrorDisplayHandler {
     showError(message: string, severity: ErrorSeverity, actions?: string[]): Promise<string | undefined>;
@@ -90,7 +90,7 @@ export interface ErrorDisplayHandler {
 }
 
 /**
- * Реализация отображения ошибок через VS Code API
+ * Implementation of error display through VS Code API
  */
 export class VSCodeErrorDisplayHandler implements ErrorDisplayHandler {
     async showError(message: string, severity: ErrorSeverity, actions?: string[]): Promise<string | undefined> {
@@ -110,19 +110,19 @@ export class VSCodeErrorDisplayHandler implements ErrorDisplayHandler {
     }
 
     updateStatusBar(message: string, severity: ErrorSeverity): void {
-        // Эта функция будет интегрирована с StatusBarManager
+        // This function will be integrated with StatusBarManager
         ErrorHandlerLog.info(`[StatusBar] ${severity.toUpperCase()}: ${message}`);
     }
 }
 
 /**
- * Централизованный обработчик ошибок
+ * Centralized error handler
  */
 export class ErrorHandler {
     private displayHandler: ErrorDisplayHandler;
-    private statusBarManager?: any; // Интеграция с StatusBarManager
+    private statusBarManager?: any; // Integration with StatusBarManager
     
-    // Конфигурации для разных типов ошибок
+    // Configurations for different types of errors
     private readonly errorConfigs: Map<ErrorType, ErrorConfig> = new Map([
         [ErrorType.MICROPHONE_ACCESS, {
             type: ErrorType.MICROPHONE_ACCESS,
@@ -244,7 +244,7 @@ export class ErrorHandler {
     }
 
     /**
-     * Обработка ошибки по типу
+     * Handling an error by type
      */
     async handleError(
         errorType: ErrorType, 
@@ -256,22 +256,22 @@ export class ErrorHandler {
             return await this.handleError(ErrorType.UNKNOWN_ERROR, context, originalError);
         }
 
-        // Логирование
+        // Logging
         this.logError(config, context, originalError);
 
-        // Обновление статус-бара если есть
+        // Updating the status bar if there is one
         if (this.statusBarManager) {
             this.statusBarManager.showError(config.message, config.severity);
         } else {
             this.displayHandler.updateStatusBar(config.message, config.severity);
         }
 
-        // Отображение ошибки согласно стратегии
+        // Displaying the error according to the strategy
         return await this.displayError(config, context);
     }
 
     /**
-     * Обработка ошибки из исключения
+     * Handling an error from an exception
      */
     async handleErrorFromException(
         error: Error,
@@ -282,12 +282,12 @@ export class ErrorHandler {
     }
 
     /**
-     * Классификация ошибки по сообщению
+     * Classifying an error by message
      */
     private classifyError(error: Error): ErrorType {
         const message = error.message.toLowerCase();
 
-        // API ошибки
+        // API errors
         if (message.includes('api key') && message.includes('not configured')) {
             return ErrorType.API_KEY_MISSING;
         }
@@ -301,7 +301,7 @@ export class ErrorHandler {
             return ErrorType.API_QUOTA_EXCEEDED;
         }
 
-        // Микрофон ошибки
+        // Microphone errors
         if (message.includes('permission') && message.includes('microphone')) {
             return ErrorType.MICROPHONE_PERMISSION;
         }
@@ -312,7 +312,7 @@ export class ErrorHandler {
             return ErrorType.MICROPHONE_COMPATIBILITY;
         }
 
-        // Транскрибация ошибки
+        // Transcription errors
         if (message.includes('no speech detected') || message.includes('empty audio')) {
             return ErrorType.TRANSCRIPTION_EMPTY;
         }
@@ -320,18 +320,18 @@ export class ErrorHandler {
             return ErrorType.TRANSCRIPTION_FAILED;
         }
 
-        // Сетевые ошибки
+        // Network errors
         if (message.includes('network') || message.includes('connection') || 
             message.includes('timeout') || message.includes('fetch')) {
             return ErrorType.NETWORK_ERROR;
         }
 
-        // Вставка текста
+        // Text insertion errors
         if (message.includes('insert') || message.includes('text insertion')) {
             return ErrorType.TEXT_INSERTION_FAILED;
         }
 
-        // Запись аудио
+        // Audio recording errors
         if (message.includes('recording') || message.includes('audio')) {
             return ErrorType.AUDIO_RECORDING_FAILED;
         }
@@ -340,17 +340,17 @@ export class ErrorHandler {
     }
 
     /**
-     * Отображение ошибки согласно стратегии
+     * Displaying an error according to the strategy
      */
     private async displayError(config: ErrorConfig, context: ErrorContext): Promise<string | undefined> {
         const { displayStrategy, severity, recoveryAction } = config;
         
-        // В hold-to-record режиме показываем только критические ошибки
+        // In hold-to-record mode, only show critical errors
         if (context.isHoldToRecordMode && severity !== ErrorSeverity.CRITICAL) {
             return;
         }
 
-        // Определяем действия для пользователя
+        // Determine actions for the user
         const actions = this.getRecoveryActions(recoveryAction);
 
         switch (displayStrategy) {
@@ -378,7 +378,7 @@ export class ErrorHandler {
     }
 
     /**
-     * Получение действий восстановления
+     * Getting recovery actions
      */
     private getRecoveryActions(recoveryAction: RecoveryAction): string[] {
         switch (recoveryAction) {
@@ -400,14 +400,14 @@ export class ErrorHandler {
     }
 
     /**
-     * Логирование ошибки
+     * Logging an error
      */
     private logError(config: ErrorConfig, context: ErrorContext, originalError?: Error): void {
         const timestamp = context.timestamp.toISOString();
         const contextInfo = `Operation: ${context.operation}, Attempt: ${context.attemptNumber || 1}`;
         const logMessage = `[${config.type}] ${config.message}`;
 
-        // Логируем в зависимости от серьезности
+        // Log based on severity
         if (config.severity === ErrorSeverity.CRITICAL) {
             ErrorHandlerLog.error(`[SpeechToTextWhisper] ${config.message}`);
         } else if (config.severity === ErrorSeverity.ERROR) {
@@ -425,14 +425,14 @@ export class ErrorHandler {
             ErrorHandlerLog.warn(`Technical details: ${config.technicalDetails}`);
         }
 
-        // Дополнительная информация
+        // Additional information
         if (context.additionalData) {
             ErrorHandlerLog.warn(`Additional data: ${JSON.stringify(context.additionalData)}`);
         }
     }
 
     /**
-     * Проверка, можно ли повторить операцию
+     * Checking if the operation can be retried
      */
     isRetryable(errorType: ErrorType): boolean {
         const config = this.errorConfigs.get(errorType);
@@ -440,14 +440,14 @@ export class ErrorHandler {
     }
 
     /**
-     * Получение конфигурации ошибки
+     * Getting the error configuration
      */
     getErrorConfig(errorType: ErrorType): ErrorConfig | undefined {
         return this.errorConfigs.get(errorType);
     }
 
     /**
-     * Установка StatusBarManager для интеграции
+     * Setting the StatusBarManager for integration
      */
     setStatusBarManager(statusBarManager: any): void {
         this.statusBarManager = statusBarManager;
@@ -455,6 +455,6 @@ export class ErrorHandler {
 }
 
 /**
- * Глобальный экземпляр ErrorHandler
+ * Global instance of ErrorHandler
  */
 export const globalErrorHandler = new ErrorHandler(); 

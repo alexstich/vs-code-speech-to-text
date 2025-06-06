@@ -1,4 +1,4 @@
-// AudioQualityManager.ts - Менеджер настроек качества аудио
+// AudioQualityManager.ts - Audio quality settings manager
 
 import * as vscode from 'vscode';
 import { AudioQualityManagerLog } from './GlobalOutput';
@@ -24,13 +24,13 @@ export interface QualityPreset {
 }
 
 /**
- * Менеджер настроек качества аудио для SpeechToTextWhisper
+ * Audio quality settings manager for SpeechToTextWhisper
  */
 export class AudioQualityManager {
     private static readonly QUALITY_PRESETS: QualityPreset[] = [
         {
             name: 'standard',
-            description: 'Стандартное качество (16kHz, 64kbps)',
+            description: 'Standard quality (16kHz, 64kbps)',
             settings: {
                 quality: 'standard',
                 sampleRate: 16000,
@@ -41,7 +41,7 @@ export class AudioQualityManager {
         },
         {
             name: 'high',
-            description: 'Высокое качество (44.1kHz, 128kbps)',
+            description: 'High quality (44.1kHz, 128kbps)',
             settings: {
                 quality: 'high',
                 sampleRate: 44100,
@@ -52,7 +52,7 @@ export class AudioQualityManager {
         },
         {
             name: 'ultra',
-            description: 'Максимальное качество (48kHz, 256kbps)',
+            description: 'Maximum quality (48kHz, 256kbps)',
             settings: {
                 quality: 'ultra',
                 sampleRate: 48000,
@@ -64,7 +64,7 @@ export class AudioQualityManager {
     ];
 
     /**
-     * Получает текущие настройки качества аудио из конфигурации VS Code
+     * Gets the current audio quality settings from the VS Code configuration
      */
     static getCurrentSettings(): AudioQualitySettings {
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
@@ -83,7 +83,7 @@ export class AudioQualityManager {
     }
 
     /**
-     * Применяет пресет качества к настройкам VS Code
+     * Applies the quality preset to the VS Code settings
      */
     static async applyQualityPreset(presetName: string): Promise<void> {
         const preset = this.QUALITY_PRESETS.find(p => p.name === presetName);
@@ -93,14 +93,14 @@ export class AudioQualityManager {
 
         const config = vscode.workspace.getConfiguration('speechToTextWhisper');
         
-        // Маппинг ключей между внутренним интерфейсом и VSCode настройками
+        // Mapping keys between the internal interface and VSCode settings
         const keyMapping: Record<string, string> = {
             'quality': 'audioQuality',
             'channelCount': 'channels',
             'autoGainControl': 'autoGain'
         };
         
-        // Применяем настройки из пресета
+        // Apply settings from the preset
         for (const [key, value] of Object.entries(preset.settings)) {
             if (value !== undefined) {
                 const configKey = keyMapping[key] || key;
@@ -112,14 +112,14 @@ export class AudioQualityManager {
     }
 
     /**
-     * Получает список доступных пресетов качества
+     * Gets the list of available quality presets
      */
     static getAvailablePresets(): QualityPreset[] {
         return [...this.QUALITY_PRESETS];
     }
 
     /**
-     * Оптимизирует настройки качества на основе контекста использования
+     * Optimizes the quality settings based on the usage context
      */
     static getOptimizedSettings(context: 'meeting' | 'dictation' | 'quick_notes' | 'noisy_environment'): AudioQualitySettings {
         const baseSettings = this.getCurrentSettings();
@@ -131,7 +131,7 @@ export class AudioQualityManager {
                     quality: 'high',
                     echoCancellation: true,
                     noiseSuppression: true,
-                    silenceDetection: false // Не прерывать на паузах в разговоре
+                    silenceDetection: false // Don't interrupt on pauses in conversation
                 };
                 
             case 'dictation':
@@ -141,7 +141,7 @@ export class AudioQualityManager {
                     echoCancellation: true,
                     noiseSuppression: true,
                     silenceDetection: true,
-                    silenceThreshold: 3.0 // Дольше ждать перед остановкой
+                    silenceThreshold: 3.0 // Wait longer before stopping
                 };
                 
             case 'quick_notes':
@@ -149,7 +149,7 @@ export class AudioQualityManager {
                     ...baseSettings,
                     quality: 'standard',
                     silenceDetection: true,
-                    silenceThreshold: 1.5 // Быстрая остановка
+                    silenceThreshold: 1.5 // Fast stop
                 };
                 
             case 'noisy_environment':
@@ -159,7 +159,7 @@ export class AudioQualityManager {
                     echoCancellation: true,
                     noiseSuppression: true,
                     autoGainControl: true,
-                    silenceThreshold: 4.0 // Больше времени для фильтрации шума
+                    silenceThreshold: 4.0 // More time for noise filtering
                 };
                 
             default:
@@ -168,7 +168,7 @@ export class AudioQualityManager {
     }
 
     /**
-     * Валидирует настройки качества на совместимость с браузером
+     * Validates the quality settings for compatibility with the browser
      */
     static validateSettings(settings: AudioQualitySettings): { 
         isValid: boolean; 
@@ -179,54 +179,54 @@ export class AudioQualityManager {
         const suggestions: string[] = [];
         let isValid = true;
 
-        // Проверяем поддержку высоких sample rate
+        // Check support for high sample rate
         if (settings.sampleRate && settings.sampleRate > 48000) {
-            warnings.push('Sample rate выше 48kHz может не поддерживаться всеми браузерами');
-            suggestions.push('Рассмотрите использование 48kHz для максимальной совместимости');
+            warnings.push('Sample rate above 48kHz may not be supported by all browsers');
+            suggestions.push('Consider using 48kHz for maximum compatibility');
         }
 
-        // Проверяем комбинацию формата и качества
+        // Check the combination of format and quality
         if (settings.quality === 'ultra' && settings.audioFormat === 'mp3') {
-            warnings.push('MP3 формат может не обеспечить максимальное качество для ultra режима');
-            suggestions.push('Используйте WAV формат для ultra качества');
+            warnings.push('MP3 format may not provide maximum quality for ultra mode');
+            suggestions.push('Use WAV format for ultra quality');
         }
 
-        // Проверяем настройки silence detection
+        // Check the silence detection settings
         if (settings.silenceDetection && settings.silenceThreshold < 0.5) {
-            warnings.push('Слишком низкий порог тишины может привести к преждевременной остановке записи');
-            suggestions.push('Рекомендуется порог тишины не менее 1 секунды');
+            warnings.push('Too low silence threshold may lead to premature stop of recording');
+            suggestions.push('Recommended silence threshold is at least 1 second');
         }
 
         return { isValid, warnings, suggestions };
     }
 
     /**
-     * Возвращает рекомендации по оптимизации производительности
+     * Returns recommendations for performance optimization
      */
     static getPerformanceRecommendations(settings: AudioQualitySettings): string[] {
         const recommendations: string[] = [];
 
         if (settings.quality === 'ultra') {
-            recommendations.push('Ultra качество потребляет больше ресурсов. Используйте для критически важных записей.');
+            recommendations.push('Ultra quality consumes more resources. Use for critical recordings.');
         }
 
         if (settings.audioFormat === 'wav' && settings.quality === 'standard') {
-            recommendations.push('WAV формат с standard качеством может быть избыточным. Рассмотрите WebM для лучшего сжатия.');
+            recommendations.push('WAV format with standard quality may be excessive. Consider WebM for better compression.');
         }
 
         if (!settings.echoCancellation && !settings.noiseSuppression) {
-            recommendations.push('Отключение echo cancellation и noise suppression может ухудшить качество в шумной среде.');
+            recommendations.push('Disabling echo cancellation and noise suppression may degrade quality in noisy environments.');
         }
 
         if (settings.silenceDetection && settings.silenceThreshold > 5.0) {
-            recommendations.push('Высокий порог тишины может пропускать короткие паузы в речи.');
+            recommendations.push('High silence threshold may miss short pauses in speech.');
         }
 
         return recommendations;
     }
 
     /**
-     * Экспортирует текущие настройки в JSON
+     * Exports the current settings to JSON
      */
     static exportSettings(): string {
         const settings = this.getCurrentSettings();
@@ -234,7 +234,7 @@ export class AudioQualityManager {
     }
 
     /**
-     * Импортирует настройки из JSON
+     * Imports settings from JSON
      */
     static async importSettings(settingsJson: string): Promise<void> {
         try {
@@ -247,14 +247,14 @@ export class AudioQualityManager {
 
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             
-            // Маппинг ключей между внутренним интерфейсом и VSCode настройками
+            // Mapping keys between the internal interface and VSCode settings
             const keyMapping: Record<string, string> = {
                 'quality': 'audioQuality',
                 'channelCount': 'channels',
                 'autoGainControl': 'autoGain'
             };
             
-            // Применяем настройки
+            // Apply settings
             for (const [key, value] of Object.entries(settings)) {
                 if (value !== undefined) {
                     const configKey = keyMapping[key] || key;

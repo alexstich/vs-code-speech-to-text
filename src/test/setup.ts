@@ -1,8 +1,8 @@
-// setup.ts - Глобальная настройка тестовой среды
+// setup.ts - Global test environment setup
 
 import { mockVscode } from './mocks/vscodeMocks';
 
-// Регистрируем мок для модуля vscode
+// Register mock for vscode module
 const Module = require('module');
 const originalRequire = Module.prototype.require;
 
@@ -13,7 +13,7 @@ Module.prototype.require = function (id: string) {
     return originalRequire.apply(this, arguments);
 };
 
-// Настройка глобальных объектов для Web API
-global.console.log = () => {}; // Подавляем лишние логи в тестах
+// Configure global objects for Web API
+global.console.log = () => {}; // Suppress unnecessary logs in tests
 global.console.warn = () => {};
 global.console.error = () => {}; 

@@ -6,13 +6,13 @@ describe('Silence Detection Integration Tests', () => {
     let extension: vscode.Extension<any> | undefined;
     let sandbox: sinon.SinonSandbox;
     
-    // Время ожидания для тестов
+    // Test timeout
     const TEST_TIMEOUT = 15000;
 
     before(async function() {
         this.timeout(TEST_TIMEOUT);
         
-        // Активируем расширение
+        // Activate the extension
         extension = vscode.extensions.getExtension('alekseigrebenkin.speech-to-text-whisper');
         if (extension && !extension.isActive) {
             await extension.activate();
@@ -28,28 +28,28 @@ describe('Silence Detection Integration Tests', () => {
     });
 
     describe('Configuration Impact on Recording Behavior', () => {
-        it('должен респектировать настройку silenceDetection=true в конфигурации', async function() {
+        it('should respect the silenceDetection=true setting in configuration', async function() {
             this.timeout(TEST_TIMEOUT);
             
-            // Получаем конфигурацию
+            // Get configuration
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const originalSilenceDetection = config.get<boolean>('silenceDetection');
             const originalMaxRecordingDuration = config.get<number>('maxRecordingDuration');
             
             try {
-                // Устанавливаем silenceDetection в true
+                // Set silenceDetection to true
                 await config.update('silenceDetection', true, vscode.ConfigurationTarget.Global);
-                await config.update('maxRecordingDuration', 120, vscode.ConfigurationTarget.Global); // 2 минуты
+                await config.update('maxRecordingDuration', 120, vscode.ConfigurationTarget.Global); // 2 minutes
                 
-                // Ждем чтобы конфигурация применилась
+                // Wait for configuration to apply
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Проверяем что настройка применилась
+                // Check that the setting applied
                 const updatedConfig = vscode.workspace.getConfiguration('speechToTextWhisper');
-                assert.strictEqual(updatedConfig.get<boolean>('silenceDetection'), true, 'silenceDetection должно быть true');
-                assert.strictEqual(updatedConfig.get<number>('maxRecordingDuration'), 120, 'maxRecordingDuration должно быть 120');
+                assert.strictEqual(updatedConfig.get<boolean>('silenceDetection'), true, 'silenceDetection should be true');
+                assert.strictEqual(updatedConfig.get<number>('maxRecordingDuration'), 120, 'maxRecordingDuration should be 120');
                 
-                // Проверяем что команды записи доступны
+                // Check that recording commands are available
                 const commands = await vscode.commands.getCommands(true);
                 const recordingCommands = [
                     'speechToTextWhisper.recordAndInsertOrClipboard',
@@ -60,12 +60,12 @@ describe('Silence Detection Integration Tests', () => {
                 recordingCommands.forEach(commandId => {
                     assert.ok(
                         commands.includes(commandId), 
-                        `Команда ${commandId} должна быть зарегистрирована`
+                        `Command ${commandId} should be registered`
                     );
                 });
                 
             } finally {
-                // Восстанавливаем оригинальные настройки
+                // Restore original settings
                 if (originalSilenceDetection !== undefined) {
                     await config.update('silenceDetection', originalSilenceDetection, vscode.ConfigurationTarget.Global);
                 }
@@ -75,7 +75,7 @@ describe('Silence Detection Integration Tests', () => {
             }
         });
 
-        it('должен респектировать настройку silenceDetection=false в конфигурации', async function() {
+        it('should respect the silenceDetection=false setting in configuration', async function() {
             this.timeout(TEST_TIMEOUT);
             
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
@@ -83,19 +83,19 @@ describe('Silence Detection Integration Tests', () => {
             const originalMaxRecordingDuration = config.get<number>('maxRecordingDuration');
             
             try {
-                // Устанавливаем silenceDetection в false
+                // Set silenceDetection to false
                 await config.update('silenceDetection', false, vscode.ConfigurationTarget.Global);
-                await config.update('maxRecordingDuration', 30, vscode.ConfigurationTarget.Global); // 30 секунд
+                await config.update('maxRecordingDuration', 30, vscode.ConfigurationTarget.Global); // 30 seconds
                 
-                // Ждем чтобы конфигурация применилась
+                // Wait for configuration to apply
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Проверяем что настройка применилась
+                // Check that the setting applied
                 const updatedConfig = vscode.workspace.getConfiguration('speechToTextWhisper');
-                assert.strictEqual(updatedConfig.get<boolean>('silenceDetection'), false, 'silenceDetection должно быть false');
-                assert.strictEqual(updatedConfig.get<number>('maxRecordingDuration'), 30, 'maxRecordingDuration должно быть 30');
+                assert.strictEqual(updatedConfig.get<boolean>('silenceDetection'), false, 'silenceDetection should be false');
+                assert.strictEqual(updatedConfig.get<number>('maxRecordingDuration'), 30, 'maxRecordingDuration should be 30');
                 
-                // Проверяем что команды записи доступны
+                // Check that recording commands are available
                 const commands = await vscode.commands.getCommands(true);
                 const recordingCommands = [
                     'speechToTextWhisper.recordAndInsertOrClipboard',
@@ -106,12 +106,12 @@ describe('Silence Detection Integration Tests', () => {
                 recordingCommands.forEach(commandId => {
                     assert.ok(
                         commands.includes(commandId), 
-                        `Команда ${commandId} должна быть зарегистрирована`
+                        `Command ${commandId} should be registered`
                     );
                 });
                 
             } finally {
-                // Восстанавливаем оригинальные настройки
+                // Restore original settings
                 if (originalSilenceDetection !== undefined) {
                     await config.update('silenceDetection', originalSilenceDetection, vscode.ConfigurationTarget.Global);
                 }
@@ -123,92 +123,92 @@ describe('Silence Detection Integration Tests', () => {
     });
 
     describe('Recording Command Execution with Different Silence Detection Settings', () => {
-        it('должен обрабатывать команды записи с silenceDetection=true без ошибок', async function() {
+        it('should handle recording commands with silenceDetection=true without errors', async function() {
             this.timeout(TEST_TIMEOUT);
             
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const originalSilenceDetection = config.get<boolean>('silenceDetection');
             
-            // Заглушаем сообщения для теста
+            // Mute messages for the test
             const showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage');
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Устанавливаем silenceDetection в true
+                // Set silenceDetection to true
                 await config.update('silenceDetection', true, vscode.ConfigurationTarget.Global);
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Пытаемся выполнить команду записи
+                // Attempt to execute recording command
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // В тестовой среде команда может завершиться с ошибкой (нет микрофона/FFmpeg),
-                // но важно что она не упадет с критической ошибкой
+                // In the test environment, the command might fail (no microphone/FFmpeg),
+                // but it's important that it doesn't crash with a critical error
                 const errorCalls = showErrorStub.getCalls();
                 const infoCalls = showInfoStub.getCalls();
                 
-                // Должно быть какое-то сообщение (успех или ошибка)
+                // Should show some message (success or error)
                 assert.ok(
                     errorCalls.length > 0 || infoCalls.length > 0,
-                    'Должно быть показано сообщение пользователю'
+                    'Should show a message to the user'
                 );
                 
-                // Если есть ошибки, они должны быть понятными
+                // If there are errors, they should be understandable
                 if (errorCalls.length > 0) {
                     const errorMessage = errorCalls[0].args[0];
                     assert.ok(
                         typeof errorMessage === 'string' && errorMessage.length > 0,
-                        'Сообщение об ошибке должно быть непустой строкой'
+                        'Error message should be a non-empty string'
                     );
                 }
                 
             } finally {
-                // Восстанавливаем оригинальную настройку
+                // Restore original setting
                 if (originalSilenceDetection !== undefined) {
                     await config.update('silenceDetection', originalSilenceDetection, vscode.ConfigurationTarget.Global);
                 }
             }
         });
 
-        it('должен обрабатывать команды записи с silenceDetection=false без ошибок', async function() {
+        it('should handle recording commands with silenceDetection=false without errors', async function() {
             this.timeout(TEST_TIMEOUT);
             
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const originalSilenceDetection = config.get<boolean>('silenceDetection');
             
-            // Заглушаем сообщения для теста
+            // Mute messages for the test
             const showInfoStub = sandbox.stub(vscode.window, 'showInformationMessage');
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Устанавливаем silenceDetection в false
+                // Set silenceDetection to false
                 await config.update('silenceDetection', false, vscode.ConfigurationTarget.Global);
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
-                // Пытаемся выполнить команду записи
+                // Attempt to execute recording command
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 
-                // В тестовой среде команда может завершиться с ошибкой (нет микрофона/FFmpeg),
-                // но важно что она не упадет с критической ошибкой
+                // In the test environment, the command might fail (no microphone/FFmpeg),
+                // but it's important that it doesn't crash with a critical error
                 const errorCalls = showErrorStub.getCalls();
                 const infoCalls = showInfoStub.getCalls();
                 
-                // Должно быть какое-то сообщение (успех или ошибка)
+                // Should show some message (success or error)
                 assert.ok(
                     errorCalls.length > 0 || infoCalls.length > 0,
-                    'Должно быть показано сообщение пользователю'
+                    'Should show a message to the user'
                 );
                 
-                // Если есть ошибки, они должны быть понятными
+                // If there are errors, they should be understandable
                 if (errorCalls.length > 0) {
                     const errorMessage = errorCalls[0].args[0];
                     assert.ok(
                         typeof errorMessage === 'string' && errorMessage.length > 0,
-                        'Сообщение об ошибке должно быть непустой строкой'
+                        'Error message should be a non-empty string'
                     );
                 }
                 
             } finally {
-                // Восстанавливаем оригинальную настройку
+                // Restore original setting
                 if (originalSilenceDetection !== undefined) {
                     await config.update('silenceDetection', originalSilenceDetection, vscode.ConfigurationTarget.Global);
                 }
@@ -217,12 +217,12 @@ describe('Silence Detection Integration Tests', () => {
     });
 
     describe('Configuration Validation', () => {
-        it('должен корректно валидировать различные комбинации настроек silence detection', async function() {
+        it('should correctly validate various combinations of silence detection settings', async function() {
             this.timeout(TEST_TIMEOUT);
             
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             
-            // Сохраняем оригинальные значения
+            // Save original values
             const originalValues = {
                 silenceDetection: config.get<boolean>('silenceDetection'),
                 silenceDuration: config.get<number>('silenceDuration'),
@@ -231,10 +231,10 @@ describe('Silence Detection Integration Tests', () => {
             };
             
             try {
-                // Тестируем различные валидные комбинации
+                // Test various valid combinations
                 const validCombinations = [
                     {
-                        name: 'Полные настройки silence detection',
+                        name: 'Full silence detection settings',
                         settings: {
                             silenceDetection: true,
                             silenceDuration: 5,
@@ -243,14 +243,14 @@ describe('Silence Detection Integration Tests', () => {
                         }
                     },
                     {
-                        name: 'Silence detection выключено',
+                        name: 'Silence detection off',
                         settings: {
                             silenceDetection: false,
                             maxRecordingDuration: 60
                         }
                     },
                     {
-                        name: 'Минимальные настройки',
+                        name: 'Minimum settings',
                         settings: {
                             silenceDetection: true,
                             silenceDuration: 1,
@@ -259,7 +259,7 @@ describe('Silence Detection Integration Tests', () => {
                         }
                     },
                     {
-                        name: 'Максимальные настройки',
+                        name: 'Maximum settings',
                         settings: {
                             silenceDetection: true,
                             silenceDuration: 10,
@@ -270,37 +270,37 @@ describe('Silence Detection Integration Tests', () => {
                 ];
                 
                 for (const combination of validCombinations) {
-                    console.log(`Тестируем комбинацию: ${combination.name}`);
+                    console.log(`Testing combination: ${combination.name}`);
                     
-                    // Применяем настройки
+                    // Apply settings
                     for (const [key, value] of Object.entries(combination.settings)) {
                         await config.update(key, value, vscode.ConfigurationTarget.Global);
                     }
                     
-                    // Ждем применения настроек
+                    // Wait for settings to apply
                     await new Promise(resolve => setTimeout(resolve, 50));
                     
-                    // Проверяем что настройки применились
+                    // Check that settings applied
                     const updatedConfig = vscode.workspace.getConfiguration('speechToTextWhisper');
                     for (const [key, expectedValue] of Object.entries(combination.settings)) {
                         const actualValue = updatedConfig.get(key);
                         assert.strictEqual(
                             actualValue, 
                             expectedValue, 
-                            `Настройка ${key} должна быть ${expectedValue} для комбинации: ${combination.name}`
+                            `Setting ${key} should be ${expectedValue} for combination: ${combination.name}`
                         );
                     }
                     
-                    // Проверяем что команды доступны (что означает что конфигурация валидна)
+                    // Check that commands are available (which means configuration is valid)
                     const commands = await vscode.commands.getCommands(true);
                     assert.ok(
                         commands.includes('speechToTextWhisper.recordAndInsertOrClipboard'),
-                        `Команды должны быть доступны для комбинации: ${combination.name}`
+                        `Commands should be available for combination: ${combination.name}`
                     );
                 }
                 
             } finally {
-                // Восстанавливаем все оригинальные значения
+                // Restore all original values
                 for (const [key, value] of Object.entries(originalValues)) {
                     if (value !== undefined) {
                         await config.update(key, value, vscode.ConfigurationTarget.Global);
@@ -311,53 +311,53 @@ describe('Silence Detection Integration Tests', () => {
     });
 
     describe('Error Handling with Different Silence Detection Settings', () => {
-        it('должен корректно обрабатывать ошибки независимо от настройки silenceDetection', async function() {
+        it('should correctly handle errors independently of silenceDetection setting', async function() {
             this.timeout(TEST_TIMEOUT);
             
             const config = vscode.workspace.getConfiguration('speechToTextWhisper');
             const originalSilenceDetection = config.get<boolean>('silenceDetection');
             
-            // Заглушаем сообщения об ошибках
+            // Mute error messages
             const showErrorStub = sandbox.stub(vscode.window, 'showErrorMessage');
             
             try {
-                // Тестируем с включенным silence detection
+                // Test with silence detection enabled
                 await config.update('silenceDetection', true, vscode.ConfigurationTarget.Global);
                 await new Promise(resolve => setTimeout(resolve, 50));
                 
                 try {
                     await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 } catch (error) {
-                    // В тестовой среде ошибка ожидаема
-                    console.log('Ожидаемая ошибка с silenceDetection=true:', (error as Error).message);
+                    // Expected error in test environment
+                    console.log('Expected error with silenceDetection=true:', (error as Error).message);
                 }
                 
-                // Тестируем с выключенным silence detection
+                // Test with silence detection disabled
                 await config.update('silenceDetection', false, vscode.ConfigurationTarget.Global);
                 await new Promise(resolve => setTimeout(resolve, 50));
                 
                 try {
                     await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
                 } catch (error) {
-                    // В тестовой среде ошибка ожидаема
-                    console.log('Ожидаемая ошибка с silenceDetection=false:', (error as Error).message);
+                    // Expected error in test environment
+                    console.log('Expected error with silenceDetection=false:', (error as Error).message);
                 }
                 
-                // Проверяем что обработка ошибок работает корректно
-                // (в тестовой среде обычно нет доступа к микрофону/FFmpeg)
-                console.log(`Показано сообщений об ошибке: ${showErrorStub.callCount}`);
+                // Check that error handling works correctly
+                // (in test environment, usually no access to microphone/FFmpeg)
+                console.log(`Shown error messages: ${showErrorStub.callCount}`);
                 
-                // Проверяем что если были ошибки, то они имеют осмысленные сообщения
+                // Check that if there were errors, they have meaningful messages
                 showErrorStub.getCalls().forEach((call, index) => {
                     const errorMessage = call.args[0];
                     assert.ok(
                         typeof errorMessage === 'string' && errorMessage.length > 0,
-                        `Сообщение об ошибке ${index + 1} должно быть непустой строкой`
+                        `Error message ${index + 1} should be a non-empty string`
                     );
                 });
                 
             } finally {
-                // Восстанавливаем оригинальную настройку
+                // Restore original setting
                 if (originalSilenceDetection !== undefined) {
                     await config.update('silenceDetection', originalSilenceDetection, vscode.ConfigurationTarget.Global);
                 }

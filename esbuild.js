@@ -26,7 +26,7 @@ const esbuildProblemMatcherPlugin = {
 };
 
 async function main() {
-	// Создаем папку dist если она не существует
+	// Create dist folder if it doesn't exist
 	const distDir = path.join(__dirname, 'dist');
 	if (!fs.existsSync(distDir)) {
 		fs.mkdirSync(distDir, { recursive: true });

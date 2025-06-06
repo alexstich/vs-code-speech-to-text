@@ -5,10 +5,10 @@ describe('Status Bar Integration Tests', () => {
     let extension: vscode.Extension<any> | undefined;
 
     before(async () => {
-        // Получаем расширение
+        // Get the extension
         extension = vscode.extensions.getExtension('speak-y.speech-to-text-whisper');
         
-        // Активируем расширение если оно не активно
+        // Activate the extension if it's not active
         if (extension && !extension.isActive) {
             await extension.activate();
         }
@@ -19,7 +19,7 @@ describe('Status Bar Integration Tests', () => {
             assert.ok(extension, 'Extension should be found');
             assert.ok(extension!.isActive, 'Extension should be active');
 
-            // Проверяем, что статус-бар создан (косвенно через команды)
+            // Check if the status bar is created (indirectly via commands)
             const allCommands = await vscode.commands.getCommands(true);
             const hasRecordingCommands = allCommands.some(cmd => 
                 cmd.includes('speechToTextWhisper.record')
@@ -31,23 +31,23 @@ describe('Status Bar Integration Tests', () => {
         it('should respond to recording state changes', async function() {
             this.timeout(5000);
             
-            // Пытаемся выполнить команду записи (она может завершиться с ошибкой, но должна быть доступна)
+            // Try to execute the recording command (it may fail with an error but should be accessible)
             try {
                 await vscode.commands.executeCommand('speechToTextWhisper.recordAndInsertOrClipboard');
             } catch (error) {
-                // Ожидаемо в тестовой среде - важно что команда зарегистрирована
+                // Expected in test environment - important that the command is registered
                 const errorMessage = (error as Error).message.toLowerCase();
                 console.log('Recording command failed as expected in test environment:', errorMessage);
             }
             
-            // Если мы дошли до этой точки, команда доступна
+            // If we reach this point, the command is accessible
             assert.ok(true, 'Recording command is accessible');
         });
     });
 
     describe('Status Bar Context Integration', () => {
         it('should handle context changes for recording state', async () => {
-            // Тестируем установку контекста записи
+            // Test setting context for recording state
             try {
                 await vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', true);
                 await vscode.commands.executeCommand('setContext', 'speechToTextWhisper.isRecording', false);
@@ -62,11 +62,11 @@ describe('Status Bar Integration Tests', () => {
             
             const packageJson = extension!.packageJSON;
             
-            // Проверяем наличие контекстных меню
+            // Check for context menus
             if (packageJson.contributes.menus) {
                 const menus = packageJson.contributes.menus;
                 
-                // Проверяем, что есть меню с when-клаузами
+                // Check that there are menus with when clauses
                 Object.keys(menus).forEach(menuType => {
                     const menuItems = menus[menuType];
                     if (Array.isArray(menuItems)) {
@@ -116,10 +116,10 @@ describe('Status Bar Integration Tests', () => {
                     await vscode.commands.executeCommand(commandId);
                     console.log(`Status bar command ${commandId} executed successfully`);
                 } catch (error) {
-                    // В тестовой среде команды могут завершаться с ошибкой
+                    // Commands may fail in test environment
                     const errorMessage = (error as Error).message.toLowerCase();
                     
-                    // Проверяем, что это ожидаемая ошибка
+                    // Check if this is an expected error
                     const expectedErrors = [
                         'api key',
                         'configuration',
@@ -151,7 +151,7 @@ describe('Status Bar Integration Tests', () => {
             const packageJson = extension!.packageJSON;
             const commands = packageJson.contributes.commands;
             
-            // Проверяем, что команды имеют иконки
+            // Check that commands have icons
             const recordingCommands = commands.filter((cmd: any) => 
                 cmd.command.includes('record')
             );
@@ -162,7 +162,7 @@ describe('Status Bar Integration Tests', () => {
                 assert.ok(cmd.title, `Command ${cmd.command} should have title`);
                 assert.ok(cmd.category, `Command ${cmd.command} should have category`);
                 
-                // Некоторые команды могут иметь иконки
+                // Some commands may have icons
                 if (cmd.icon) {
                     assert.ok(
                         typeof cmd.icon === 'string' || typeof cmd.icon === 'object',
@@ -173,12 +173,12 @@ describe('Status Bar Integration Tests', () => {
         });
 
         it('should support theme colors for status indication', () => {
-            // Этот тест проверяет, что расширение правильно настроено для работы с темами VS Code
+            // This test checks if the extension is properly configured for VS Code themes
             assert.ok(extension, 'Extension should be found');
             
             const packageJson = extension!.packageJSON;
             
-            // Проверяем, что есть настройки цветов (если они определены)
+            // Check if there are color settings (if they are defined)
             if (packageJson.contributes.colors) {
                 const colors = packageJson.contributes.colors;
                 colors.forEach((color: any) => {
@@ -194,17 +194,17 @@ describe('Status Bar Integration Tests', () => {
 
     describe('Status Bar Error Handling', () => {
         it('should handle status bar creation errors gracefully', async () => {
-            // Этот тест проверяет, что расширение не падает при проблемах со статус-баром
+            // This test checks if the extension does not crash due to status bar issues
             
-            // Пытаемся выполнить команду, которая может взаимодействовать со статус-баром
+            // Try to execute a command that may interact with the status bar
             try {
                 await vscode.commands.executeCommand('speechToTextWhisper.runDiagnostics');
                 assert.ok(true, 'Diagnostic command executed without status bar errors');
             } catch (error) {
-                // Даже если команда завершилась с ошибкой, это не должно быть связано со статус-баром
+                // Even if the command fails, it should not be related to the status bar
                 const errorMessage = (error as Error).message.toLowerCase();
                 
-                // Проверяем, что ошибка не связана со статус-баром
+                // Check if the error is not related to the status bar
                 assert.ok(
                     !errorMessage.includes('status bar') && !errorMessage.includes('statusbar'),
                     'Error should not be related to status bar'
@@ -215,9 +215,9 @@ describe('Status Bar Integration Tests', () => {
         });
 
         it('should maintain status bar state consistency', async () => {
-            // Проверяем, что состояние статус-бара остается консистентным
+            // Check if the status bar state remains consistent
             
-            // Выполняем несколько команд подряд
+            // Execute multiple commands in a row
             const commands = [
                 'speechToTextWhisper.runDiagnostics',
                 'speechToTextWhisper.openSettings'
@@ -227,12 +227,12 @@ describe('Status Bar Integration Tests', () => {
                 try {
                     await vscode.commands.executeCommand(commandId);
                 } catch (error) {
-                    // Ошибки ожидаемы, но не должны нарушать состояние
+                    // Errors are expected but should not affect state
                     console.log(`Command ${commandId} failed:`, (error as Error).message);
                 }
             }
             
-            // Если мы дошли до этой точки без критических ошибок, состояние консистентно
+            // If we reach this point without critical errors, state is consistent
             assert.ok(true, 'Status bar state remains consistent after multiple command executions');
         });
     });
@@ -243,17 +243,17 @@ describe('Status Bar Integration Tests', () => {
             
             const startTime = Date.now();
             
-            // Выполняем команду, которая может обновить статус-бар
+            // Execute a command that may update the status bar
             try {
                 await vscode.commands.executeCommand('speechToTextWhisper.toggleMode');
             } catch (error) {
-                // Ошибка ожидаема в тестовой среде
+                // Expected error in test environment
                 console.log('Toggle mode failed as expected:', (error as Error).message);
             }
             
             const executionTime = Date.now() - startTime;
             
-            // Обновление статус-бара должно быть быстрым
+            // Status bar update should be fast
             assert.ok(
                 executionTime < 1000,
                 `Status bar update should be fast (took ${executionTime}ms)`

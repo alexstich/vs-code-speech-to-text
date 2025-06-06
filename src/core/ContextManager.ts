@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 /**
- * Типы IDE, поддерживаемые SpeechToTextWhisper
+ * IDE types supported by SpeechToTextWhisper
  */
 export enum IDEType {
     VSCODE = 'vscode',
@@ -10,21 +10,21 @@ export enum IDEType {
 }
 
 /**
- * Типы активного контекста в IDE
+ * Types of active context in IDE
  */
 export enum ContextType {
-    EDITOR = 'editor',           // Редактор кода
-    TERMINAL = 'terminal',       // Терминал
-    CHAT = 'chat',              // AI чат (Cursor)
-    OUTPUT = 'output',          // Панель вывода
-    DEBUGGER = 'debugger',      // Отладчик
-    SEARCH = 'search',          // Поиск
-    EXPLORER = 'explorer',      // Проводник файлов
-    UNKNOWN = 'unknown'         // Неизвестный контекст
+    EDITOR = 'editor',           // Code editor
+    TERMINAL = 'terminal',       // Terminal
+    CHAT = 'chat',              // AI chat (Cursor)
+    OUTPUT = 'output',          // Output panel
+    DEBUGGER = 'debugger',      // Debugger
+    SEARCH = 'search',          // Search
+    EXPLORER = 'explorer',      // File explorer
+    UNKNOWN = 'unknown'         // Unknown context
 }
 
 /**
- * Информация о языке программирования
+ * Information about the programming language
  */
 export interface LanguageInfo {
     id: string;
@@ -35,7 +35,7 @@ export interface LanguageInfo {
 }
 
 /**
- * Информация о контексте IDE
+ * Information about the IDE context
  */
 export interface IDEContext {
     ideType: IDEType;
@@ -62,7 +62,7 @@ export interface IDEContext {
 }
 
 /**
- * События ContextManager
+ * ContextManager events
  */
 export interface ContextManagerEvents {
     onContextChange?: (context: IDEContext) => void;
@@ -71,7 +71,7 @@ export interface ContextManagerEvents {
 }
 
 /**
- * Менеджер контекста IDE для адаптации поведения SpeechToTextWhisper
+ * IDE context manager for adapting SpeechToTextWhisper behavior
  */
 export class ContextManager {
     private ideType: IDEType = IDEType.UNKNOWN;
@@ -80,32 +80,32 @@ export class ContextManager {
     private disposables: vscode.Disposable[] = [];
     private lastEditorActiveTime: number = 0;
     
-    // Кэш языковых настроек
+    // Language settings cache
     private languageCache = new Map<string, LanguageInfo>();
 
     constructor(events: ContextManagerEvents = {}) {
         this.events = events;
         
-        // Инициализируем базовый контекст
+        // Initialize the base context
         this.currentContext = {
             ideType: IDEType.UNKNOWN,
             contextType: ContextType.UNKNOWN
         };
 
-        // Определяем тип IDE при инициализации
+        // Determine the IDE type during initialization
         this.detectIDEType();
         
-        // Получаем текущий контекст
+        // Get the current context
         this.updateContext();
         
-        // Подписываемся на события изменения контекста
+        // Subscribe to context change events
         this.setupEventListeners();
         
         console.log(`🔍 ContextManager initialized for ${this.ideType}`);
     }
 
     /**
-     * Определение типа IDE
+     * Determine the IDE type
      */
     private detectIDEType(): void {
         try {
@@ -114,13 +114,13 @@ export class ContextManager {
             
             console.log(`🔍 Detecting IDE: appName="${appName}", uriScheme="${uriScheme}"`);
             
-            // Определяем тип IDE по названию приложения
+            // Determine the IDE type by application name
             if (appName.includes('cursor')) {
                 this.ideType = IDEType.CURSOR;
             } else if (appName.includes('visual studio code') || appName.includes('vscode')) {
                 this.ideType = IDEType.VSCODE;
             } else {
-                // Дополнительная проверка по схеме URI
+                // Additional check by URI scheme
                 if (uriScheme === 'cursor') {
                     this.ideType = IDEType.CURSOR;
                 } else if (uriScheme === 'vscode' || uriScheme === 'vscode-insiders') {
@@ -133,7 +133,7 @@ export class ContextManager {
             
             console.log(`✅ IDE Type detected: ${this.ideType}`);
             
-            // Уведомляем об определении типа IDE
+            // Notify about the IDE type detection
             if (this.events.onIDETypeDetected) {
                 this.events.onIDETypeDetected(this.ideType);
             }
@@ -145,10 +145,10 @@ export class ContextManager {
     }
 
     /**
-     * Настройка слушателей событий
+     * Setup event listeners
      */
     private setupEventListeners(): void {
-        // Слушаем изменения активного редактора
+        // Listen to changes in the active editor
         this.disposables.push(
             vscode.window.onDidChangeActiveTextEditor((editor) => {
                 console.log('🔄 Active editor changed');
@@ -159,14 +159,14 @@ export class ContextManager {
             })
         );
 
-        // Слушаем изменения выделения в редакторе
+        // Listen to changes in the editor selection
         this.disposables.push(
             vscode.window.onDidChangeTextEditorSelection((event) => {
                 this.updateContext();
             })
         );
 
-        // Слушаем изменения активного терминала
+        // Listen to changes in the active terminal
         this.disposables.push(
             vscode.window.onDidChangeActiveTerminal((terminal) => {
                 console.log('🔄 Active terminal changed');
@@ -174,7 +174,7 @@ export class ContextManager {
             })
         );
 
-        // Слушаем изменения состояния отладчика
+        // Listen to changes in the debugger state
         this.disposables.push(
             vscode.debug.onDidStartDebugSession((session) => {
                 console.log('🔄 Debug session started');
@@ -189,7 +189,7 @@ export class ContextManager {
             })
         );
 
-        // Слушаем изменения воркспейса
+        // Listen to changes in the workspace
         this.disposables.push(
             vscode.workspace.onDidChangeWorkspaceFolders(() => {
                 console.log('🔄 Workspace folders changed');
@@ -199,28 +199,28 @@ export class ContextManager {
     }
 
     /**
-     * Обновление текущего контекста
+     * Update the current context
      */
     private updateContext(): void {
         const previousContext = { ...this.currentContext };
         
         try {
-            // Определяем тип контекста
+            // Determine the context type
             const contextType = this.detectContextType();
             
-            // Собираем информацию об активном редакторе
+            // Collect information about the active editor
             const activeEditor = this.getActiveEditorInfo();
             
-            // Информация о терминале
+            // Information about the terminal
             const terminal = this.getTerminalInfo();
             
-            // Информация об отладчике
+            // Information about the debugger
             const debuggerInfo = this.getDebuggerInfo();
             
-            // Информация о воркспейсе
+            // Information about the workspace
             const workspace = this.getWorkspaceInfo();
             
-            // Обновляем контекст
+            // Update the context
             this.currentContext = {
                 ideType: this.ideType,
                 contextType,
@@ -230,7 +230,7 @@ export class ContextManager {
                 workspace
             };
             
-            // Проверяем изменения и уведомляем
+            // Check for changes and notify
             if (this.hasContextChanged(previousContext, this.currentContext)) {
                 console.log(`🔄 Context changed to: ${contextType}`);
                 
@@ -238,7 +238,7 @@ export class ContextManager {
                     this.events.onContextChange(this.currentContext);
                 }
                 
-                // Если изменился язык программирования
+                // If the language changed
                 if (activeEditor && 
                     (!previousContext.activeEditor || 
                      previousContext.activeEditor.language.id !== activeEditor.language.id)) {
@@ -255,45 +255,45 @@ export class ContextManager {
     }
 
     /**
-     * Определение типа контекста
+     * Determine the context type
      */
     private detectContextType(): ContextType {
-        // Проверяем активность отладчика
+        // Check if the debugger is active
         if (vscode.debug.activeDebugSession) {
             return ContextType.DEBUGGER;
         }
         
-        // Проверяем активный терминал
+        // Check if the active terminal is active
         if (vscode.window.activeTerminal) {
             return ContextType.TERMINAL;
         }
         
-        // Проверяем активный редактор
+        // Check if the active editor is active
         if (vscode.window.activeTextEditor) {
             return ContextType.EDITOR;
         }
         
-        // Для Cursor - улучшенное определение AI чата
+        // For Cursor - improved AI chat detection
         if (this.ideType === IDEType.CURSOR) {
-            // Проверяем состояние активности IDE
+            // Check if the IDE is focused
             if (vscode.window.state.focused) {
-                // Проверяем, есть ли открытые редакторы
+                // Check if there are open editors
                 const hasOpenEditors = vscode.window.visibleTextEditors.length > 0;
                 
-                // ОСНОВНАЯ ЛОГИКА: Если нет открытых редакторов и нет активного терминала - вероятно чат
+                // MAIN LOGIC: If there are no open editors and no active terminal - likely chat
                 if (!hasOpenEditors && !vscode.window.activeTerminal && !vscode.debug.activeDebugSession) {
                     console.log('🎯 Cursor chat context detected (no editors, no terminal, no debugger - likely in chat)');
                     return ContextType.CHAT;
                 }
                 
-                // ДОПОЛНИТЕЛЬНАЯ ЭВРИСТИКА: Если есть редакторы, но ни один не активен больше 3 секунд
+                // ADDITIONAL LOGIC: If there are editors, but none are active for more than 3 seconds
                 const timeSinceLastEditor = Date.now() - (this.lastEditorActiveTime || 0);
-                if (hasOpenEditors && timeSinceLastEditor > 3000) { // 3 секунды без активного редактора
+                if (hasOpenEditors && timeSinceLastEditor > 3000) { // 3 seconds without active editor
                     console.log('🎯 Cursor chat context detected (editors open but none active for >3s)');
                     return ContextType.CHAT;
                 }
                 
-                // НОВАЯ ЛОГИКА: Если IDE сфокусирован, но нет активного элемента UI - чат
+                // NEW LOGIC: If the IDE is focused, but there is no active UI element - chat
                 if (!vscode.window.activeTextEditor && !vscode.window.activeTerminal && !vscode.debug.activeDebugSession) {
                     console.log('🎯 Cursor chat context detected (IDE focused but no active UI elements)');
                     return ContextType.CHAT;
@@ -305,7 +305,7 @@ export class ContextManager {
     }
 
     /**
-     * Получение информации об активном редакторе
+     * Get information about the active editor
      */
     private getActiveEditorInfo() {
         const editor = vscode.window.activeTextEditor;
@@ -325,29 +325,29 @@ export class ContextManager {
     }
 
     /**
-     * Получение информации о языке программирования
+     * Get information about the programming language
      */
     private getLanguageInfo(languageId: string): LanguageInfo {
-        // Проверяем кэш
+        // Check the cache
         if (this.languageCache.has(languageId)) {
             return this.languageCache.get(languageId)!;
         }
         
-        // Определяем информацию о языке
+        // Determine the language information
         const languageInfo = this.createLanguageInfo(languageId);
         
-        // Кэшируем результат
+        // Cache the result
         this.languageCache.set(languageId, languageInfo);
         
         return languageInfo;
     }
 
     /**
-     * Создание информации о языке программирования
+     * Create information about the programming language
      */
     private createLanguageInfo(languageId: string): LanguageInfo {
         const languageMap: Record<string, Partial<LanguageInfo>> = {
-            // Web технологии
+
             'javascript': { name: 'JavaScript', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'typescript': { name: 'TypeScript', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'html': { name: 'HTML', commentStyle: 'block', blockComment: { start: '<!--', end: '-->' } },
@@ -355,7 +355,7 @@ export class ContextManager {
             'scss': { name: 'SCSS', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'less': { name: 'Less', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             
-            // Системные языки
+            // System languages
             'c': { name: 'C', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'cpp': { name: 'C++', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'csharp': { name: 'C#', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
@@ -363,7 +363,7 @@ export class ContextManager {
             'rust': { name: 'Rust', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'go': { name: 'Go', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             
-            // Скриптовые языки
+            // Scripting languages
             'python': { name: 'Python', commentStyle: 'line', lineComment: '#' },
             'ruby': { name: 'Ruby', commentStyle: 'line', lineComment: '#' },
             'php': { name: 'PHP', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
@@ -371,25 +371,25 @@ export class ContextManager {
             'bash': { name: 'Bash', commentStyle: 'line', lineComment: '#' },
             'powershell': { name: 'PowerShell', commentStyle: 'both', lineComment: '#', blockComment: { start: '<#', end: '#>' } },
             
-            // Функциональные языки
+            // Functional languages
             'haskell': { name: 'Haskell', commentStyle: 'both', lineComment: '--', blockComment: { start: '{-', end: '-}' } },
             'scala': { name: 'Scala', commentStyle: 'both', lineComment: '//', blockComment: { start: '/*', end: '*/' } },
             'clojure': { name: 'Clojure', commentStyle: 'line', lineComment: ';' },
             
-            // Конфигурационные файлы
+            // Configuration files
             'json': { name: 'JSON', commentStyle: 'line', lineComment: '//' },
             'yaml': { name: 'YAML', commentStyle: 'line', lineComment: '#' },
             'toml': { name: 'TOML', commentStyle: 'line', lineComment: '#' },
             'xml': { name: 'XML', commentStyle: 'block', blockComment: { start: '<!--', end: '-->' } },
             
-            // Разметка и документация
+            // Markup and documentation
             'markdown': { name: 'Markdown', commentStyle: 'block', blockComment: { start: '<!--', end: '-->' } },
             'latex': { name: 'LaTeX', commentStyle: 'line', lineComment: '%' },
             
-            // Базы данных
+            // Databases
             'sql': { name: 'SQL', commentStyle: 'both', lineComment: '--', blockComment: { start: '/*', end: '*/' } },
             
-            // Остальные
+            // Other
             'plaintext': { name: 'Plain Text', commentStyle: 'line', lineComment: '#' }
         };
         
@@ -406,7 +406,7 @@ export class ContextManager {
     }
 
     /**
-     * Получение информации о терминале
+     * Get information about the terminal
      */
     private getTerminalInfo() {
         const activeTerminal = vscode.window.activeTerminal;
@@ -421,7 +421,7 @@ export class ContextManager {
     }
 
     /**
-     * Получение информации об отладчике
+     * Get information about the debugger
      */
     private getDebuggerInfo() {
         const activeSession = vscode.debug.activeDebugSession;
@@ -433,7 +433,7 @@ export class ContextManager {
     }
 
     /**
-     * Получение информации о воркспейсе
+     * Get information about the workspace
      */
     private getWorkspaceInfo() {
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -446,7 +446,7 @@ export class ContextManager {
     }
 
     /**
-     * Проверка изменения контекста
+     * Check for context changes
      */
     private hasContextChanged(previous: IDEContext, current: IDEContext): boolean {
         return (
@@ -459,74 +459,74 @@ export class ContextManager {
     }
 
     /**
-     * Публичные методы для получения информации о контексте
+     * Public methods for getting information about the context
      */
 
     /**
-     * Получение текущего контекста
+     * Get the current context
      */
     getContext(): IDEContext {
         return { ...this.currentContext };
     }
 
     /**
-     * Получение типа IDE
+     * Get the IDE type
      */
     getIDEType(): IDEType {
         return this.ideType;
     }
 
     /**
-     * Получение типа текущего контекста
+     * Get the type of the current context
      */
     getContextType(): ContextType {
         return this.currentContext.contextType;
     }
 
     /**
-     * Проверка, является ли IDE типом Cursor
+     * Check if the IDE is of type Cursor
      */
     isCursor(): boolean {
         return this.ideType === IDEType.CURSOR;
     }
 
     /**
-     * Проверка, является ли IDE типом VS Code
+     * Check if the IDE is of type VS Code
      */
     isVSCode(): boolean {
         return this.ideType === IDEType.VSCODE;
     }
 
     /**
-     * Проверка активности редактора
+     * Check if the editor is active
      */
     isEditorActive(): boolean {
         return this.currentContext.contextType === ContextType.EDITOR;
     }
 
     /**
-     * Проверка активности терминала
+     * Check if the terminal is active
      */
     isTerminalActive(): boolean {
         return this.currentContext.contextType === ContextType.TERMINAL;
     }
 
     /**
-     * Проверка активности чата (для Cursor)
+     * Check if the chat is active (for Cursor)
      */
     isChatActive(): boolean {
         return this.currentContext.contextType === ContextType.CHAT;
     }
 
     /**
-     * Получение информации о языке текущего файла
+     * Get information about the language of the current file
      */
     getCurrentLanguage(): LanguageInfo | null {
         return this.currentContext.activeEditor?.language || null;
     }
 
     /**
-     * Проверка поддержки определенного типа комментариев
+     * Check if the support of a certain type of comments
      */
     supportsComments(type: 'line' | 'block'): boolean {
         const language = this.getCurrentLanguage();
@@ -538,7 +538,7 @@ export class ContextManager {
     }
 
     /**
-     * Получение подходящего стиля комментария для текущего языка
+     * Get the appropriate comment style for the current language
      */
     getPreferredCommentStyle(): 'line' | 'block' | null {
         const language = this.getCurrentLanguage();
@@ -547,7 +547,7 @@ export class ContextManager {
         }
         
         if (language.commentStyle === 'both') {
-            return 'line'; // Предпочитаем line комментарии
+            return 'line'; // We prefer line comments
         }
         
         return language.commentStyle === 'line' || language.commentStyle === 'block' 
@@ -556,14 +556,14 @@ export class ContextManager {
     }
 
     /**
-     * Форсированное обновление контекста
+     * Force update the context
      */
     refreshContext(): void {
         this.updateContext();
     }
 
     /**
-     * Освобождение ресурсов
+     * Release resources
      */
     dispose(): void {
         console.log('🔌 Disposing ContextManager...');
