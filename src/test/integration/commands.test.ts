@@ -18,7 +18,7 @@ describe('Commands Integration Tests', () => {
     describe('Command Registration', () => {
         const expectedCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
-            'speechToTextWhisper.recordAndInsertToCurrentChat', 
+            'speechToTextWhisper.recordAndOpenCurrentChat', 
             'speechToTextWhisper.runDiagnostics',
             'speechToTextWhisper.testFFmpeg',
             'speechToTextWhisper.testAudioRecorder',
@@ -88,7 +88,7 @@ describe('Commands Integration Tests', () => {
         // but we can check that they are registered and available
         const recordingCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
-            'speechToTextWhisper.recordAndInsertToCurrentChat',
+            'speechToTextWhisper.recordAndOpenCurrentChat',
         ];
 
         recordingCommands.forEach(commandId => {

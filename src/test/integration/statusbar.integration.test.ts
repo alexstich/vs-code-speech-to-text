@@ -92,7 +92,7 @@ describe('Status Bar Integration Tests', () => {
             
             const statusBarRelatedCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
-                'speechToTextWhisper.recordAndInsertToCurrentChat',
+                'speechToTextWhisper.recordAndOpenCurrentChat',
             ];
 
             for (const commandId of statusBarRelatedCommands) {
@@ -106,7 +106,7 @@ describe('Status Bar Integration Tests', () => {
         it('should handle status bar command execution gracefully', async () => {
             const statusBarCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
-                'speechToTextWhisper.recordAndInsertToCurrentChat',
+                'speechToTextWhisper.recordAndOpenCurrentChat',
             ];
 
             for (const commandId of statusBarCommands) {

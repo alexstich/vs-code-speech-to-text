@@ -11,7 +11,7 @@ export class CommandDiagnostics {
     static async checkCommandRegistration(): Promise<{ [commandId: string]: boolean }> {
         const expectedCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
-            'speechToTextWhisper.recordAndInsertToCurrentChat', 
+            'speechToTextWhisper.recordAndOpenCurrentChat', 
             'speechToTextWhisper.runDiagnostics',
             'speechToTextWhisper.testFFmpeg',
             'speechToTextWhisper.testAudioRecorder',
@@ -149,7 +149,7 @@ export class CommandDiagnostics {
             // Returning expected bindings from package.json
             const expectedKeybindings = [
                 { command: 'speechToTextWhisper.recordAndInsertOrClipboard', key: 'ctrl+shift+m', mac: 'cmd+shift+m' },
-                { command: 'speechToTextWhisper.recordAndInsertToCurrentChat', key: 'ctrl+shift+n', mac: 'cmd+shift+n' }
+                { command: 'speechToTextWhisper.recordAndOpenCurrentChat', key: 'ctrl+shift+n', mac: 'cmd+shift+n' }
             ];
             
             return expectedKeybindings;

@@ -18,7 +18,7 @@ describe('Command Status Tests', () => {
         it('should have all commands available in command palette', async () => {
             const expectedCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
-                'speechToTextWhisper.recordAndInsertToCurrentChat',
+                'speechToTextWhisper.recordAndOpenCurrentChat',
                 'speechToTextWhisper.runDiagnostics',
                 'speechToTextWhisper.testFFmpeg',
                 'speechToTextWhisper.testAudioRecorder',
@@ -66,7 +66,7 @@ describe('Command Status Tests', () => {
             // Test commands that might fail due to missing settings
             const commandsToTest = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
-                'speechToTextWhisper.recordAndInsertToCurrentChat',
+                'speechToTextWhisper.recordAndOpenCurrentChat',
             ];
 
             for (const commandId of commandsToTest) {
@@ -203,7 +203,7 @@ describe('Command Status Tests', () => {
             // Testing recording commands without configured API key
             const recordingCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
-                'speechToTextWhisper.recordAndInsertToCurrentChat',
+                'speechToTextWhisper.recordAndOpenCurrentChat',
             ];
 
             for (const commandId of recordingCommands) {

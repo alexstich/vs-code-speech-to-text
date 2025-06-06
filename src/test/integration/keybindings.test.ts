@@ -23,10 +23,10 @@ describe('Keybindings Integration Tests', () => {
                 description: 'Record and Insert at Cursor or Clipboard'
             },
             {
-                command: 'speechToTextWhisper.recordAndInsertToCurrentChat',
+                command: 'speechToTextWhisper.recordAndOpenCurrentChat',
                 key: 'ctrl+shift+n',
                 mac: 'cmd+shift+n',
-                description: 'Record and Insert at Current Chat'
+                description: 'Record and Open Current Chat'
             }
         ];
 
@@ -74,7 +74,7 @@ describe('Keybindings Integration Tests', () => {
             
             const testCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard', 
-                'speechToTextWhisper.recordAndInsertToCurrentChat'
+                'speechToTextWhisper.recordAndOpenCurrentChat'
             ];
 
             for (const commandId of testCommands) {
