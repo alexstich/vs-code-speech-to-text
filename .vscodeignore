@@ -13,10 +13,8 @@ eslint.config.mjs
 .vscode-test.mjs
 .env
 
-# Documentation and project files
+# Development documentation
 vsc-extension-quickstart.md
-README.md
-CHANGELOG.md
 .gitignore
 
 # Test files and coverage
@@ -44,9 +42,6 @@ scripts/**
 # Runtime and generated files
 speech-to-text-whis
 *.log
-
-# Documentation
-docs/**
 
 # Media files (keep only icon)
 media/**
