@@ -54,7 +54,6 @@ describe('Silence Detection Integration Tests', () => {
                 const recordingCommands = [
                     'speechToTextWhisper.recordAndInsertOrClipboard',
                     'speechToTextWhisper.recordAndInsertToCurrentChat',
-                    'speechToTextWhisper.recordAndOpenNewChat'
                 ];
                 
                 recordingCommands.forEach(commandId => {
@@ -100,7 +99,6 @@ describe('Silence Detection Integration Tests', () => {
                 const recordingCommands = [
                     'speechToTextWhisper.recordAndInsertOrClipboard',
                     'speechToTextWhisper.recordAndInsertToCurrentChat', 
-                    'speechToTextWhisper.recordAndOpenNewChat'
                 ];
                 
                 recordingCommands.forEach(commandId => {

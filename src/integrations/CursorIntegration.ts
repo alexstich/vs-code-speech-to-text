@@ -316,8 +316,8 @@ export class CursorIntegration {
             const originalClipboard = await this.vscodeEnv.env.clipboard.readText();
             CursorIntegrationLog.info(`🎯 [CURSOR_INTEGRATION] Step 1: Original clipboard saved, length: ${originalClipboard.length}`);
             
-            // 2. Open a new chat using the aichat.newfollowupaction command
-            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: Opening new chat...');
+            // 2. Open a current chat using the aichat.newfollowupaction command
+            CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: Opening current chat...');
             await this.vscodeEnv.commands.executeCommand("aichat.newfollowupaction");
             CursorIntegrationLog.info('🎯 [CURSOR_INTEGRATION] Step 2: aichat.newfollowupaction command executed successfully');
             

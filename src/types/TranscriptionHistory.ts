@@ -7,7 +7,7 @@
  */
 export enum RecordingMode {
 	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - insert into cursor or clipboard
-	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - insert into the current chat Cursor
+	INSERT_AT_CURRENT_CHAT = 'insertAtCurrentChat'                        // Ctrl+Shift+N - insert into the current chat Cursor
 }
 
 /**

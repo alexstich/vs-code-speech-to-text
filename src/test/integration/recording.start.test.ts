@@ -31,7 +31,6 @@ describe('Recording Start Integration Tests', () => {
         const recordingCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
             'speechToTextWhisper.recordAndInsertToCurrentChat', 
-            'speechToTextWhisper.recordAndOpenNewChat'
         ];
 
         recordingCommands.forEach(commandId => {
@@ -214,7 +213,6 @@ describe('Recording Start Integration Tests', () => {
 
     describe('Keyboard Shortcuts', () => {
         const shortcuts = [
-            { command: 'speechToTextWhisper.recordAndOpenNewChat', key: 'F9' },
             { command: 'speechToTextWhisper.recordAndInsertOrClipboard', key: 'Ctrl+Shift+M' },
             { command: 'speechToTextWhisper.recordAndInsertToCurrentChat', key: 'Ctrl+Shift+N' }
         ];
@@ -244,7 +242,6 @@ describe('Recording Start Integration Tests', () => {
             const hasRecordingCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat'
             ].every(cmd => allCommands.includes(cmd));
             
             assert.ok(hasRecordingCommands, 'All recording commands should be available');

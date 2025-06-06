@@ -137,9 +137,9 @@ export const testScenarios = {
     basicChatRecordingFlow: {
         description: 'Basic scenario: recording → transcription → sending to chat',
         steps: [
-            'User presses F9',
+            'User presses Ctrl+Shift+N',
             'Recording starts',
-            'User releases F9',
+            'User releases Ctrl+Shift+N',
             'Recording stops',
             'Audio sent to API',
             'Text received from API',
@@ -165,7 +165,7 @@ export const testScenarios = {
     recordingWithoutMicrophone: {
         description: 'Scenario without microphone access',
         steps: [
-            'User presses F9',
+            'User presses Ctrl+Shift+N',
             'getUserMedia fails',
             'Error message shown'
         ],
@@ -175,7 +175,7 @@ export const testScenarios = {
     recordingWithInvalidApiKey: {
         description: 'Scenario with invalid API key',
         steps: [
-            'User presses F9',
+            'User presses Ctrl+Shift+N',
             'Recording completes',
             'API returns 401 error',
             'Error message shown'
@@ -186,7 +186,7 @@ export const testScenarios = {
     cursorIntegrationUnavailable: {
         description: 'Scenario when Cursor integration is unavailable',
         steps: [
-            'User presses F9 in VS Code',
+            'User presses Ctrl+Shift+N in VS Code',
             'Recording completes',
             'Cursor integration fails',
             'Error message shown'

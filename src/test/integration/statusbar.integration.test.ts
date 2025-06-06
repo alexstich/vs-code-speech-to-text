@@ -93,7 +93,6 @@ describe('Status Bar Integration Tests', () => {
             const statusBarRelatedCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat'
             ];
 
             for (const commandId of statusBarRelatedCommands) {
@@ -108,7 +107,6 @@ describe('Status Bar Integration Tests', () => {
             const statusBarCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat'
             ];
 
             for (const commandId of statusBarCommands) {

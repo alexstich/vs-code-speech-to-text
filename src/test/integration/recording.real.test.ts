@@ -283,7 +283,6 @@ describe('Real Recording Tests', () => {
             const commands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat'
             ];
             
             for (const command of commands) {

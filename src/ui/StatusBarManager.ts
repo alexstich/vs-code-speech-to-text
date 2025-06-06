@@ -404,11 +404,11 @@ export class StatusBarManager implements vscode.Disposable {
         // Add additional information for different states
         switch (this.currentState) {
             case 'idle':
-                tooltip += '\n\nHotkey: F9 (hold to record)';
+                tooltip += '\n\nHotkey: Ctrl+Shift+N (hold to record)';
                 tooltip += '\nRight-click for settings';
                 break;
             case 'recording':
-                tooltip += '\n\nHotkey: F9 (release to stop)';
+                tooltip += '\n\nHotkey: Ctrl+Shift+N (release to stop)';
                 break;
             case 'error':
                 if (this.lastError) {

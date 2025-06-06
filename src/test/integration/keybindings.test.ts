@@ -17,11 +17,6 @@ describe('Keybindings Integration Tests', () => {
     describe('Expected Keybindings', () => {
         const expectedKeybindings = [
             {
-                command: 'speechToTextWhisper.recordAndOpenNewChat',
-                key: 'F9',
-                description: 'Record and Open New Chat'
-            },
-            {
                 command: 'speechToTextWhisper.recordAndInsertOrClipboard',
                 key: 'ctrl+shift+m',
                 mac: 'cmd+shift+m',
@@ -78,7 +73,6 @@ describe('Keybindings Integration Tests', () => {
             // but we can check that the commands associated with the keys are executed
             
             const testCommands = [
-                'speechToTextWhisper.recordAndOpenNewChat',
                 'speechToTextWhisper.recordAndInsertOrClipboard', 
                 'speechToTextWhisper.recordAndInsertToCurrentChat'
             ];

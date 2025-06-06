@@ -22,7 +22,7 @@ import { initializeGlobalOutput, ExtensionLog, disposeGlobalOutput } from './uti
  */
 enum RecordingMode {
 	INSERT_OR_CLIPBOARD = 'insertOrClipboard',  // Ctrl+Shift+M - insert into cursor or clipboard
-	NEW_CHAT = 'newChat'                        // Ctrl+Shift+N - insert into current chat Cursor
+	INSERT_AT_CURRENT_CHAT = 'insertAtCurrentChat' // Ctrl+Shift+N - insert into current chat Cursor
 }
 
 /**
@@ -328,7 +328,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 	const commands = [
 		// Main recording commands
 		vscode.commands.registerCommand('speechToTextWhisper.recordAndInsertOrClipboard', recordAndInsertOrClipboard),
-		vscode.commands.registerCommand('speechToTextWhisper.recordAndOpenNewChat', recordAndOpenNewChat),
+		vscode.commands.registerCommand('speechToTextWhisper.recordAndOpenCurrentChat', recordAndOpenCurrentChat),
 		// Diagnostics command
 		vscode.commands.registerCommand('speechToTextWhisper.runDiagnostics', () => diagnosticsProvider.runAllDiagnostics()),
 		// FFmpeg test command
@@ -539,15 +539,15 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					RecordingStateManager.resetState();
 					return;
 				}
-			} else if (recordingState.mode === RecordingMode.NEW_CHAT) {
-				ExtensionLog.info('🎯 [CHAT] Starting NEW_CHAT mode processing');
+			} else if (recordingState.mode === RecordingMode.INSERT_AT_CURRENT_CHAT) {
+				ExtensionLog.info('🎯 [CHAT] Starting INSERT_AT_CURRENT_CHAT mode processing');
 				
 				// Check insert mode - if clipboard, then do not send to chat
 				const insertMode = modeSelectorProvider.getCurrentMode();
 				
 				if (insertMode === 'clipboard') {
 					// Copy to clipboard mode - ignore chat
-					ExtensionLog.info('📋 [CLIPBOARD_MODE] F9/Ctrl+Shift+N in clipboard mode - copying to clipboard instead of chat');
+					ExtensionLog.info('📋 [CLIPBOARD_MODE] Ctrl+Shift+N in clipboard mode - copying to clipboard instead of chat');
 					await vscode.env.clipboard.writeText(lastTranscribedText);
 					
 					// Show success
@@ -561,29 +561,29 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 				}
 				
 				try {
-					// Execute command to open new chat
+					// Execute command to open current chat
 					ExtensionLog.info('🎯 [CHAT] Executing aichat.newfollowupaction...');
 					await vscode.commands.executeCommand('aichat.newfollowupaction');
 					
 					// Delay 300ms
 					await new Promise(resolve => setTimeout(resolve, 300));
 					
-					// Insert text into new chat
+					// Insert text into current chat
 					await vscode.env.clipboard.writeText(lastTranscribedText);
 					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
 					
 					// Show success
 					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-					statusBarManager.showSuccess(`Opened new chat: "${truncatedText}"`);
-					vscode.window.showInformationMessage(`✅ Transcribed and opened new chat: "${truncatedText}"`);
+					statusBarManager.showSuccess(`Opened current chat: "${truncatedText}"`);
+					vscode.window.showInformationMessage(`✅ Transcribed and opened current chat: "${truncatedText}"`);
 					
 					// Reset mode
 					RecordingStateManager.resetState();
 					return;
 					
 				} catch (error) {
-					ExtensionLog.error(`❌ [CHAT] Failed to open new chat:`, error);
-					vscode.window.showErrorMessage(`Failed to open new chat: ${(error as Error).message}`);
+					ExtensionLog.error(`❌ [CHAT] Failed to open current chat:`, error);
+					vscode.window.showErrorMessage(`Failed to open current chat: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 					return;
 				}
@@ -638,50 +638,6 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 }
 
 /**
- * Inserting the last transcription
- */
-async function insertLastTranscription(mode: string): Promise<void> {
-	if (!lastTranscribedText) {
-		vscode.window.showWarningMessage('No transcribed text available');
-		return;
-	}
-
-	const context: ErrorContext = {
-		operation: 'insert_last_transcription',
-		isHoldToRecordMode: false,
-		timestamp: new Date(),
-		additionalData: { insertMode: mode }
-	};
-
-	try {
-		ExtensionLog.info(`📝 Inserting last transcription with mode: ${mode}`);
-		
-		if (mode === 'currentChat') {
-			// Send to Cursor chat
-			if (!cursorIntegration || !cursorIntegration.isIntegrationEnabled()) {
-				throw new Error('Cursor integration not available');
-			}
-			
-			await cursorIntegration.sendToChat(lastTranscribedText);
-			ExtensionLog.info('✅ Text sent to Cursor chat');
-			
-		} else if (mode === 'newChat') {
-			// Send to new chat through CursorIntegration
-			await cursorIntegration.sendToChat(lastTranscribedText);
-			ExtensionLog.info('✅ Text sent to new chat');
-			
-		} else {
-			// Insert into editor
-			await insertTranscribedTextWithErrorHandling(lastTranscribedText, mode, context);
-		}
-		
-	} catch (error) {
-		ExtensionLog.error(`❌ Failed to insert last transcription (mode: ${mode}):`, error);
-		await errorHandler.handleErrorFromException(error as Error, context);
-	}
-}
-
-/**
  * Initializing WhisperClient
  */
 function initializeWhisperClient(): void {
@@ -731,7 +687,7 @@ function showWelcomeMessage(): void {
 		const hasShownWelcome = extensionContext.globalState.get<boolean>('hasShownWelcome', false);
 		if (!hasShownWelcome) {
 			vscode.window.showInformationMessage(
-				'🎤 Speech to Text with Whisper activated! Use F9 to record and send to chat, Ctrl+Shift+M to record to clipboard.',
+				'🎤 Speech to Text with Whisper activated! Use Ctrl+Shift+N to record and send to chat, Ctrl+Shift+M to record to clipboard.',
 				'Got it!'
 			).then(() => {
 				if (extensionContext && extensionContext.globalState) {
@@ -870,13 +826,13 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 }
 
 /**
- * Command to record and open new chat in Cursor (Ctrl+Shift+N)
+ * Command to record and open current chat in Cursor (Ctrl+Shift+N)
  */
-async function recordAndOpenNewChat(): Promise<void> {
-	ExtensionLog.info('🎤 [COMMAND] recordAndOpenNewChat called!');
+async function recordAndOpenCurrentChat(): Promise<void> {
+	ExtensionLog.info('🎤 [COMMAND] recordAndOpenCurrentChat called!');
 	
 	const context: ErrorContext = {
-		operation: 'record_and_open_new_chat',
+		operation: 'record_and_open_current_chat',
 		isHoldToRecordMode: false,
 		timestamp: new Date()
 	};
@@ -884,7 +840,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 	try {
 		// Check if recording is already in progress
 		if (RecordingStateManager.isRecording()) {
-			ExtensionLog.info('⏹️ [COMMAND] Stopping recording (recordAndOpenNewChat)');
+			ExtensionLog.info('⏹️ [COMMAND] Stopping recording (recordAndOpenCurrentChat)');
 			stopRecording();
 			return;
 		}
@@ -897,10 +853,10 @@ async function recordAndOpenNewChat(): Promise<void> {
 			return;
 		}
 
-		ExtensionLog.info('🎤 [COMMAND] Starting record and open new chat...');
+		ExtensionLog.info('🎤 [COMMAND] Starting record and open current chat...');
 		
-		// Start recording with NEW_CHAT mode
-		if (RecordingStateManager.startRecording(RecordingMode.NEW_CHAT)) {
+		// Start recording with INSERT_AT_CURRENT_CHAT mode
+		if (RecordingStateManager.startRecording(RecordingMode.INSERT_AT_CURRENT_CHAT)) {
 			// Do not update StatusBar here - will be updated in onRecordingStart event
 			
 			// Set the time of the recording attempt
@@ -914,7 +870,7 @@ async function recordAndOpenNewChat(): Promise<void> {
 		}
 		
 	} catch (error) {
-		ExtensionLog.error('❌ [COMMAND] recordAndOpenNewChat failed:', error);
+		ExtensionLog.error('❌ [COMMAND] recordAndOpenCurrentChat failed:', error);
 		
 		// Reset state on error
 		RecordingStateManager.resetState();

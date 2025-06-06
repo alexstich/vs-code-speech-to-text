@@ -19,7 +19,6 @@ describe('Commands Integration Tests', () => {
         const expectedCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
             'speechToTextWhisper.recordAndInsertToCurrentChat', 
-            'speechToTextWhisper.recordAndOpenNewChat',
             'speechToTextWhisper.runDiagnostics',
             'speechToTextWhisper.testFFmpeg',
             'speechToTextWhisper.testAudioRecorder',
@@ -90,7 +89,6 @@ describe('Commands Integration Tests', () => {
         const recordingCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
             'speechToTextWhisper.recordAndInsertToCurrentChat',
-            'speechToTextWhisper.recordAndOpenNewChat'
         ];
 
         recordingCommands.forEach(commandId => {

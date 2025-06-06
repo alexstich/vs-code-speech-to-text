@@ -12,7 +12,6 @@ export class CommandDiagnostics {
         const expectedCommands = [
             'speechToTextWhisper.recordAndInsertOrClipboard',
             'speechToTextWhisper.recordAndInsertToCurrentChat', 
-            'speechToTextWhisper.recordAndOpenNewChat',
             'speechToTextWhisper.runDiagnostics',
             'speechToTextWhisper.testFFmpeg',
             'speechToTextWhisper.testAudioRecorder',
@@ -149,7 +148,6 @@ export class CommandDiagnostics {
             // VS Code API does not provide direct access to keybindings
             // Returning expected bindings from package.json
             const expectedKeybindings = [
-                { command: 'speechToTextWhisper.recordAndOpenNewChat', key: 'F9' },
                 { command: 'speechToTextWhisper.recordAndInsertOrClipboard', key: 'ctrl+shift+m', mac: 'cmd+shift+m' },
                 { command: 'speechToTextWhisper.recordAndInsertToCurrentChat', key: 'ctrl+shift+n', mac: 'cmd+shift+n' }
             ];

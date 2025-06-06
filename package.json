@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -44,7 +44,7 @@
   "activationEvents": [
     "onStartupFinished",
     "onCommand:speechToTextWhisper.recordAndInsertOrClipboard",
-    "onCommand:speechToTextWhisper.recordAndOpenNewChat",
+    "onCommand:speechToTextWhisper.recordAndOpenCurrentChat",
     "onCommand:speechToTextWhisper.runDiagnostics",
     "onCommand:speechToTextWhisper.openSettings",
     "onCommand:speechToTextWhisper.toggleMode"
@@ -97,8 +97,8 @@
         "icon": "$(edit)"
       },
       {
-        "command": "speechToTextWhisper.recordAndOpenNewChat",
-        "title": "Record and Open New Chat",
+        "command": "speechToTextWhisper.recordAndOpenCurrentChat",
+        "title": "Record and Open Current Chat",
         "category": "Speech to Text with Whisper",
         "icon": "$(comment-discussion)"
       },
@@ -175,7 +175,7 @@
     ],
     "keybindings": [
       {
-        "command": "speechToTextWhisper.recordAndOpenNewChat",
+        "command": "speechToTextWhisper.recordAndOpenCurrentChat",
         "key": "ctrl+shift+n",
         "mac": "cmd+shift+n"
       },
@@ -193,7 +193,7 @@
           "group": "navigation"
         },
         {
-          "command": "speechToTextWhisper.recordAndOpenNewChat",
+          "command": "speechToTextWhisper.recordAndOpenCurrentChat",
           "when": "view == speechToTextWhisper.diagnostics",
           "group": "navigation"
         },

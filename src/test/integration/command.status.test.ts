@@ -19,7 +19,6 @@ describe('Command Status Tests', () => {
             const expectedCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat',
                 'speechToTextWhisper.runDiagnostics',
                 'speechToTextWhisper.testFFmpeg',
                 'speechToTextWhisper.testAudioRecorder',
@@ -68,7 +67,6 @@ describe('Command Status Tests', () => {
             const commandsToTest = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat'
             ];
 
             for (const commandId of commandsToTest) {
@@ -206,7 +204,6 @@ describe('Command Status Tests', () => {
             const recordingCommands = [
                 'speechToTextWhisper.recordAndInsertOrClipboard',
                 'speechToTextWhisper.recordAndInsertToCurrentChat',
-                'speechToTextWhisper.recordAndOpenNewChat'
             ];
 
             for (const commandId of recordingCommands) {
