@@ -31,7 +31,7 @@ eslint.config.mjs
 .DS_Store
 Thumbs.db
 
-# Task files
+# Task files - keep taskmaster and cursor files ignored
 tasks.json
 tasks/
 .taskmaster
