@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "0.2.2",
+  "version": "1.0.0",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
