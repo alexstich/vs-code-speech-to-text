@@ -392,7 +392,18 @@ export class TextInserter {
 
         switch (mode) {
             case 'cursor':
-                await this.insertAtCursor(text, options);
+                try {
+                    await this.insertAtCursor(text, options);
+                } catch (error) {
+                    // If no active editor, fallback to clipboard
+                    if ((error as any).code === 'NO_ACTIVE_EDITOR') {
+                        ExtensionLog.warn(`⚠️ [TextInserter] No active editor, falling back to clipboard`);
+                        await this.copyToClipboard(text, options);
+                        vscode.window.showWarningMessage(`No active editor. Text copied to clipboard instead.`);
+                    } else {
+                        throw error;
+                    }
+                }
                 break;
             case 'clipboard':
                 await this.copyToClipboard(text, options);

@@ -66,7 +66,11 @@ export class TranscriptionHistoryManager {
 				timestamp: options.timestamp || new Date().toISOString(),
 				duration: options.duration,
 				language: options.language,
-				mode: options.mode
+				mode: options.mode,
+				// Post-processing fields
+				originalText: options.originalText?.trim(),
+				isPostProcessed: options.isPostProcessed || false,
+				postProcessingModel: options.postProcessingModel
 			};
 
 			// Add to the beginning of the array (new entries on top)

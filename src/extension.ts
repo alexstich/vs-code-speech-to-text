@@ -16,6 +16,8 @@ import { RetryManager } from './utils/RetryManager';
 import { CursorIntegration, CursorIntegrationStrategy } from './integrations/CursorIntegration';
 import { ConfigurationManager } from './core/ConfigurationManager';
 import { initializeGlobalOutput, ExtensionLog, disposeGlobalOutput } from './utils/GlobalOutput';
+import { PostProcessingService } from './core/PostProcessingService';
+import { TextProcessingPipeline } from './core/TextProcessingPipeline';
 
 /**
  * Recording modes for the new command architecture
@@ -55,6 +57,10 @@ let retryManager: RetryManager;
 
 // Configuration manager
 let configurationManager: ConfigurationManager;
+
+// Post-processing services
+let postProcessingService: PostProcessingService;
+let textProcessingPipeline: TextProcessingPipeline;
 
 // Extension context for global access
 let extensionContext: vscode.ExtensionContext;
@@ -203,9 +209,6 @@ export async function activate(context: vscode.ExtensionContext) {
 		// Register all commands
 		registerCommands(context);
 		
-		// Initialize the WhisperClient on first use
-		initializeWhisperClient();
-		
 		// Show the welcome message and StatusBar
 		showWelcomeMessage();
 		
@@ -213,6 +216,14 @@ export async function activate(context: vscode.ExtensionContext) {
 		configurationManager.addChangeListener((config) => {
 			// Reinitialize the WhisperClient when settings change
 			initializeWhisperClient();
+			
+			// Recreate TextProcessingPipeline with new whisperClient
+			textProcessingPipeline = new TextProcessingPipeline(
+				whisperClient,
+				postProcessingService,
+				textInserter,
+				configurationManager
+			);
 			
 			// Reset the audioRecorder when audio settings change
 			audioRecorder = null;
@@ -249,6 +260,9 @@ function initializeErrorHandling(): void {
 function initializeComponents(): void {
 	// Initialize the ConfigurationManager
 	configurationManager = ConfigurationManager.getInstance();
+	
+	// Initialize the WhisperClient first
+	initializeWhisperClient();
 	
 	// Initialize the CursorIntegration
 	initializeCursorIntegration();
@@ -291,6 +305,18 @@ function initializeComponents(): void {
 	
 	// Initialize the StatusBarManager
 	statusBarManager = new StatusBarManager(statusBarEvents, statusBarConfig);
+	
+	// Initialize post-processing services
+	// Note: OpenAIPostProcessor will be initialized lazily when needed
+	postProcessingService = new PostProcessingService(configurationManager);
+	
+	// Initialize TextProcessingPipeline with initialized whisperClient
+	textProcessingPipeline = new TextProcessingPipeline(
+		whisperClient,
+		postProcessingService,
+		textInserter,
+		configurationManager
+	);
 }
 
 /**
@@ -387,7 +413,7 @@ function registerCommands(context: vscode.ExtensionContext): void {
 }
 
 /**
- * Handling transcription
+ * Handling transcription using TextProcessingPipeline
  */
 async function handleTranscription(audioBlob: Blob): Promise<void> {
 	const context: ErrorContext = {
@@ -404,109 +430,80 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 			return;
 		}
 
-		if (!whisperClient) {
-			ExtensionLog.error('❌ WhisperClient not initialized');
-			throw new Error('WhisperClient not initialized');
+		if (!textProcessingPipeline) {
+			ExtensionLog.error('❌ TextProcessingPipeline not initialized');
+			throw new Error('TextProcessingPipeline not initialized');
 		}
 
-		// Show transcription state
-		if (statusBarManager) {
-			statusBarManager.showTranscribing();
+		// Determine insertion mode based on recording mode and current mode selector
+		let insertionMode: 'cursor' | 'clipboard' = 'cursor';
+		let skipTextInsertion = false; // Flag to skip text insertion in pipeline for special modes
+		
+		if (recordingState.mode === RecordingMode.INSERT_OR_CLIPBOARD) {
+			const currentMode = modeSelectorProvider.getCurrentMode();
+			insertionMode = currentMode === 'clipboard' ? 'clipboard' : 'cursor';
+		} else if (recordingState.mode === RecordingMode.INSERT_AT_CURRENT_CHAT) {
+			const currentMode = modeSelectorProvider.getCurrentMode();
+			if (currentMode === 'clipboard') {
+				insertionMode = 'clipboard';
+			} else {
+				// For chat mode, we'll handle text insertion specially after pipeline
+				// Skip text insertion in the pipeline
+				skipTextInsertion = true;
+				insertionMode = 'cursor'; // This won't be used, but needed for the pipeline interface
+			}
 		}
 
-		// Get settings from configuration
-		const whisperConfig = configurationManager.getWhisperConfiguration();
+		// Progress callback for status updates
+		const progressCallback = (progress: any) => {
+			if (progress.currentStep === 'Transcribing audio...') {
+				statusBarManager.showTranscribing();
+			} else if (progress.currentStep === 'Improving text quality...') {
+				statusBarManager.showPostProcessing();
+			} else if (progress.currentStep === 'Inserting text...') {
+				statusBarManager.showInserting();
+			}
+		};
 
-		console.time('whisper.transcription');
-		const transcriptionResult = await whisperClient.transcribe(audioBlob, {
-			language: whisperConfig.language === 'auto' ? undefined : whisperConfig.language,
-			prompt: whisperConfig.prompt || undefined,
-			temperature: whisperConfig.temperature,
-			model: whisperConfig.whisperModel,
-			response_format: 'json'
-		});
-		console.timeEnd('whisper.transcription');
+		// Execute the complete pipeline
+		console.time('complete.pipeline');
+		const pipelineResult = await textProcessingPipeline.processAudio(
+			audioBlob,
+			insertionMode,
+			progressCallback,
+			skipTextInsertion // Pass the flag to skip text insertion
+		);
+		console.timeEnd('complete.pipeline');
 
-		if (transcriptionResult && transcriptionResult.trim().length > 0) {
-			lastTranscribedText = transcriptionResult.trim();
+		if (pipelineResult.success) {
+			lastTranscribedText = pipelineResult.finalText;
 			
-			// Add entry to transcription history
+			// Add entry to transcription history with post-processing info
 			try {
 				const duration = recordingState.startTime ? Date.now() - recordingState.startTime : 0;
+				const whisperConfig = configurationManager.getWhisperConfiguration();
 				const language = whisperConfig.language === 'auto' ? 'auto' : whisperConfig.language;
 				
 				await transcriptionHistoryManager.addEntry({
-					text: lastTranscribedText,
+					text: pipelineResult.finalText,
 					duration: duration,
 					language: language,
-					mode: recordingState.mode as any // cast to type from TranscriptionHistory
+					mode: recordingState.mode as any,
+					// Post-processing fields
+					originalText: pipelineResult.postProcessingResult?.originalText,
+					isPostProcessed: pipelineResult.postProcessingResult?.wasProcessed || false,
+					postProcessingModel: pipelineResult.postProcessingResult?.model
 				});
 				
 				// Update UI history
 				transcriptionHistoryProvider.refresh();
 			} catch (error) {
-				ExtensionLog.error('❌ Failed to add transcription to history:', error);
+				ExtensionLog.error('❌ Failed to add transcription to history:', undefined, error as Error);
 				// Do not interrupt execution if failed to add to history
 			}
-			
-			// Show inserting state
-			statusBarManager.showInserting();
-			
-			if (recordingState.mode === RecordingMode.INSERT_OR_CLIPBOARD) {
-				try {
-					// Read insert mode from ModeSelectorProvider
-					const insertMode = modeSelectorProvider.getCurrentMode();
-					
-					if (insertMode === 'insert') {
-						// Insert mode at cursor position
-						await insertTranscribedTextWithErrorHandling(lastTranscribedText, 'cursor', context);
-						
-						// Show success
-						const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-						statusBarManager.showSuccess(`Inserted: "${truncatedText}"`);
-						vscode.window.showInformationMessage(`✅ Transcribed and inserted at cursor: "${truncatedText}"`);
-						
-					} else if (insertMode === 'clipboard') {
-						// Copy to clipboard mode
-						await vscode.env.clipboard.writeText(lastTranscribedText);
-						
-						// Show success
-						const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-						statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
-						vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
-					} else {
-						ExtensionLog.error(`❌ Unknown insertMode: ${insertMode}`);
-						vscode.window.showErrorMessage(`Unknown insert mode: ${insertMode}`);
-					}
-					
-					// Reset mode
-					RecordingStateManager.resetState();
-					return;
-					
-				} catch (error) {
-					ExtensionLog.error(`❌ Failed to process insertOrClipboard:`, error);
-					vscode.window.showErrorMessage(`Failed to process text: ${(error as Error).message}`);
-					RecordingStateManager.resetState();
-					return;
-				}
-			} else if (recordingState.mode === RecordingMode.INSERT_AT_CURRENT_CHAT) {
-				// Check insert mode - if clipboard, then do not send to chat
-				const insertMode = modeSelectorProvider.getCurrentMode();
-				
-				if (insertMode === 'clipboard') {
-					// Copy to clipboard mode - ignore chat
-					await vscode.env.clipboard.writeText(lastTranscribedText);
-					
-					// Show success
-					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-					statusBarManager.showSuccess(`Copied: "${truncatedText}"`);
-					vscode.window.showInformationMessage(`✅ Transcribed and copied to clipboard: "${truncatedText}"`);
-					
-					// Reset mode
-					RecordingStateManager.resetState();
-					return;
-				}
-				
+
+			// Handle special case for chat mode (when text insertion was skipped in pipeline)
+			if (skipTextInsertion && recordingState.mode === RecordingMode.INSERT_AT_CURRENT_CHAT) {
 				try {
 					// Execute command to open current chat
 					await vscode.commands.executeCommand('aichat.newfollowupaction');
@@ -515,34 +512,64 @@ async function handleTranscription(audioBlob: Blob): Promise<void> {
 					await new Promise(resolve => setTimeout(resolve, 300));
 					
 					// Insert text into current chat
-					await vscode.env.clipboard.writeText(lastTranscribedText);
+					await vscode.env.clipboard.writeText(pipelineResult.finalText);
 					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
 					
 					// Show success
-					const truncatedText = lastTranscribedText.substring(0, 50) + (lastTranscribedText.length > 50 ? '...' : '');
-					statusBarManager.showSuccess(`Opened current chat: "${truncatedText}"`);
-					vscode.window.showInformationMessage(`✅ Transcribed and opened current chat: "${truncatedText}"`);
-					
-					// Reset mode
-					RecordingStateManager.resetState();
-					return;
+					const truncatedText = pipelineResult.finalText.substring(0, 50) + (pipelineResult.finalText.length > 50 ? '...' : '');
+					const postProcessedIcon = pipelineResult.postProcessingResult?.wasProcessed ? ' ✨' : '';
+					statusBarManager.showSuccess(`Opened current chat: "${truncatedText}"${postProcessedIcon}`);
+					vscode.window.showInformationMessage(`✅ Transcribed and opened current chat: "${truncatedText}"${postProcessedIcon}`);
 					
 				} catch (error) {
-					ExtensionLog.error(`❌ Failed to open current chat:`, error);
+					ExtensionLog.error(`❌ Failed to open current chat:`, undefined, error as Error);
 					vscode.window.showErrorMessage(`Failed to open current chat: ${(error as Error).message}`);
-					RecordingStateManager.resetState();
-					return;
 				}
+			} else {
+				// Show success for normal insertion modes (when text was inserted by pipeline)
+				const truncatedText = pipelineResult.finalText.substring(0, 50) + (pipelineResult.finalText.length > 50 ? '...' : '');
+				const postProcessedIcon = pipelineResult.postProcessingResult?.wasProcessed ? ' ✨' : '';
+				const modeText = insertionMode === 'clipboard' ? 'copied to clipboard' : 'inserted at cursor';
+				
+				statusBarManager.showSuccess(`${modeText.charAt(0).toUpperCase() + modeText.slice(1)}: "${truncatedText}"${postProcessedIcon}`);
+				vscode.window.showInformationMessage(`✅ Transcribed and ${modeText}: "${truncatedText}"${postProcessedIcon}`);
 			}
 			
+			// Reset mode
+			RecordingStateManager.resetState();
+			
 		} else {
-			// Empty transcription processing
-			await errorHandler.handleError(ErrorType.TRANSCRIPTION_EMPTY, context);
+			// Pipeline failed
+			const error = pipelineResult.error || new Error('Pipeline processing failed');
+			ExtensionLog.error(`❌ Pipeline failed:`, undefined, error);
+			
+			// Reset StatusBar on pipeline failure
+			if (statusBarManager) {
+				statusBarManager.showError(`Transcription failed: ${error.message}`);
+				// Ensure status resets after a delay
+				setTimeout(() => {
+					statusBarManager.updateRecordingState(false);
+				}, 3000);
+			}
+			
+			await errorHandler.handleErrorFromException(error, context);
+			RecordingStateManager.resetState();
 		}
 		
 	} catch (error) {
-		ExtensionLog.error(`❌ Transcription failed:`, error);
+		ExtensionLog.error(`❌ Transcription pipeline failed:`, undefined, error as Error);
+		
+		// Reset StatusBar on error
+		if (statusBarManager) {
+			statusBarManager.showError(`Pipeline failed: ${(error as Error).message}`);
+			// Ensure status resets after a delay
+			setTimeout(() => {
+				statusBarManager.updateRecordingState(false);
+			}, 3000);
+		}
+		
 		await errorHandler.handleErrorFromException(error as Error, context);
+		RecordingStateManager.resetState();
 	}
 }
 
@@ -574,7 +601,7 @@ async function insertTranscribedTextWithErrorHandling(text: string, mode: string
 		}
 		
 	} catch (error) {
-		ExtensionLog.error(`❌ Text insertion failed:`, error);
+		ExtensionLog.error(`❌ Text insertion failed:`, undefined, error as Error);
 		await errorHandler.handleErrorFromException(error as Error, context);
 	}
 }
@@ -595,6 +622,8 @@ function initializeWhisperClient(): void {
 				vscode.commands.executeCommand('workbench.action.openSettings', 'speechToTextWhisper.apiKey');
 			}
 		});
+		// Set whisperClient to null if not configured
+		whisperClient = null as any;
 		return;
 	}
 	
@@ -605,8 +634,10 @@ function initializeWhisperClient(): void {
 		});
 		
 	} catch (error) {
-		ExtensionLog.error('❌ Failed to initialize WhisperClient: ' + error);
+		ExtensionLog.error('❌ Failed to initialize WhisperClient:', undefined, error as Error);
 		vscode.window.showErrorMessage(`Failed to initialize Whisper client: ${(error as Error).message}`);
+		// Set whisperClient to null on error
+		whisperClient = null as any;
 	}
 }
 
@@ -662,6 +693,15 @@ export function deactivate() {
 		transcriptionHistoryProvider.dispose();
 	}
 	
+	// Dispose post-processing services
+	if (postProcessingService) {
+		postProcessingService.dispose();
+	}
+	
+	if (textProcessingPipeline) {
+		textProcessingPipeline.dispose();
+	}
+	
 	// Release global logging resources
 	disposeGlobalOutput();
 }
@@ -693,7 +733,7 @@ function initializeCursorIntegration(): void {
 			vscode.window.showWarningMessage(`Cursor chat: fell back to ${fallback} strategy`);
 		},
 		onError: (error: Error, strategy: CursorIntegrationStrategy) => {
-			ExtensionLog.error(`❌ CursorIntegration error with ${strategy}:`, error);
+			ExtensionLog.error(`❌ CursorIntegration error with ${strategy}:`, undefined, error);
 		}
 	});
 }
@@ -736,7 +776,7 @@ async function recordAndInsertOrClipboard(): Promise<void> {
 		}
 		
 	} catch (error) {
-		ExtensionLog.error('❌ Record and insert or clipboard failed:', error);
+		ExtensionLog.error('❌ Record and insert or clipboard failed:', undefined, error as Error);
 		RecordingStateManager.resetState();
 		// Reset StatusBar on error
 		if (statusBarManager) {
@@ -784,7 +824,7 @@ async function recordAndOpenCurrentChat(): Promise<void> {
 		}
 		
 	} catch (error) {
-		ExtensionLog.error('❌ recordAndOpenCurrentChat failed:', error);
+		ExtensionLog.error('❌ recordAndOpenCurrentChat failed:', undefined, error as Error);
 		
 		// Reset state on error
 		RecordingStateManager.resetState();
@@ -844,7 +884,7 @@ async function startRecording(): Promise<void> {
 
 		if (!microphoneResult.success) {
 			const error = microphoneResult.lastError || new Error('Microphone access failed');
-			ExtensionLog.error('❌ Microphone check failed:', error);
+			ExtensionLog.error('❌ Microphone check failed:', undefined, error as Error);
 			RecordingStateManager.resetState();
 			await errorHandler.handleErrorFromException(error, context);
 			return;
@@ -855,7 +895,7 @@ async function startRecording(): Promise<void> {
 		console.timeEnd('audioRecorder.startRecording');
 		
 	} catch (error) {
-		ExtensionLog.error('❌ Failed to start recording:', error);
+		ExtensionLog.error('❌ Failed to start recording:', undefined, error as Error);
 		
 		// Reset recording state on any error
 		RecordingStateManager.resetState();
@@ -883,7 +923,7 @@ function stopRecording(): void {
 		console.timeEnd('audioRecorder.stopRecording');
 		
 	} catch (error) {
-		ExtensionLog.error('❌ [RECORDING] Failed to stop recording:', error);
+					ExtensionLog.error('❌ [RECORDING] Failed to stop recording:', undefined, error as Error);
 		// Reset state only on error
 		RecordingStateManager.resetState();
 		// Update StatusBar on error
@@ -951,13 +991,13 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 				try {
 					await handleTranscription(audioBlob);
 				} catch (error) {
-					ExtensionLog.error('❌ AudioRecorder event: Error in handleTranscription:', error);
+					ExtensionLog.error('❌ AudioRecorder event: Error in handleTranscription:', undefined, error as Error);
 					vscode.window.showErrorMessage(`Transcription failed: ${(error as Error).message}`);
 					RecordingStateManager.resetState();
 				}
 			},
 			onError: (error: Error) => {
-				ExtensionLog.error('❌ AudioRecorder event: onError:', error);
+				ExtensionLog.error('❌ AudioRecorder event: onError:', undefined, error);
 				if (statusBarManager) {
 					statusBarManager.showError(`Recording error: ${error.message}`);
 				}
@@ -982,7 +1022,7 @@ async function ensureFFmpegAudioRecorder(): Promise<void> {
 		audioRecorder = new FFmpegAudioRecorder(audioRecorderEvents, recorderOptions, outputChannel);
 		
 	} catch (error) {
-		ExtensionLog.error('❌ Failed to initialize FFmpeg Audio Recorder:', error);
+		ExtensionLog.error('❌ Failed to initialize FFmpeg Audio Recorder:', undefined, error as Error);
 		audioRecorder = null;
 		
 		const errorMessage = `Failed to initialize audio recorder: ${(error as Error).message}`;

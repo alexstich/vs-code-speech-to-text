@@ -2,7 +2,7 @@
   "name": "speech-to-text-whisper",
   "displayName": "Speech to Text with Whisper",
   "description": "Transform speech to text using OpenAI Whisper API with seamless VS Code and Cursor IDE integration",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "publisher": "speak-y",
   "icon": "media/icon.png",
   "galleryBanner": {
@@ -150,9 +150,9 @@
       },
       {
         "command": "speechToTextWhisper.transcriptionHistory.insertAtCursor",
-        "title": "Insert at Cursor Chat",
+        "title": "Insert at Cursor",
         "category": "Speech to Text with Whisper",
-        "icon": "$(comment-discussion)"
+        "icon": "$(insert)"
       },
       {
         "command": "speechToTextWhisper.transcriptionHistory.deleteEntry",
@@ -166,13 +166,13 @@
         "category": "Speech to Text with Whisper",
         "icon": "$(clear-all)"
       },
-      {
-        "command": "speechToTextWhisper.transcriptionHistory.refresh",
-        "title": "Refresh",
-        "category": "Speech to Text with Whisper",
-        "icon": "$(refresh)"
-      }
-    ],
+              {
+          "command": "speechToTextWhisper.transcriptionHistory.refresh",
+          "title": "Refresh",
+          "category": "Speech to Text with Whisper",
+          "icon": "$(refresh)"
+        }
+      ],
     "keybindings": [
       {
         "command": "speechToTextWhisper.recordAndOpenCurrentChat",
@@ -221,12 +221,12 @@
       "view/item/context": [
         {
           "command": "speechToTextWhisper.transcriptionHistory.copyToClipboard",
-          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionEntry",
+          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionText",
           "group": "inline@1"
         },
         {
           "command": "speechToTextWhisper.transcriptionHistory.insertAtCursor",
-          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionEntry",
+          "when": "view == speechToTextWhisper.transcriptionHistory && viewItem == transcriptionText",
           "group": "inline@2"
         },
         {
@@ -350,8 +350,9 @@
         },
         "speechToTextWhisper.prompt": {
           "type": "string",
-          "default": "This is an audio recording for speech recognition. Use punctuation and proper spelling.",
+          "default": "This is a technical instruction about programming in Visual Studio Code IDE. The speaker provides step-by-step coding instructions related to features, extensions, debugging, and software development workflows.",
           "description": "Optional context prompt to improve transcription accuracy",
+          "editPresentation": "multilineText",
           "order": 4
         },
         "speechToTextWhisper.temperature": {
@@ -378,34 +379,13 @@
           ],
           "order": 6
         },
-        "speechToTextWhisper.ffmpegPath": {
-          "type": "string",
-          "default": "",
-          "description": "Path to FFmpeg executable (leave empty for auto-detection)",
-          "scope": "application",
-          "order": 7  
-        },
-        "speechToTextWhisper.showStatusBar": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show recording status in status bar",
-          "order": 8
-        },
-        "speechToTextWhisper.maxRecordingDuration": {
-          "type": "number",
-          "default": 3600,
-          "minimum": 5,
-          "maximum": 7200,
-          "description": "Maximum recording duration in seconds",
-          "order": 9
-        },
         "speechToTextWhisper.timeout": {
           "type": "number",
           "default": 30000,
           "minimum": 5000,
           "maximum": 120000,
           "description": "API request timeout in milliseconds",
-          "order": 10
+          "order": 7
         },
         "speechToTextWhisper.maxRetries": {
           "type": "number",
@@ -413,13 +393,77 @@
           "minimum": 0,
           "maximum": 10,
           "description": "Maximum number of retry attempts for failed API requests",
+          "order": 8
+        },
+        "speechToTextWhisper.postProcessing.model": {
+          "type": "string",
+          "enum": [
+            "Without post-processing",
+            "gpt-4.1-2025-04-14",
+            "gpt-4.1-mini-2025-04-14",
+            "gpt-4.1-nano-2025-04-14",
+            "gpt-4.5-preview-2025-02-27",
+            "gpt-4o-2024-08-06",
+            "gpt-4o-mini-2024-07-18",
+            "gpt-4-turbo-2024-04-09",
+            "gpt-3.5-turbo-0125",
+            "o1-2024-12-17",
+            "o1-mini-2024-09-12",
+            "o3-2025-04-16",
+            "o3-mini-2025-01-31",
+            "o4-mini-2025-04-16",
+            "chatgpt-4o-latest"
+          ],
+          "default": "gpt-4.1-mini-2025-04-14",
+          "description": "Model for post-processing transcribed text to improve quality",
+          "enumDescriptions": [
+            "No post-processing - use original Whisper output",
+            "GPT-4.1 (April 2025) - flagship model with specific date version",
+            "GPT-4.1 Mini (April 2025) - compact flagship with date version (recommended)",
+            "GPT-4.1 Nano (April 2025) - ultra-fast model with date version",
+            "GPT-4.5 Preview (February 2025) - cutting-edge model with date",
+            "GPT-4o (August 2024) - flagship model with specific date version",
+            "GPT-4o mini (July 2024) - balanced model with specific date version",
+            "GPT-4 Turbo (April 2024) - turbo model with specific date version",
+            "GPT-3.5 Turbo (January 2025) - turbo model with date version",
+            "o1 (December 2024) - reasoning model with specific date version",
+            "o1-mini (September 2024) - compact reasoning with date version",
+            "o3 (April 2025) - advanced reasoning model with date version",
+            "o3-mini (January 2025) - compact reasoning model with date",
+            "o4-mini (April 2025) - compact multimodal model with date",
+            "ChatGPT-4o latest - continuously updated flagship model"
+          ],
+          "order": 9
+        },
+        "speechToTextWhisper.postProcessing.prompt": {
+          "type": "string",
+          "default": "Please improve this transcribed text by:\n1. Adding proper punctuation and capitalization\n2. Removing filler words (um, uh, like, you know)\n3. Always try to structure sentences for lists and paragraphs for better readability\n4. Maintaining the original meaning and technical terms\n5. Return improved text without any additional text or explanations\n\nOriginal text:",
+          "description": "Custom prompt for post-processing to guide text improvement.\n\nHOW IT WORKS: The transcribed text from Whisper will be automatically appended to the end of your prompt with a space in between.\n\nExample:\nYour prompt: \"Please improve this text by fixing grammar:\"\nWhisper output: \"um so like the function uh returns a value\"\nFinal request to AI: \"Please improve this text by fixing grammar: um so like the function uh returns a value\"\n\nBest practices:\n- End your prompt with a colon (:) for clarity\n- Be specific about desired improvements\n- Keep it concise but descriptive\n- The AI will receive: [YOUR_PROMPT] + [SPACE] + [WHISPER_TEXT]",
+          "editPresentation": "multilineText",
+          "order": 10
+        },
+        "speechToTextWhisper.postProcessing.minTextLength": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 1000,
+          "description": "Minimum text length (characters) to trigger post-processing",
           "order": 11
         },
+        "speechToTextWhisper.postProcessing.timeout": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 5000,
+          "maximum": 120000,
+          "description": "Timeout for post-processing API requests in milliseconds",
+          "order": 12
+        },
+        
         "speechToTextWhisper.silenceDetection": {
           "type": "boolean",
           "default": true,
           "description": "Automatically stop recording when silence is detected",
-          "order": 12
+          "order": 13
         },
         "speechToTextWhisper.silenceDuration": {
           "type": "number",
@@ -427,7 +471,7 @@
           "minimum": 1,
           "maximum": 10,
           "description": "Duration of silence in seconds before automatically stopping recording",
-          "order": 13
+          "order": 14
         },
         "speechToTextWhisper.silenceThreshold": {
           "type": "number",
@@ -435,13 +479,34 @@
           "minimum": 20,
           "maximum": 80,
           "description": "Silence threshold value (20-80). Higher values are more sensitive to silence.",
-          "order": 14
+          "order": 15
+        },
+        "speechToTextWhisper.ffmpegPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to FFmpeg executable (leave empty for auto-detection)",
+          "scope": "application",
+          "order": 16  
+        },
+        "speechToTextWhisper.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show recording status in status bar",
+          "order": 17
+        },
+        "speechToTextWhisper.maxRecordingDuration": {
+          "type": "number",
+          "default": 3600,
+          "minimum": 5,
+          "maximum": 7200,
+          "description": "Maximum recording duration in seconds",
+          "order": 18
         },
         "speechToTextWhisper.inputDevice": {
           "type": "string",
           "default": "auto",
           "description": "Audio input device for recording ('auto' for automatic detection)",
-          "order": 15
+          "order": 19
         }
       }
     }

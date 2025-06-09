@@ -17,7 +17,7 @@ export interface TranscriptionEntry {
 	/** Unique identifier of the entry */
 	id: string;
 	
-	/** Full transcription text */
+	/** Full transcription text (final version) */
 	text: string;
 	
 	/** Creation time of the transcription (ISO string) */
@@ -31,6 +31,16 @@ export interface TranscriptionEntry {
 	
 	/** Recording mode during transcription */
 	mode: RecordingMode;
+	
+	/** Post-processing related fields */
+	/** Original text from Whisper before post-processing */
+	originalText?: string;
+	
+	/** Whether post-processing was applied */
+	isPostProcessed?: boolean;
+	
+	/** AI model used for post-processing */
+	postProcessingModel?: string;
 }
 
 /**
@@ -65,7 +75,7 @@ export interface TranscriptionHistory {
  * Options for adding an entry to the history
  */
 export interface AddEntryOptions {
-	/** Transcription text */
+	/** Final transcription text */
 	text: string;
 	
 	/** Duration of the audio in milliseconds */
@@ -79,6 +89,16 @@ export interface AddEntryOptions {
 	
 	/** Optional - user timestamp */
 	timestamp?: string;
+	
+	/** Post-processing related fields */
+	/** Original text from Whisper before post-processing */
+	originalText?: string;
+	
+	/** Whether post-processing was applied */
+	isPostProcessed?: boolean;
+	
+	/** AI model used for post-processing */
+	postProcessingModel?: string;
 }
 
 /**

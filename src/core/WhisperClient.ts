@@ -1,5 +1,7 @@
 // WhisperClient.ts - HTTP client for integration with OpenAI Whisper API
 
+import { ExtensionLog } from '../utils/GlobalOutput';
+
 export interface TranscriptionOptions {
     language?: string;      // ISO 639-1 code of the language or 'auto' for auto-detection
     prompt?: string;        // Contextual prompt for improving accuracy
@@ -262,7 +264,15 @@ export class WhisperClient {
             }
         };
 
-
+        ExtensionLog.info(`🎤 [WHISPER] Starting transcription request:`, requestInfo);
+        
+        // Log full prompt if provided
+        if (options.prompt) {
+            ExtensionLog.info(`🎤 [WHISPER] Full prompt text:`, {
+                prompt: options.prompt,
+                promptLength: options.prompt.length
+            });
+        }
     }
 
     /**
@@ -271,9 +281,22 @@ export class WhisperClient {
     private async makeRequest(endpoint: string, formData: FormData): Promise<Response> {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+        const url = `${this.baseURL}${endpoint}`;
+
+        // Log the actual HTTP request being sent
+        ExtensionLog.info(`🎤 [WHISPER] Sending HTTP request:`, {
+            url: url,
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.apiKey.substring(0, 7)}...`,
+                'User-Agent': 'SpeechToTextWhisper-Extension/1.0'
+            },
+            formDataFields: Array.from(formData.keys()),
+            timeout: this.timeout
+        });
 
         try {
-            const response = await fetch(`${this.baseURL}${endpoint}`, {
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`,
@@ -284,6 +307,16 @@ export class WhisperClient {
             });
 
             clearTimeout(timeoutId);
+
+            // Log response status
+            ExtensionLog.info(`🎤 [WHISPER] Received HTTP response:`, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: {
+                    'content-type': response.headers.get('content-type'),
+                    'content-length': response.headers.get('content-length')
+                }
+            });
 
             if (!response.ok) {
                 const errorData = await this.parseErrorResponse(response);
@@ -306,12 +339,39 @@ export class WhisperClient {
     ): Promise<string> {
         const responseFormat = options.response_format || 'json';
         
+        let transcriptionText: string;
+        let responseData: any = null;
+        
         if (responseFormat === 'text') {
-            return await response.text();
+            transcriptionText = await response.text();
+        } else {
+            responseData = await response.json() as TranscriptionResult;
+            transcriptionText = responseData.text;
         }
 
-        const result = await response.json() as TranscriptionResult;
-        return result.text;
+        // Log the response details
+        const responseInfo = {
+            status: response.status,
+            statusText: response.statusText,
+            responseFormat: responseFormat,
+            transcription: {
+                length: transcriptionText.length,
+                preview: transcriptionText.substring(0, 100) + (transcriptionText.length > 100 ? '...' : ''),
+                language: responseData?.language || 'unknown',
+                duration: responseData?.duration || 'unknown'
+            }
+        };
+
+        ExtensionLog.info(`🎤 [WHISPER] Transcription completed successfully:`, responseInfo);
+        
+        // Log full transcription text
+        ExtensionLog.info(`🎤 [WHISPER] Full transcription result:`, {
+            fullText: transcriptionText,
+            wordCount: transcriptionText.split(' ').length,
+            hasWords: transcriptionText.trim().length > 0
+        });
+        
+        return transcriptionText;
     }
 
     /**

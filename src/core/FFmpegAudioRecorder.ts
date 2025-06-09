@@ -444,6 +444,11 @@ export class FFmpegAudioRecorder {
      * Stop recording audio
      */
     stopRecording(): void {
+        // Log the call stack to understand what triggered the stop
+        const stack = new Error().stack;
+        this.log(`🛑 [STOP_TRIGGER] stopRecording called from:`);
+        this.log(`🛑 [STOP_TRIGGER] ${stack?.split('\n').slice(1, 4).join('\n')}`);
+        
         this.log(`🎤 [RECORDER] stopRecording called. Current isRecording: ${this.isRecording}`);
         this.log(`🎤 [RECORDER] stopRecording: ffmpegProcess exists: ${!!this.ffmpegProcess}`);
         this.log(`🎤 [RECORDER] stopRecording: ffmpegProcess killed: ${this.ffmpegProcess?.killed}`);
@@ -873,14 +878,21 @@ export class FFmpegAudioRecorder {
      * Setting up the maximum duration timer for recording
      */
     private setupMaxDurationTimer(): void {
-
+        this.log(`⏰ [MAX_DURATION] setupMaxDurationTimer called`);
+        this.log(`⏰ [MAX_DURATION] maxDuration option: ${this.options.maxDuration} seconds`);
         
         if (this.options.maxDuration && this.options.maxDuration > 0) {
             const maxDurationMs = this.options.maxDuration * 1000;
+            this.log(`⏰ [MAX_DURATION] Setting max duration timer for ${maxDurationMs}ms (${this.options.maxDuration}s)`);
             
             this.maxDurationTimer = setTimeout(() => {
+                this.log(`⏰ [MAX_DURATION] MAX DURATION REACHED! Stopping recording after ${this.options.maxDuration} seconds`);
                 this.stopRecording();
             }, maxDurationMs);
+            
+            this.log(`⏰ [MAX_DURATION] Max duration timer set successfully`);
+        } else {
+            this.log(`⏰ [MAX_DURATION] Max duration not set or invalid: ${this.options.maxDuration}`);
         }
     }
 
@@ -1003,15 +1015,19 @@ export class FFmpegAudioRecorder {
         // Use the silenceThreshold setting from the options
         // silenceThreshold in the settings is a positive number (20-80)
         // Convert it to negative dB for FFmpeg
-        const thresholdFromSettings = this.options.silenceThreshold || 30; // Default 30
-        const silenceThreshold = -thresholdFromSettings; // Make negative (-30dB)
+        // Make default more sensitive (50dB -> -50dB is more sensitive than 30dB -> -30dB)
+        const thresholdFromSettings = this.options.silenceThreshold || 50; // Default 50 (more sensitive)
+        const silenceThreshold = -thresholdFromSettings; // Make negative (-50dB)
         const isAudioActive = volumeDb > silenceThreshold;
         
         this.log(`🔊 [VOLUMEDETECT] Volume: ${volumeDb.toFixed(1)}dB (threshold: ${silenceThreshold}dB) - ${isAudioActive ? 'ACTIVE' : 'SILENT'}`);
+        this.log(`🔊 [VOLUMEDETECT] Settings: silenceThreshold=${thresholdFromSettings}, converted threshold=${silenceThreshold}dB`);
         
         if (isAudioActive) {
-            this.log(`🎵 Audio activity detected via volumedetect: ${volumeDb.toFixed(1)}dB > ${silenceThreshold}dB`);
+            this.log(`🎵 [AUDIO_ACTIVITY] Audio activity detected via volumedetect: ${volumeDb.toFixed(1)}dB > ${silenceThreshold}dB`);
             this.updateLastAudioTime();
+        } else {
+            this.log(`🔇 [SILENCE_DETECTED] No audio activity: ${volumeDb.toFixed(1)}dB <= ${silenceThreshold}dB`);
         }
     }
 
@@ -1106,13 +1122,15 @@ export class FFmpegAudioRecorder {
         this.lastAudioTime = this.recordingStartTime;
 
         const silenceDuration = (this.options.silenceDuration || 3) * 1000; // Convert to milliseconds
-        const minRecordingTime = 5000; // Minimum 5 seconds of recording before enabling silence detection (increased from 5)
+        const minRecordingTime = 5000; // Minimum 5 seconds of recording before enabling silence detection
 
         this.log(`🔇 [SILENCE DEBUG] Configuration:`);
-        this.log(`🔇 [SILENCE DEBUG]   - Silence threshold: ${silenceDuration}ms (${this.options.silenceDuration || 3}s)`);
-        this.log(`🔇 [SILENCE DEBUG]   - Minimum recording time: ${minRecordingTime}ms`);
+        this.log(`🔇 [SILENCE DEBUG]   - Silence duration threshold: ${silenceDuration}ms (${this.options.silenceDuration || 3}s)`);
+        this.log(`🔇 [SILENCE DEBUG]   - Volume threshold: ${this.options.silenceThreshold || 50} (-> ${-(this.options.silenceThreshold || 50)}dB)`);
+        this.log(`🔇 [SILENCE DEBUG]   - Minimum recording time: ${minRecordingTime}ms (${minRecordingTime/1000}s)`);
         this.log(`🔇 [SILENCE DEBUG]   - Initial lastAudioTime: ${this.lastAudioTime}`);
         this.log(`🔇 [SILENCE DEBUG]   - silenceDetectionEnabled: ${this.silenceDetectionEnabled}`);
+        this.log(`🔇 [SILENCE DEBUG]   - Check interval: 2000ms (2s)`);
 
         // Start the silence check timer every 2000ms
         const checkSilence = () => {

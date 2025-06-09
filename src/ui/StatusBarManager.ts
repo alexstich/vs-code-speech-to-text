@@ -24,6 +24,7 @@ export type StatusBarState =
     | 'recording' 
     | 'processing' 
     | 'transcribing' 
+    | 'post-processing'
     | 'inserting' 
     | 'success' 
     | 'error' 
@@ -85,6 +86,13 @@ export class StatusBarManager implements vscode.Disposable {
         transcribing: {
             text: '$(sync~spin)',
             tooltip: 'Transcribing speech to text...',
+            icon: 'sync',
+            backgroundColor: new vscode.ThemeColor('statusBarItem.warningBackground'),
+            color: new vscode.ThemeColor('statusBarItem.warningForeground')
+        },
+        'post-processing': {
+            text: '$(sync~spin)',
+            tooltip: 'Improving text quality with AI...',
             icon: 'sync',
             backgroundColor: new vscode.ThemeColor('statusBarItem.warningBackground'),
             color: new vscode.ThemeColor('statusBarItem.warningForeground')
@@ -179,6 +187,14 @@ export class StatusBarManager implements vscode.Disposable {
      */
     showTranscribing(): void {
         this.setState('transcribing');
+        this.startProgressAnimation();
+    }
+
+    /**
+     * Shows the post-processing state
+     */
+    showPostProcessing(): void {
+        this.setState('post-processing');
         this.startProgressAnimation();
     }
 
@@ -377,7 +393,7 @@ export class StatusBarManager implements vscode.Disposable {
      * Checks if the state is animated
      */
     private isAnimatedState(): boolean {
-        return ['recording', 'processing', 'transcribing'].includes(this.currentState);
+        return ['recording', 'processing', 'transcribing', 'post-processing'].includes(this.currentState);
     }
 
     /**
@@ -390,6 +406,10 @@ export class StatusBarManager implements vscode.Disposable {
         
         if (this.currentState === 'transcribing') {
             return `$(sync~spin) Transcribing`;
+        }
+        
+        if (this.currentState === 'post-processing') {
+            return `$(sync~spin) AI Processing`;
         }
         
         return config.text;

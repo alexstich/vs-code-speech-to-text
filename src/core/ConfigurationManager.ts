@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { SUPPORTED_OPENAI_MODELS, DEFAULT_OPENAI_MODEL } from './OpenAIModels';
 
 // Interfaces for different configuration types
 export interface WhisperConfiguration {
@@ -25,10 +26,18 @@ export interface UIConfiguration {
     showStatusBar: boolean;
 }
 
+export interface PostProcessingConfiguration {
+    model: string;
+    prompt: string;
+    minTextLength: number;
+    timeout: number;
+}
+
 export interface FullConfiguration {
     whisper: WhisperConfiguration;
     audio: AudioConfiguration;
     ui: UIConfiguration;
+    postProcessing: PostProcessingConfiguration;
 }
 
 // Type for configuration change listeners
@@ -97,6 +106,13 @@ export class ConfigurationManager {
     }
 
     /**
+     * Get the post-processing configuration
+     */
+    public getPostProcessingConfiguration(): PostProcessingConfiguration {
+        return this.getConfiguration().postProcessing;
+    }
+
+    /**
      * Set the configuration value
      */
     public async setConfigurationValue<T>(section: string, value: T): Promise<void> {
@@ -159,6 +175,24 @@ export class ConfigurationManager {
             errors.push('Silence threshold must be between 20 and 80');
         }
 
+        // Validate the post-processing configuration
+        if (config.postProcessing) {
+            const validModels = SUPPORTED_OPENAI_MODELS as readonly string[];
+            if (!validModels.includes(config.postProcessing.model)) {
+                errors.push(`Invalid model selection: ${config.postProcessing.model}`);
+            }
+        }
+
+        if (config.postProcessing) {
+            if (config.postProcessing.minTextLength < 0) {
+                errors.push('Minimum text length must be non-negative');
+            }
+
+            if (config.postProcessing.timeout <= 0) {
+                errors.push('Post-processing timeout must be greater than 0');
+            }
+        }
+
         return {
             isValid: errors.length === 0,
             errors
@@ -185,11 +219,17 @@ export class ConfigurationManager {
                 maxRecordingDuration: 3600,
                 silenceDetection: true,
                 silenceDuration: 3,
-                silenceThreshold: 20,
+                silenceThreshold: 50,
                 inputDevice: 'auto'
             },
             ui: {
                 showStatusBar: true
+            },
+            postProcessing: {
+                model: DEFAULT_OPENAI_MODEL,
+                prompt: 'Please improve this transcribed text by:\n1. Adding proper punctuation and capitalization\n2. Removing filler words (um, uh, like, you know)\n3. Always try to structure sentences for lists and paragraphs for better readability\n4. Maintaining the original meaning and technical terms\n5. Return improved text without any additional text or explanations\n\nOriginal text:',
+                minTextLength: 50,
+                timeout: 30000
             }
         };
     }
@@ -220,6 +260,12 @@ export class ConfigurationManager {
 
         // Reset UI settings
         await config.update('showStatusBar', defaultConfig.ui.showStatusBar, vscode.ConfigurationTarget.Global);
+
+        // Reset post-processing settings
+        await config.update('postProcessing.model', defaultConfig.postProcessing.model, vscode.ConfigurationTarget.Global);
+        await config.update('postProcessing.prompt', defaultConfig.postProcessing.prompt, vscode.ConfigurationTarget.Global);
+        await config.update('postProcessing.minTextLength', defaultConfig.postProcessing.minTextLength, vscode.ConfigurationTarget.Global);
+        await config.update('postProcessing.timeout', defaultConfig.postProcessing.timeout, vscode.ConfigurationTarget.Global);
 
         this.invalidateCache();
     }
@@ -262,6 +308,12 @@ export class ConfigurationManager {
             },
             ui: {
                 showStatusBar: config.get<boolean>('showStatusBar', defaultConfig.ui.showStatusBar)
+            },
+            postProcessing: {
+                model: config.get<string>('postProcessing.model', defaultConfig.postProcessing.model),
+                prompt: config.get<string>('postProcessing.prompt', defaultConfig.postProcessing.prompt),
+                minTextLength: config.get<number>('postProcessing.minTextLength', defaultConfig.postProcessing.minTextLength),
+                timeout: config.get<number>('postProcessing.timeout', defaultConfig.postProcessing.timeout)
             }
         };
     }
